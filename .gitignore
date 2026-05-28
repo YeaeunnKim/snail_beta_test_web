@@ -45,6 +45,9 @@ next-env.d.ts
 coverage/
 .nyc_output/
 
+# Backend API context (synced per developer)
+backend-context/
+
 # Misc
 *.log
 *.orig
