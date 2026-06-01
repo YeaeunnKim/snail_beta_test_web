@@ -1,0 +1,46 @@
+{
+  "name": "snail-owner-web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Snail 네일 예약 플랫폼 사장님 관리 웹 대시보드",
+  "packageManager": "pnpm@11.5.0",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write \"src/**/*.{ts,tsx,css}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\"",
+    "generate:types": "openapi-typescript ./backend-context/openapi.json -o ./src/types/api.d.ts",
+    "generate:types:remote": "openapi-typescript https://poi82999.github.io/snail_backend_specification/openapi.json -o ./src/types/api.d.ts"
+  },
+  "dependencies": {
+    "next": "^15.1.6",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "zustand": "^5.0.3",
+    "react-hook-form": "^7.54.2",
+    "@hookform/resolvers": "^3.10.0",
+    "zod": "^3.24.1",
+    "clsx": "^2.1.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "@types/node": "^20.17.16",
+    "@types/react": "^19.0.8",
+    "@types/react-dom": "^19.0.3",
+    "tailwindcss": "^4.0.0",
+    "@tailwindcss/postcss": "^4.0.0",
+    "postcss": "^8.5.1",
+    "eslint": "^8.57.1",
+    "eslint-config-next": "^15.1.6",
+    "prettier": "^3.4.2",
+    "prettier-plugin-tailwindcss": "^0.6.11",
+    "openapi-typescript": "^7.6.1"
+  }
+}

@@ -1,0 +1,23 @@
+@import 'tailwindcss';
+
+/*
+ * 디자인 토큰은 디자인팀이 채워 넣는 영역입니다.
+ * 여기서는 앱이 부팅되도록 최소한의 base 스타일만 둡니다.
+ * Tailwind 4 CSS-first 설정: @theme 블록에서 토큰을 정의하세요.
+ */
+@theme {
+  --color-brand: #ff5a8a;
+}
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  @apply bg-white text-neutral-900 antialiased;
+}
