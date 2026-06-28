@@ -3,8 +3,7 @@
  *
  * 샵 영업시간(BusinessHourEntry)·디자이너 스케줄(ScheduleEntry)의 `weekday` 숫자에 사용된다.
  *
- * TODO(backend): weekday 숫자 컨벤션(0=월 vs 0=일)이 스펙에 명시돼 있지 않다.
- * 현재는 Python datetime.weekday() 관례(0=월 … 6=일)를 가정한다. 백엔드와 확정 후 필요 시 수정.
+ * 컨벤션 확정(백엔드): 0=월요일 … 6=일요일.
  */
 export const WEEKDAYS = [
   { value: 0, label: '월' },

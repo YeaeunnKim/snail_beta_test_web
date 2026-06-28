@@ -18,9 +18,18 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { designersApi, designsApi } from '@/services';
+import { designersApi, designsApi, uploadsApi } from '@/services';
 import type { Design } from '@/services';
 import { toUserMessage } from '@/lib/error-messages';
+
+interface PhotoItem {
+  id: string;
+  name: string;
+  previewUrl: string;
+  objectKey?: string;
+  status: 'uploading' | 'done' | 'error';
+  error?: string;
+}
 
 const AI_LABEL: Record<string, string> = {
   pending: 'AI 분석 대기',
@@ -42,7 +51,6 @@ const createSchema = z.object({
   duration_minutes: z.coerce.number().int().min(1, '소요시간을 입력해주세요.'),
   designer_ids: z.array(z.string()).min(1, '디자이너를 1명 이상 선택해주세요.'),
   owner_tags: z.string().optional(),
-  image_keys: z.string().optional(), // 개발용: object key 직접 입력 (줄/쉼표 구분)
 });
 type CreateForm = z.infer<typeof createSchema>;
 
@@ -114,7 +122,7 @@ export default function DesignsPage() {
 }
 
 function CreateForm({ designers, onCreated }: { designers: import('@/services').Designer[]; onCreated: () => void }) {
-  const [photos, setPhotos] = useState<{ url: string; name: string }[]>([]);
+  const [photos, setPhotos] = useState<PhotoItem[]>([]);
   const [formError, setFormError] = useState<string | null>(null);
 
   const {
@@ -126,17 +134,39 @@ function CreateForm({ designers, onCreated }: { designers: import('@/services').
     defaultValues: { designer_ids: [] },
   });
 
+  const uploading = photos.some((p) => p.status === 'uploading');
+
   const addPhotos = (files: FileList | null) => {
     if (!files) return;
-    const next = Array.from(files)
-      .slice(0, 5 - photos.length)
-      .map((f) => ({ url: URL.createObjectURL(f), name: f.name }));
-    setPhotos((p) => [...p, ...next].slice(0, 5));
+    const chosen = Array.from(files).slice(0, 5 - photos.length);
+    for (const file of chosen) {
+      const id = crypto.randomUUID();
+      setPhotos((p) =>
+        [...p, { id, name: file.name, previewUrl: URL.createObjectURL(file), status: 'uploading' as const }].slice(0, 5),
+      );
+      uploadsApi
+        .uploadFile(file)
+        .then((r) =>
+          setPhotos((p) =>
+            p.map((it) => (it.id === id ? { ...it, status: 'done', objectKey: r.object_key } : it)),
+          ),
+        )
+        .catch((e) =>
+          setPhotos((p) =>
+            p.map((it) => (it.id === id ? { ...it, status: 'error', error: toUserMessage(e) } : it)),
+          ),
+        );
+    }
   };
-  const removePhoto = (i: number) => setPhotos((p) => p.filter((_, idx) => idx !== i));
+  const removePhoto = (id: string) => setPhotos((p) => p.filter((it) => it.id !== id));
 
   const onSubmit = async (values: CreateForm) => {
     setFormError(null);
+    const keys = photos.filter((p) => p.status === 'done' && p.objectKey).map((p) => p.objectKey!);
+    if (keys.length === 0) {
+      setFormError('사진을 1장 이상 업로드해주세요.');
+      return;
+    }
     try {
       await designsApi.createDesign({
         title: values.title,
@@ -145,7 +175,7 @@ function CreateForm({ designers, onCreated }: { designers: import('@/services').
         duration_minutes: values.duration_minutes,
         designer_ids: values.designer_ids,
         owner_tags: splitList(values.owner_tags),
-        image_upload_keys: splitList(values.image_keys), // TODO: 실제 업로드 키로 대체
+        image_upload_keys: keys,
       });
       onCreated();
     } catch (e) {
@@ -165,29 +195,29 @@ function CreateForm({ designers, onCreated }: { designers: import('@/services').
       <div>
         <div className="mb-1 flex items-center gap-2">
           <label className="text-sm font-medium">사진 (최대 5장)</label>
-          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] text-amber-700">
-            업로드 연동 예정 — 미리보기만
-          </span>
+          <span className="text-[11px] text-neutral-400">1장 이상 필요</span>
         </div>
         <div className="flex flex-wrap gap-2">
-          {photos.map((p, i) => (
-            <div key={i} className="relative h-20 w-20 overflow-hidden rounded-md border border-neutral-200">
+          {photos.map((p) => (
+            <div key={p.id} className="relative h-20 w-20 overflow-hidden rounded-md border border-neutral-200">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={p.url} alt={p.name} className="h-full w-full object-cover" />
+              <img src={p.previewUrl} alt={p.name} className="h-full w-full object-cover" />
+              {p.status === 'uploading' && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/40 text-[10px] text-white">
+                  업로드 중…
+                </div>
+              )}
+              {p.status === 'error' && (
+                <div className="absolute inset-0 flex items-center justify-center bg-red-600/70 px-1 text-center text-[9px] text-white">
+                  실패
+                </div>
+              )}
               <button
                 type="button"
-                onClick={() => removePhoto(i)}
+                onClick={() => removePhoto(p.id)}
                 className="absolute right-0 top-0 bg-black/50 px-1 text-xs text-white"
               >
                 ×
-              </button>
-              <button
-                type="button"
-                disabled
-                title="업로드 연동 후 지원"
-                className="absolute bottom-0 w-full cursor-not-allowed bg-black/40 text-[10px] text-white/80"
-              >
-                크롭
               </button>
             </div>
           ))}
@@ -199,7 +229,10 @@ function CreateForm({ designers, onCreated }: { designers: import('@/services').
                 accept="image/*"
                 multiple
                 className="hidden"
-                onChange={(e) => addPhotos(e.target.files)}
+                onChange={(e) => {
+                  addPhotos(e.target.files);
+                  e.target.value = '';
+                }}
               />
             </label>
           )}
@@ -253,27 +286,14 @@ function CreateForm({ designers, onCreated }: { designers: import('@/services').
         <input className={inputCls} {...register('owner_tags')} />
       </Field>
 
-      {/* 개발용 이미지 키 (업로드 계약 확정 전 임시) */}
-      <details className="rounded-md border border-dashed border-neutral-300 p-3">
-        <summary className="cursor-pointer text-xs text-neutral-500">
-          개발용: 이미지 object key 직접 입력 (업로드 연동 전 임시)
-        </summary>
-        <textarea
-          rows={2}
-          placeholder="uploads/design/.../1.jpg (줄 또는 쉼표로 여러 개)"
-          className={`${inputCls} mt-2`}
-          {...register('image_keys')}
-        />
-      </details>
-
       {formError && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{formError}</p>}
 
       <button
         type="submit"
-        disabled={isSubmitting}
+        disabled={isSubmitting || uploading}
         className="rounded-md bg-brand px-5 py-2 text-sm font-semibold text-white disabled:opacity-50"
       >
-        {isSubmitting ? '등록 중…' : '디자인 등록'}
+        {isSubmitting ? '등록 중…' : uploading ? '사진 업로드 중…' : '디자인 등록'}
       </button>
     </form>
   );

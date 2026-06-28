@@ -351,24 +351,78 @@ function DayBlocks({ entry }: { entry: ScheduleForm['entries'][number] }) {
   );
 }
 
-/** 백엔드 저장 위치가 없는 추가 설정 — UI만 두고 비활성(연동 예정) */
+/**
+ * 추가 설정.
+ *  - 운영 한도(하루 최대 인원·근무시간): 백엔드 구현 예정 → 입력은 활성화하되 저장 API는 TODO.
+ *  - 시술 소요시간 디폴트: 백엔드 스키마 확인 예정 → UI만 유지(비활성).
+ */
 function ExtraSettingsCard() {
+  // TODO(backend): 운영 한도 저장/조회 API 연결 (백엔드 구현 예정). 현재 입력값은 전송되지 않는다.
+  const [maxPeople, setMaxPeople] = useState('');
+  const [maxHours, setMaxHours] = useState('');
+
   return (
-    <section className="rounded-lg border border-neutral-200 bg-white p-5">
-      <div className="mb-3 flex items-center gap-2">
-        <h2 className="text-sm font-semibold text-neutral-700">추가 설정</h2>
-        <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[11px] text-neutral-500">
-          백엔드 연동 예정 (저장되지 않음)
-        </span>
+    <section className="space-y-5 rounded-lg border border-neutral-200 bg-white p-5">
+      {/* 운영 한도 — 입력 활성, 저장은 TODO */}
+      <div>
+        <div className="mb-2 flex items-center gap-2">
+          <h2 className="text-sm font-semibold text-neutral-700">운영 한도</h2>
+          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] text-amber-700">
+            저장 연동 예정
+          </span>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <ActiveNumber label="하루 최대 인원" placeholder="예: 8" value={maxPeople} onChange={setMaxPeople} />
+          <ActiveNumber
+            label="하루 최대 근무시간(시간)"
+            placeholder="예: 9"
+            value={maxHours}
+            onChange={setMaxHours}
+          />
+        </div>
       </div>
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
-        <Disabled label="디자인 소요시간 디폴트(분)" placeholder="예: 120" />
-        <Disabled label="제거 소요시간 디폴트(분)" placeholder="예: 30" />
-        <Disabled label="연장 소요시간 디폴트(분)" placeholder="예: 30" />
-        <Disabled label="하루 최대 인원" placeholder="예: 8" />
-        <Disabled label="하루 최대 근무시간(시간)" placeholder="예: 9" />
+
+      {/* 시술 소요시간 디폴트 — UI만 유지 */}
+      <div>
+        <div className="mb-2 flex items-center gap-2">
+          <h2 className="text-sm font-semibold text-neutral-700">시술 소요시간 디폴트</h2>
+          <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[11px] text-neutral-500">
+            스키마 확인 예정
+          </span>
+        </div>
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+          <Disabled label="디자인 기본(분)" placeholder="예: 120" />
+          <Disabled label="제거(분)" placeholder="예: 30" />
+          <Disabled label="연장(분)" placeholder="예: 30" />
+        </div>
       </div>
     </section>
+  );
+}
+
+function ActiveNumber({
+  label,
+  placeholder,
+  value,
+  onChange,
+}: {
+  label: string;
+  placeholder: string;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div>
+      <label className="mb-1 block text-xs font-medium text-neutral-600">{label}</label>
+      <input
+        type="number"
+        min={0}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-brand"
+      />
+    </div>
   );
 }
 
