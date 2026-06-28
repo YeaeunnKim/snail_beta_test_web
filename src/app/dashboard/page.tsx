@@ -30,7 +30,7 @@ export default function DashboardHome() {
       {needsVerification && (
         <div className="rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-800">
           사업자 인증이 필요합니다 ({VERIFICATION_LABEL[verificationStatus ?? ''] ?? verificationStatus}).{' '}
-          <Link href="/dashboard/verification" className="font-semibold underline">
+          <Link href="/business-verification" className="font-semibold underline">
             인증 화면으로 이동
           </Link>
           {owner?.verification_rejected_reason && (

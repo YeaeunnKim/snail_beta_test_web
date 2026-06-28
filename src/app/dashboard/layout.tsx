@@ -15,7 +15,7 @@ import { config } from '@/lib/config';
 
 const NAV = [
   { href: '/dashboard', label: '홈' },
-  { href: '/dashboard/verification', label: '사업자 인증' },
+  { href: '/business-verification', label: '사업자 인증' },
   { href: '/dashboard/shop', label: '샵 관리' },
   { href: '/dashboard/designers', label: '디자이너' },
   { href: '/dashboard/designs', label: '디자인' },

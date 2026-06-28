@@ -14,6 +14,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAuth } from '@/hooks/use-auth';
 import { isApiError } from '@/lib/api-error';
+import { toUserMessage } from '@/lib/error-messages';
+import { resolveAuthedHome } from '@/lib/auth-routing';
 
 const loginSchema = z.object({
   email: z.string().email('올바른 이메일 형식이 아닙니다.'),
@@ -46,20 +48,22 @@ function LoginForm() {
   const onSubmit = async (values: LoginForm) => {
     setFormError(null);
     try {
-      await login(values);
-      router.replace(searchParams.get('redirect') ?? '/dashboard');
+      const owner = await login(values);
+      // 승인 완료 + 딥링크(redirect)면 그곳으로, 아니면 인증 상태별 진입 경로로.
+      const redirect = searchParams.get('redirect');
+      const dest =
+        owner.verification_status === 'approved' && redirect
+          ? redirect
+          : resolveAuthedHome(owner);
+      router.replace(dest);
     } catch (e) {
-      if (isApiError(e)) {
+      if (isApiError(e) && e.fieldErrors) {
         // 서버 필드 에러를 폼에 매핑
-        if (e.fieldErrors) {
-          for (const [field, message] of Object.entries(e.fieldErrors)) {
-            setError(field as keyof LoginForm, { message });
-          }
+        for (const [field, message] of Object.entries(e.fieldErrors)) {
+          setError(field as keyof LoginForm, { message });
         }
-        setFormError(e.message);
-      } else {
-        setFormError('로그인 중 오류가 발생했습니다.');
       }
+      setFormError(toUserMessage(e));
     }
   };
 
@@ -110,7 +114,7 @@ function LoginForm() {
       </button>
 
       <p className="text-center text-xs text-neutral-500">
-        <a href="/signup" className="underline">
+        <a href="/register" className="underline">
           회원가입
         </a>{' '}
         ·{' '}

@@ -11,15 +11,17 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 const AUTHED_COOKIE = 'snail_owner_authed';
-const AUTH_PAGES = ['/login', '/signup', '/password-reset'];
+const AUTH_PAGES = ['/login', '/register', '/password-reset'];
+// 로그인이 필요한(미인증 시 /login 으로) 경로들. 승인 여부 분기는 클라이언트(useAuth)가 담당.
+const PROTECTED_PREFIXES = ['/dashboard', '/business-verification', '/pending', '/onboarding'];
 
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const isAuthed = req.cookies.get(AUTHED_COOKIE)?.value === '1';
   const isAuthPage = AUTH_PAGES.some((p) => pathname.startsWith(p));
-  const isDashboard = pathname.startsWith('/dashboard');
+  const isProtected = PROTECTED_PREFIXES.some((p) => pathname.startsWith(p));
 
-  if (isDashboard && !isAuthed) {
+  if (isProtected && !isAuthed) {
     const url = req.nextUrl.clone();
     url.pathname = '/login';
     url.searchParams.set('redirect', pathname);
