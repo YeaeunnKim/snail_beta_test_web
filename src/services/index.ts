@@ -12,5 +12,6 @@ export * as designsApi from './designs';
 export * as reservationsApi from './reservations';
 export * as reviewsApi from './reviews';
 export * as notificationsApi from './notifications';
+export * as snailsApi from './snails';
 
 export * from './types';

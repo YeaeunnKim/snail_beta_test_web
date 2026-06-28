@@ -3,13 +3,20 @@
 /**
  * 대시보드 홈.
  *
- * 현재는 "백엔드 연결 + 인증 세션"이 실제 동작함을 보여주는 검증 화면이다.
- * GET /owners/me 로 받아온 사장님 정보와 인증 상태를 표시한다.
- * 실제 대시보드 위젯(오늘의 예약 요약 등)은 프론트팀이 채운다.
+ * 단일 요약 API가 없어 useDashboardSummary가 여러 엔드포인트를 조합한다.
+ *  - 4개 지표 카드: 오늘 예약 / 신규 요청 / 미답변 리뷰 / 스네일 태그
+ *  - 오늘 일정 요약(시간순)
+ *  - 카드 클릭 → 해당 목록 화면으로 딥링크(필터 query 포함)
+ *
+ * 스네일 태그는 "내 샵을 태그한 스냅" 수를 보여주지만, 사장님용 스냅 관리 화면이
+ * 아직 없어 클릭 딥링크는 비활성(관리 화면 준비 중)이다.
  */
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
 import { useMyShop } from '@/hooks/use-my-shop';
+import { useDashboardSummary } from '@/hooks/use-dashboard-summary';
+import { formatTime } from '@/lib/date';
+import type { ReservationStatus } from '@/services';
 
 const VERIFICATION_LABEL: Record<string, string> = {
   pending: '심사 대기 중',
@@ -17,16 +24,58 @@ const VERIFICATION_LABEL: Record<string, string> = {
   rejected: '반려됨',
 };
 
+const STATUS_LABEL: Record<ReservationStatus, string> = {
+  pending: '대기',
+  payment_pending: '입금대기',
+  confirmed: '확정',
+  rejected: '거절',
+  cancelled_by_user: '고객취소',
+  cancelled_by_shop: '샵취소',
+  no_show: '노쇼',
+  completed: '완료',
+};
+
+const STATUS_CLS: Record<ReservationStatus, string> = {
+  pending: 'bg-amber-100 text-amber-700',
+  payment_pending: 'bg-orange-100 text-orange-700',
+  confirmed: 'bg-green-100 text-green-700',
+  rejected: 'bg-red-100 text-red-700',
+  cancelled_by_user: 'bg-neutral-100 text-neutral-500',
+  cancelled_by_shop: 'bg-neutral-100 text-neutral-500',
+  no_show: 'bg-red-100 text-red-700',
+  completed: 'bg-blue-100 text-blue-700',
+};
+
+function fmtCount(n: number, more: boolean): string {
+  return more ? `${n}+` : String(n);
+}
+
 export default function DashboardHome() {
   const { owner, verificationStatus, isApproved, needsVerification } = useAuth();
   const { data: shop, isLoading: shopLoading } = useMyShop();
+  const { data: summary, isLoading: summaryLoading, isError: summaryError } = useDashboardSummary(
+    shop?.id,
+  );
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-xl font-bold">대시보드</h1>
-        <p className="mt-1 text-sm text-neutral-500">백엔드 연결 확인용 기본 화면입니다.</p>
+        {shop && <p className="mt-1 text-sm text-neutral-500">{shop.name}</p>}
       </div>
+
+      {/* 인증 상태 배너 */}
+      {needsVerification && (
+        <div className="rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-800">
+          사업자 인증이 필요합니다 ({VERIFICATION_LABEL[verificationStatus ?? ''] ?? verificationStatus}).{' '}
+          <Link href="/business-verification" className="font-semibold underline">
+            인증 화면으로 이동
+          </Link>
+          {owner?.verification_rejected_reason && (
+            <p className="mt-1">반려 사유: {owner.verification_rejected_reason}</p>
+          )}
+        </div>
+      )}
 
       {/* 승인됐지만 아직 샵이 없으면 온보딩으로 유도 */}
       {isApproved && !shopLoading && shop === null && (
@@ -42,41 +91,117 @@ export default function DashboardHome() {
         </div>
       )}
 
-      {/* 인증 상태 배너 */}
-      {needsVerification && (
-        <div className="rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-800">
-          사업자 인증이 필요합니다 ({VERIFICATION_LABEL[verificationStatus ?? ''] ?? verificationStatus}).{' '}
-          <Link href="/business-verification" className="font-semibold underline">
-            인증 화면으로 이동
-          </Link>
-          {owner?.verification_rejected_reason && (
-            <p className="mt-1">반려 사유: {owner.verification_rejected_reason}</p>
+      {/* 샵이 있을 때만 요약 표시 */}
+      {shop && (
+        <>
+          {summaryError && (
+            <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+              요약 정보를 불러오지 못했습니다.
+            </p>
           )}
-        </div>
-      )}
 
-      {/* 연결 검증: /owners/me 응답 */}
-      <section className="rounded-lg border border-neutral-200 bg-white p-6">
-        <h2 className="mb-3 text-sm font-semibold text-neutral-700">내 계정 (GET /owners/me)</h2>
-        <dl className="grid grid-cols-[8rem_1fr] gap-y-2 text-sm">
-          <dt className="text-neutral-500">대표자명</dt>
-          <dd>{owner?.representative_name}</dd>
-          <dt className="text-neutral-500">이메일</dt>
-          <dd>{owner?.email}</dd>
-          <dt className="text-neutral-500">연락처</dt>
-          <dd>{owner?.phone_number}</dd>
-          <dt className="text-neutral-500">인증 상태</dt>
-          <dd>
-            <span
-              className={`rounded px-2 py-0.5 text-xs font-medium ${
-                isApproved ? 'bg-green-100 text-green-700' : 'bg-neutral-100 text-neutral-600'
-              }`}
-            >
-              {VERIFICATION_LABEL[verificationStatus ?? ''] ?? verificationStatus}
-            </span>
-          </dd>
-        </dl>
-      </section>
+          {/* 4개 지표 카드 */}
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            <MetricCard
+              label="오늘 예약"
+              loading={summaryLoading}
+              value={summary ? fmtCount(summary.todayCount, summary.todayHasMore) : '—'}
+              href={
+                summary ? `/dashboard/reservations?from=${summary.today}&to=${summary.today}` : undefined
+              }
+            />
+            <MetricCard
+              label="신규 요청"
+              loading={summaryLoading}
+              value={summary ? fmtCount(summary.newRequestCount, summary.newRequestHasMore) : '—'}
+              href="/dashboard/reservations?status=pending"
+            />
+            <MetricCard
+              label="미답변 리뷰"
+              loading={summaryLoading}
+              value={summary ? String(summary.unansweredReviewCount) : '—'}
+              href="/dashboard/reviews?filter=unanswered"
+            />
+            <MetricCard
+              label="스네일 태그"
+              loading={summaryLoading}
+              value={summary ? fmtCount(summary.snailTagCount, summary.snailTagHasMore) : '—'}
+              hint="관리 화면 준비 중"
+            />
+          </div>
+
+          {/* 오늘 일정 요약 */}
+          <section className="rounded-lg border border-neutral-200 bg-white p-5">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-neutral-700">오늘 일정</h2>
+              {summary && (
+                <Link
+                  href={`/dashboard/reservations?from=${summary.today}&to=${summary.today}`}
+                  className="text-xs text-brand underline"
+                >
+                  전체 보기
+                </Link>
+              )}
+            </div>
+
+            {summaryLoading ? (
+              <p className="text-sm text-neutral-400">불러오는 중…</p>
+            ) : summary && summary.todaySchedule.length > 0 ? (
+              <ul className="divide-y divide-neutral-100">
+                {summary.todaySchedule.map((r) => (
+                  <li key={r.id} className="flex items-center gap-3 py-2.5 text-sm">
+                    <span className="w-12 shrink-0 font-medium text-neutral-700">
+                      {formatTime(r.start_at)}
+                    </span>
+                    <span className="flex-1 truncate">
+                      {r.design?.title ?? '시술'}
+                      {r.designer?.name && (
+                        <span className="text-neutral-400"> · {r.designer.name}</span>
+                      )}
+                    </span>
+                    <span
+                      className={`shrink-0 rounded px-2 py-0.5 text-xs font-medium ${STATUS_CLS[r.status]}`}
+                    >
+                      {STATUS_LABEL[r.status]}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-neutral-400">오늘 예약이 없습니다.</p>
+            )}
+          </section>
+        </>
+      )}
     </div>
+  );
+}
+
+function MetricCard({
+  label,
+  value,
+  href,
+  hint,
+  loading,
+}: {
+  label: string;
+  value: string;
+  href?: string;
+  hint?: string;
+  loading?: boolean;
+}) {
+  const inner = (
+    <div className="h-full rounded-lg border border-neutral-200 bg-white p-4 transition group-hover:border-brand">
+      <p className="text-xs text-neutral-500">{label}</p>
+      <p className="mt-1 text-2xl font-bold text-neutral-900">{loading ? '…' : value}</p>
+      {hint && <p className="mt-1 text-[11px] text-neutral-400">{hint}</p>}
+    </div>
+  );
+  return href ? (
+    <Link href={href} className="group block">
+      {inner}
+    </Link>
+  ) : (
+    inner
   );
 }
