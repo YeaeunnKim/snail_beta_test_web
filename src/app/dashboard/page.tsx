@@ -16,34 +16,12 @@ import { useAuth } from '@/hooks/use-auth';
 import { useMyShop } from '@/hooks/use-my-shop';
 import { useDashboardSummary } from '@/hooks/use-dashboard-summary';
 import { formatTime } from '@/lib/date';
-import type { ReservationStatus } from '@/services';
+import { RESERVATION_STATUS_CLS, RESERVATION_STATUS_LABEL } from '@/lib/reservation-status';
 
 const VERIFICATION_LABEL: Record<string, string> = {
   pending: '심사 대기 중',
   approved: '승인 완료',
   rejected: '반려됨',
-};
-
-const STATUS_LABEL: Record<ReservationStatus, string> = {
-  pending: '대기',
-  payment_pending: '입금대기',
-  confirmed: '확정',
-  rejected: '거절',
-  cancelled_by_user: '고객취소',
-  cancelled_by_shop: '샵취소',
-  no_show: '노쇼',
-  completed: '완료',
-};
-
-const STATUS_CLS: Record<ReservationStatus, string> = {
-  pending: 'bg-amber-100 text-amber-700',
-  payment_pending: 'bg-orange-100 text-orange-700',
-  confirmed: 'bg-green-100 text-green-700',
-  rejected: 'bg-red-100 text-red-700',
-  cancelled_by_user: 'bg-neutral-100 text-neutral-500',
-  cancelled_by_shop: 'bg-neutral-100 text-neutral-500',
-  no_show: 'bg-red-100 text-red-700',
-  completed: 'bg-blue-100 text-blue-700',
 };
 
 function fmtCount(n: number, more: boolean): string {
@@ -160,9 +138,9 @@ export default function DashboardHome() {
                       )}
                     </span>
                     <span
-                      className={`shrink-0 rounded px-2 py-0.5 text-xs font-medium ${STATUS_CLS[r.status]}`}
+                      className={`shrink-0 rounded px-2 py-0.5 text-xs font-medium ${RESERVATION_STATUS_CLS[r.status]}`}
                     >
-                      {STATUS_LABEL[r.status]}
+                      {RESERVATION_STATUS_LABEL[r.status]}
                     </span>
                   </li>
                 ))}
