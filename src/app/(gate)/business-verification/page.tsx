@@ -78,7 +78,7 @@ export default function BusinessVerificationPage() {
     if (!file) return;
     setDoc({ name: file.name, status: 'uploading' });
     uploadsApi
-      .uploadFile(file)
+      .uploadFile(file, 'business_license')
       .then((r) => setDoc({ name: file.name, status: 'done', objectKey: r.object_key }))
       .catch((e) => setDoc({ name: file.name, status: 'error', error: toUserMessage(e) }));
   };

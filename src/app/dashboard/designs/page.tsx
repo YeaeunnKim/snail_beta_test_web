@@ -145,7 +145,7 @@ function CreateForm({ designers, onCreated }: { designers: import('@/services').
         [...p, { id, name: file.name, previewUrl: URL.createObjectURL(file), status: 'uploading' as const }].slice(0, 5),
       );
       uploadsApi
-        .uploadFile(file)
+        .uploadFile(file, 'design')
         .then((r) =>
           setPhotos((p) =>
             p.map((it) => (it.id === id ? { ...it, status: 'done', objectKey: r.object_key } : it)),

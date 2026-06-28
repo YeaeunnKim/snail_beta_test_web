@@ -7,11 +7,14 @@
  * 각 생성/제출 API에 object_key(들)를 넘긴다.
  *
  * multipart/form-data 전송이라 JSON 전용 타입드 클라이언트(api-client)와 별개로 둔다.
- * NOTE: 멀티파트 필드명은 'file'을 가정한다(FastAPI UploadFile 관례). 다르면 조정.
+ * 백엔드 시그니처: file: UploadFile(File), target_type: UploadTargetType(Form).
  */
 import { ApiError, NETWORK_ERROR_CODE } from '@/lib/api-error';
 import { config } from '@/lib/config';
 import { getAccessToken } from '@/lib/token';
+
+/** 업로드 용도. 사장님 웹에서는 주로 business_license(등록증)·design(디자인 사진)·shop(샵 이미지)·profile(디자이너). */
+export type UploadTargetType = 'profile' | 'shop' | 'design' | 'snap' | 'review' | 'business_license';
 
 export interface UploadResult {
   object_key: string;
@@ -37,10 +40,15 @@ async function parseBody(res: Response): Promise<unknown> {
   }
 }
 
-/** 파일 1개를 업로드하고 object_key 등을 받는다. */
-export async function uploadFile(file: File, signal?: AbortSignal): Promise<UploadResult> {
+/** 파일 1개를 업로드하고 object_key 등을 받는다. target_type으로 용도를 지정한다. */
+export async function uploadFile(
+  file: File,
+  targetType: UploadTargetType,
+  signal?: AbortSignal,
+): Promise<UploadResult> {
   const form = new FormData();
   form.append('file', file);
+  form.append('target_type', targetType);
 
   const token = getAccessToken();
   let res: Response;
