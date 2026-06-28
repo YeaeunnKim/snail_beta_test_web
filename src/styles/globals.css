@@ -1,11 +1,25 @@
 @import 'tailwindcss';
 
 /*
- * 디자인 토큰은 디자인팀이 채워 넣는 영역입니다.
- * 여기서는 앱이 부팅되도록 최소한의 base 스타일만 둡니다.
- * Tailwind 4 CSS-first 설정: @theme 블록에서 토큰을 정의하세요.
+ * 디자인 토큰 (Single Source of Truth).
+ * iOS 앱 레포(snail_ios)의 src/theme/tokens.ts 색상 팔레트를 그대로 반영한다.
+ * Tailwind 4 CSS-first 설정이라 tailwind.config.ts가 아닌 이 @theme 블록이 토큰 정의 위치다.
+ * 변경 시 iOS tokens.ts와 동기화할 것.
  */
 @theme {
+  /* iOS colors.* 동기화 */
+  --color-primary: #070705; /* 본문 강조/주요 텍스트 (near-black) */
+  --color-primary-50: #7e7e7d;
+  --color-primary-10: #dddddd;
+  --color-secondary: #7d695d; /* earth tone */
+  --color-secondary-50: #bbafa8;
+  --color-text: #6f6f6f; /* 본문/라벨 기본 텍스트 */
+  --color-line: #e5e5e5; /* 구분선/입력 보더 */
+  --color-disabled: #d9d9d9; /* 비활성 배경/플레이스홀더 */
+  --color-danger: #ff6b6b; /* 에러/하트 */
+
+  /* 레퍼런스 화면(login/shop 등)이 사용 중 — iOS 팔레트와 별개로 유지.
+     디자인 확정 시 primary 계열로 정리 예정. */
   --color-brand: #ff5a8a;
 }
 
