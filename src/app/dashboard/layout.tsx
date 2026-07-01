@@ -20,6 +20,7 @@ const NAV = [
   { href: '/dashboard/designers', label: '디자이너' },
   { href: '/dashboard/designs', label: '디자인' },
   { href: '/dashboard/reservations', label: '예약' },
+  { href: '/dashboard/timeline', label: '일정' },
   { href: '/dashboard/reviews', label: '리뷰' },
   { href: '/dashboard/notifications', label: '알림' },
 ];

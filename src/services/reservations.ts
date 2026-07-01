@@ -30,10 +30,11 @@ export async function getReservation(reservationId: string) {
   });
 }
 
-/** 예약 승인 (pending → ...) */
-export async function accept(reservationId: string) {
+/** 예약 승인 (pending → ...). ownerReply를 주면 고객 문의에 대한 답변으로 함께 저장된다. */
+export async function accept(reservationId: string, ownerReply?: string) {
   return apiClient.post('/api/v1/shops/me/reservations/{reservation_id}/accept', {
     params: { reservation_id: reservationId },
+    body: ownerReply ? { owner_reply: ownerReply } : undefined,
   });
 }
 

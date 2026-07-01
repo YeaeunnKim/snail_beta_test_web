@@ -3,23 +3,23 @@
 /**
  * 디자인 등록/관리.
  *
- *  - 등록 폼: 제목·가격·소요시간·디자이너·owner_tags + 사진 UI(업로드는 TODO)
- *  - 목록: 카드별 AI 분석 상태 배지. pending/in_progress면 폴링(refetchInterval).
- *  - failed 시 재분석(reanalyze) 버튼.
+ * 등록 폼:
+ *  - 대표 스네일 사진 1장(필수, 썸네일로 노출) + 상세 사진 최대 5장(선택, 손 후기 등)
+ *  - 제목(사장님 관리용, 고객 미노출) · 설명(앱 미노출 메모)
+ *  - 폴더(만들기/선택)로 정리 — 예: "7월 이달의 아트"
+ *  - 사장님 태그: 단어 입력→등록(엔터), X로 삭제, 최대 10개
+ *  - 디자이너 선택 시 디자이너별 소요시간을 +/-로 조정(미조정 시 기본 소요시간)
  *
- * TODO(업로드): 사진은 미리보기(로컬 objectURL)만 동작한다. 실제 업로드 엔드포인트
- * (presigned URL 등) 계약이 없어 image_upload_keys를 채울 수 없다. 계약 확정 시
- * PhotoPicker가 업로드 후 받은 object key를 image_upload_keys로 넘기도록 연결할 것.
- * 그 전까지는 개발용 "object key 직접 입력"으로 디자인 생성을 테스트한다.
+ * 목록: 카드별 AI 분석 상태 배지(pending/in_progress면 폴링), failed 시 재분석.
  */
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { designersApi, designsApi, uploadsApi } from '@/services';
-import type { Design } from '@/services';
+import type { Design, Designer, DesignFolder } from '@/services';
 import { toUserMessage } from '@/lib/error-messages';
 
 interface PhotoItem {
@@ -30,6 +30,13 @@ interface PhotoItem {
   status: 'uploading' | 'done' | 'error';
   error?: string;
 }
+
+const MAX_DETAIL_PHOTOS = 5;
+const MAX_OWNER_TAGS = 10;
+const TAG_MAXLEN = 40;
+const DURATION_MIN = 30;
+const DURATION_MAX = 600;
+const DURATION_STEP = 5;
 
 const AI_LABEL: Record<string, string> = {
   pending: 'AI 분석 대기',
@@ -48,67 +55,231 @@ const createSchema = z.object({
   title: z.string().min(1, '제목을 입력해주세요.'),
   description: z.string().optional(),
   base_price: z.coerce.number().int().min(0, '가격을 입력해주세요.'),
-  duration_minutes: z.coerce.number().int().min(1, '소요시간을 입력해주세요.'),
-  designer_ids: z.array(z.string()).min(1, '디자이너를 1명 이상 선택해주세요.'),
-  owner_tags: z.string().optional(),
+  duration_minutes: z.coerce
+    .number()
+    .int()
+    .min(DURATION_MIN, `소요시간은 ${DURATION_MIN}분 이상이어야 합니다.`)
+    .max(DURATION_MAX, `소요시간은 ${DURATION_MAX}분 이하여야 합니다.`),
 });
-type CreateForm = z.infer<typeof createSchema>;
+type CreateFormValues = z.infer<typeof createSchema>;
 
-const splitList = (s?: string) =>
-  (s ?? '')
-    .split(/[\n,]/)
-    .map((x) => x.trim())
-    .filter(Boolean);
+const clampDuration = (n: number) => Math.max(DURATION_MIN, Math.min(DURATION_MAX, n));
+
+type FolderView = { label: string; folderId?: string; unfiled?: boolean };
 
 export default function DesignsPage() {
   const qc = useQueryClient();
-  const [open, setOpen] = useState(false);
+  const [showCreate, setShowCreate] = useState(false);
+  const [open, setOpen] = useState<FolderView | null>(null); // null = 폴더 목록
 
-  const designsQuery = useQuery({
-    queryKey: ['designs'],
-    queryFn: () => designsApi.listDesigns(),
+  const designers = useQuery({ queryKey: ['designers'], queryFn: () => designersApi.listDesigners() });
+  const foldersQuery = useQuery({
+    queryKey: ['design-folders'],
+    queryFn: () => designsApi.listFolders(),
   });
-  const designers = useQuery({
-    queryKey: ['designers'],
-    queryFn: () => designersApi.listDesigners(),
+  const unfiledQuery = useQuery({
+    queryKey: ['designs', 'unfiled'],
+    queryFn: () => designsApi.listDesigns({ unfiled: true, limit: 50 }),
   });
 
-  const designs = designsQuery.data ?? [];
+  const folders = foldersQuery.data ?? [];
+  const unfiledCount = unfiledQuery.data?.length ?? 0;
+
+  const refetchAll = () => {
+    qc.invalidateQueries({ queryKey: ['designs'] });
+    qc.invalidateQueries({ queryKey: ['design-folders'] });
+  };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold">디자인 관리</h1>
-          <p className="mt-1 text-sm text-neutral-500">디자인을 등록하면 AI가 자동 분석합니다.</p>
+          <p className="mt-1 text-sm text-neutral-500">폴더로 정리하고, 폴더를 열어 디자인을 관리합니다.</p>
         </div>
         <button
-          onClick={() => setOpen((v) => !v)}
+          onClick={() => setShowCreate((v) => !v)}
           className="rounded-md bg-brand px-4 py-2 text-sm font-semibold text-white"
         >
-          {open ? '닫기' : '+ 새 디자인'}
+          {showCreate ? '닫기' : '+ 새 디자인'}
         </button>
       </div>
 
-      {open && (
+      {showCreate && (
         <CreateForm
           designers={designers.data ?? []}
           onCreated={() => {
-            qc.invalidateQueries({ queryKey: ['designs'] });
-            setOpen(false);
+            refetchAll();
+            setShowCreate(false);
           }}
         />
       )}
 
-      {designsQuery.isLoading ? (
+      {open ? (
+        <FolderDesigns view={open} onBack={() => setOpen(null)} />
+      ) : (
+        <FolderGrid
+          folders={folders}
+          unfiledCount={unfiledCount}
+          loading={foldersQuery.isLoading || unfiledQuery.isLoading}
+          onOpen={setOpen}
+        />
+      )}
+    </div>
+  );
+}
+
+/* ───────────── 폴더 목록 ───────────── */
+
+function FolderGrid({
+  folders,
+  unfiledCount,
+  loading,
+  onOpen,
+}: {
+  folders: DesignFolder[];
+  unfiledCount: number;
+  loading: boolean;
+  onOpen: (v: FolderView) => void;
+}) {
+  if (loading) return <p className="text-sm text-neutral-400">불러오는 중…</p>;
+
+  return (
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+      {folders.map((f) => (
+        <FolderCard
+          key={f.id}
+          name={f.name}
+          count={f.design_count}
+          onClick={() => onOpen({ label: f.name, folderId: f.id })}
+        />
+      ))}
+      {unfiledCount > 0 && (
+        <FolderCard name="미분류" count={unfiledCount} muted onClick={() => onOpen({ label: '미분류', unfiled: true })} />
+      )}
+      <NewFolderCard />
+    </div>
+  );
+}
+
+function FolderCard({
+  name,
+  count,
+  muted,
+  onClick,
+}: {
+  name: string;
+  count: number;
+  muted?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex flex-col rounded-xl border border-neutral-200 bg-white p-4 text-left transition hover:border-brand hover:shadow-sm"
+    >
+      <span className="text-2xl">{muted ? '🗂️' : '📁'}</span>
+      <span className="mt-2 truncate font-semibold">{name}</span>
+      <span className="mt-0.5 text-xs text-neutral-400">디자인 {count}개</span>
+    </button>
+  );
+}
+
+function NewFolderCard() {
+  const qc = useQueryClient();
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState('');
+  const [error, setError] = useState<string | null>(null);
+
+  const create = useMutation({
+    mutationFn: (n: string) => designsApi.createFolder({ name: n }),
+    onSuccess: () => {
+      setName('');
+      setEditing(false);
+      setError(null);
+      qc.invalidateQueries({ queryKey: ['design-folders'] });
+    },
+    onError: (e) => setError(toUserMessage(e)),
+  });
+
+  if (!editing) {
+    return (
+      <button
+        onClick={() => setEditing(true)}
+        className="flex min-h-[104px] flex-col items-center justify-center rounded-xl border border-dashed border-neutral-300 text-sm font-medium text-neutral-400 hover:border-brand hover:text-brand"
+      >
+        <span className="text-xl leading-none">+</span>
+        <span className="mt-1">새 폴더</span>
+      </button>
+    );
+  }
+  return (
+    <div className="flex flex-col justify-center rounded-xl border border-brand/40 bg-white p-3">
+      <input
+        autoFocus
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && name.trim()) create.mutate(name.trim());
+          if (e.key === 'Escape') setEditing(false);
+        }}
+        placeholder="폴더 이름"
+        maxLength={60}
+        className="w-full rounded-md border border-neutral-300 px-2.5 py-1.5 text-sm outline-none focus:border-brand"
+      />
+      <div className="mt-2 flex gap-1.5">
+        <button
+          onClick={() => name.trim() && create.mutate(name.trim())}
+          disabled={create.isPending || !name.trim()}
+          className="flex-1 rounded-md bg-brand py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+        >
+          만들기
+        </button>
+        <button
+          onClick={() => {
+            setEditing(false);
+            setName('');
+            setError(null);
+          }}
+          className="rounded-md border border-neutral-300 px-2 py-1.5 text-xs text-neutral-500"
+        >
+          취소
+        </button>
+      </div>
+      {error && <p className="mt-1 text-[11px] text-red-600">{error}</p>}
+    </div>
+  );
+}
+
+/* ───────────── 폴더 내부 디자인 ───────────── */
+
+function FolderDesigns({ view, onBack }: { view: FolderView; onBack: () => void }) {
+  const q = useQuery({
+    queryKey: ['designs', view.unfiled ? 'unfiled' : 'folder', view.folderId ?? 'none'],
+    queryFn: () => designsApi.listDesigns({ folder_id: view.folderId, unfiled: view.unfiled, limit: 50 }),
+  });
+  const designs = q.data ?? [];
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <button
+          onClick={onBack}
+          className="rounded-md border border-neutral-300 px-2.5 py-1.5 text-sm text-neutral-600 hover:bg-neutral-50"
+        >
+          ← 폴더
+        </button>
+        <h2 className="text-lg font-bold">{view.label}</h2>
+        <span className="text-sm text-neutral-400">{designs.length}개</span>
+      </div>
+
+      {q.isLoading ? (
         <p className="text-sm text-neutral-400">불러오는 중…</p>
-      ) : designsQuery.isError ? (
-        <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
-          {toUserMessage(designsQuery.error)}
-        </p>
+      ) : q.isError ? (
+        <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{toUserMessage(q.error)}</p>
       ) : designs.length === 0 ? (
         <p className="rounded-md border border-dashed border-neutral-300 p-8 text-center text-sm text-neutral-500">
-          아직 등록된 디자인이 없습니다.
+          이 폴더에 디자인이 없습니다.
         </p>
       ) : (
         <ul className="grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -121,61 +292,106 @@ export default function DesignsPage() {
   );
 }
 
-function CreateForm({ designers, onCreated }: { designers: import('@/services').Designer[]; onCreated: () => void }) {
-  const [photos, setPhotos] = useState<PhotoItem[]>([]);
+function CreateForm({ designers, onCreated }: { designers: Designer[]; onCreated: () => void }) {
+  const [thumbnail, setThumbnail] = useState<PhotoItem | null>(null);
+  const [details, setDetails] = useState<PhotoItem[]>([]);
+  const [tags, setTags] = useState<string[]>([]);
+  const [folderId, setFolderId] = useState<string>(''); // '' = 폴더 없음
+  // designerId → 소요시간(분). 체크된 디자이너만 들어있다.
+  const [picked, setPicked] = useState<Record<string, number>>({});
   const [formError, setFormError] = useState<string | null>(null);
 
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors, isSubmitting },
-  } = useForm<CreateForm>({
+  } = useForm<CreateFormValues>({
     resolver: zodResolver(createSchema),
-    defaultValues: { designer_ids: [] },
+    defaultValues: { duration_minutes: 120 },
   });
+  const baseDuration = clampDuration(Number(watch('duration_minutes')) || DURATION_MIN);
 
-  const uploading = photos.some((p) => p.status === 'uploading');
+  const uploading =
+    thumbnail?.status === 'uploading' || details.some((p) => p.status === 'uploading');
 
-  const addPhotos = (files: FileList | null) => {
+  // --- 사진 업로드 헬퍼 ---
+  const startUpload = (file: File, onDone: (item: PhotoItem) => void) => {
+    const id = crypto.randomUUID();
+    const base: PhotoItem = {
+      id,
+      name: file.name,
+      previewUrl: URL.createObjectURL(file),
+      status: 'uploading',
+    };
+    onDone(base);
+    uploadsApi
+      .uploadFile(file, 'design')
+      .then((r) => updatePhoto(id, { status: 'done', objectKey: r.object_key }))
+      .catch((e) => updatePhoto(id, { status: 'error', error: toUserMessage(e) }));
+  };
+
+  const updatePhoto = (id: string, patch: Partial<PhotoItem>) => {
+    setThumbnail((t) => (t && t.id === id ? { ...t, ...patch } : t));
+    setDetails((list) => list.map((it) => (it.id === id ? { ...it, ...patch } : it)));
+  };
+
+  const pickThumbnail = (file: File | undefined) => {
+    if (!file) return;
+    startUpload(file, (item) => setThumbnail(item));
+  };
+  const addDetails = (files: FileList | null) => {
     if (!files) return;
-    const chosen = Array.from(files).slice(0, 5 - photos.length);
-    for (const file of chosen) {
-      const id = crypto.randomUUID();
-      setPhotos((p) =>
-        [...p, { id, name: file.name, previewUrl: URL.createObjectURL(file), status: 'uploading' as const }].slice(0, 5),
-      );
-      uploadsApi
-        .uploadFile(file, 'design')
-        .then((r) =>
-          setPhotos((p) =>
-            p.map((it) => (it.id === id ? { ...it, status: 'done', objectKey: r.object_key } : it)),
-          ),
-        )
-        .catch((e) =>
-          setPhotos((p) =>
-            p.map((it) => (it.id === id ? { ...it, status: 'error', error: toUserMessage(e) } : it)),
-          ),
-        );
+    const room = MAX_DETAIL_PHOTOS - details.length;
+    for (const file of Array.from(files).slice(0, room)) {
+      startUpload(file, (item) => setDetails((list) => [...list, item].slice(0, MAX_DETAIL_PHOTOS)));
     }
   };
-  const removePhoto = (id: string) => setPhotos((p) => p.filter((it) => it.id !== id));
+  const removeDetail = (id: string) => setDetails((list) => list.filter((it) => it.id !== id));
 
-  const onSubmit = async (values: CreateForm) => {
+  // --- 디자이너 토글 ---
+  const toggleDesigner = (id: string) =>
+    setPicked((prev) => {
+      const next = { ...prev };
+      if (id in next) delete next[id];
+      else next[id] = baseDuration; // 선택 시 기본 소요시간으로 시작
+      return next;
+    });
+  const setDesignerDuration = (id: string, minutes: number) =>
+    setPicked((prev) => ({ ...prev, [id]: clampDuration(minutes) }));
+
+  const onSubmit = async (values: CreateFormValues) => {
     setFormError(null);
-    const keys = photos.filter((p) => p.status === 'done' && p.objectKey).map((p) => p.objectKey!);
-    if (keys.length === 0) {
-      setFormError('사진을 1장 이상 업로드해주세요.');
+
+    if (!thumbnail || thumbnail.status !== 'done' || !thumbnail.objectKey) {
+      setFormError('대표 스네일 사진 1장을 등록해주세요.');
       return;
     }
+    const designerIds = Object.keys(picked);
+    if (designerIds.length === 0) {
+      setFormError('이 디자인을 할 수 있는 디자이너를 1명 이상 선택해주세요.');
+      return;
+    }
+    const detailKeys = details.filter((p) => p.status === 'done' && p.objectKey).map((p) => p.objectKey!);
+    // 대표 사진이 image_upload_keys[0] → 썸네일로 사용된다.
+    const imageKeys = [thumbnail.objectKey, ...detailKeys];
+
+    // 기본값과 다른 디자이너만 오버라이드로 전송(나머지는 기본 소요시간 사용).
+    const designerDurations = designerIds
+      .filter((id) => picked[id] !== values.duration_minutes)
+      .map((id) => ({ designer_id: id, duration_minutes: picked[id] }));
+
     try {
       await designsApi.createDesign({
         title: values.title,
         description: values.description || null,
         base_price: values.base_price,
         duration_minutes: values.duration_minutes,
-        designer_ids: values.designer_ids,
-        owner_tags: splitList(values.owner_tags),
-        image_upload_keys: keys,
+        designer_ids: designerIds,
+        designer_durations: designerDurations,
+        folder_id: folderId || null,
+        image_upload_keys: imageKeys,
+        owner_tags: tags,
       });
       onCreated();
     } catch (e) {
@@ -186,60 +402,53 @@ function CreateForm({ designers, onCreated }: { designers: import('@/services').
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
-      className="space-y-4 rounded-lg border border-neutral-200 bg-white p-5"
+      className="space-y-5 rounded-lg border border-neutral-200 bg-white p-5"
       noValidate
     >
       <h2 className="text-sm font-semibold text-neutral-700">새 디자인 등록</h2>
 
-      {/* 사진 (업로드 TODO) */}
+      {/* 대표 사진 */}
       <div>
         <div className="mb-1 flex items-center gap-2">
-          <label className="text-sm font-medium">사진 (최대 5장)</label>
-          <span className="text-[11px] text-neutral-400">1장 이상 필요</span>
+          <label className="text-sm font-medium">대표 스네일 사진</label>
+          <span className="text-red-500">*</span>
         </div>
+        <p className="mb-2 text-xs text-neutral-400">
+          고객에게 <strong className="text-neutral-500">썸네일</strong>로 노출되는 사진입니다. 1장 필수.
+        </p>
         <div className="flex flex-wrap gap-2">
-          {photos.map((p) => (
-            <div key={p.id} className="relative h-20 w-20 overflow-hidden rounded-md border border-neutral-200">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={p.previewUrl} alt={p.name} className="h-full w-full object-cover" />
-              {p.status === 'uploading' && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black/40 text-[10px] text-white">
-                  업로드 중…
-                </div>
-              )}
-              {p.status === 'error' && (
-                <div className="absolute inset-0 flex items-center justify-center bg-red-600/70 px-1 text-center text-[9px] text-white">
-                  실패
-                </div>
-              )}
-              <button
-                type="button"
-                onClick={() => removePhoto(p.id)}
-                className="absolute right-0 top-0 bg-black/50 px-1 text-xs text-white"
-              >
-                ×
-              </button>
-            </div>
-          ))}
-          {photos.length < 5 && (
-            <label className="flex h-20 w-20 cursor-pointer items-center justify-center rounded-md border border-dashed border-neutral-300 text-2xl text-neutral-400">
-              +
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                className="hidden"
-                onChange={(e) => {
-                  addPhotos(e.target.files);
-                  e.target.value = '';
-                }}
-              />
-            </label>
+          {thumbnail ? (
+            <PhotoTile photo={thumbnail} onRemove={() => setThumbnail(null)} badge="대표" />
+          ) : (
+            <UploadTile label="대표 사진" onFiles={(f) => pickThumbnail(f?.[0])} />
           )}
         </div>
       </div>
 
-      <Field label="제목" error={errors.title?.message} required>
+      {/* 상세 사진 */}
+      <div>
+        <div className="mb-1 flex items-center gap-2">
+          <label className="text-sm font-medium">상세 사진</label>
+          <span className="text-[11px] text-neutral-400">선택 · 최대 {MAX_DETAIL_PHOTOS}장</span>
+        </div>
+        <p className="mb-2 text-xs text-neutral-400">손 후기 사진 등 자유롭게 추가할 수 있어요.</p>
+        <div className="flex flex-wrap gap-2">
+          {details.map((p) => (
+            <PhotoTile key={p.id} photo={p} onRemove={() => removeDetail(p.id)} />
+          ))}
+          {details.length < MAX_DETAIL_PHOTOS && (
+            <UploadTile label="추가" multiple onFiles={(f) => addDetails(f)} />
+          )}
+        </div>
+      </div>
+
+      {/* 제목 (관리용) */}
+      <Field
+        label="제목 (관리용)"
+        error={errors.title?.message}
+        required
+        hint="사장님 관리용 이름입니다. 고객에게는 노출되지 않습니다."
+      >
         <input className={inputCls} {...register('title')} />
       </Field>
 
@@ -247,44 +456,89 @@ function CreateForm({ designers, onCreated }: { designers: import('@/services').
         <Field label="가격(원)" error={errors.base_price?.message} required>
           <input type="number" min={0} className={inputCls} {...register('base_price')} />
         </Field>
-        <Field label="소요시간(분)" error={errors.duration_minutes?.message} required>
-          <input type="number" min={1} className={inputCls} {...register('duration_minutes')} />
+        <Field
+          label="기본 소요시간(분)"
+          error={errors.duration_minutes?.message}
+          required
+          hint="디자이너별로 아래에서 조정할 수 있어요."
+        >
+          <input
+            type="number"
+            min={DURATION_MIN}
+            max={DURATION_MAX}
+            step={DURATION_STEP}
+            className={inputCls}
+            {...register('duration_minutes')}
+          />
         </Field>
       </div>
 
-      <Field label="설명" error={errors.description?.message}>
+      {/* 설명 (미노출 메모) */}
+      <Field label="설명 (메모)" error={errors.description?.message} hint="앱에는 노출되지 않는 내부 메모입니다.">
         <textarea rows={2} className={inputCls} {...register('description')} />
       </Field>
 
-      {/* 디자이너 선택 */}
+      {/* 폴더 */}
+      <FolderField value={folderId} onChange={setFolderId} />
+
+      {/* 디자이너 + 소요시간 */}
       <div>
         <label className="mb-1 block text-sm font-medium">
-          디자이너<span className="ml-0.5 text-red-500">*</span>
+          가능한 디자이너<span className="ml-0.5 text-red-500">*</span>
         </label>
+        <p className="mb-2 text-xs text-neutral-400">
+          선택하면 디자이너별 소요시간을 조정할 수 있어요. 미조정 시 기본 소요시간({baseDuration}분)을 사용합니다.
+        </p>
         {designers.length === 0 ? (
           <p className="text-xs text-neutral-500">
             등록된 디자이너가 없습니다.{' '}
             <Link href="/dashboard/designers" className="text-brand underline">
-              시간표 관리
-            </Link>
-            에서 먼저 추가하세요.
+              디자이너
+            </Link>{' '}
+            탭에서 먼저 추가하세요.
           </p>
         ) : (
-          <div className="flex flex-wrap gap-3">
-            {designers.map((d) => (
-              <label key={d.id} className="flex items-center gap-1.5 text-sm">
-                <input type="checkbox" value={d.id} {...register('designer_ids')} />
-                {d.name}
-              </label>
-            ))}
+          <div className="space-y-2">
+            {designers.map((d) => {
+              const checked = d.id in picked;
+              return (
+                <div
+                  key={d.id}
+                  className={`flex flex-wrap items-center gap-3 rounded-md border p-2 ${
+                    checked ? 'border-brand/40 bg-brand/5' : 'border-neutral-200'
+                  }`}
+                >
+                  <label className="flex items-center gap-2 text-sm font-medium">
+                    <input type="checkbox" checked={checked} onChange={() => toggleDesigner(d.id)} />
+                    {d.name}
+                  </label>
+                  {checked && (
+                    <div className="ml-auto flex items-center gap-2">
+                      <span className="text-xs text-neutral-400">소요시간</span>
+                      <Stepper
+                        value={picked[d.id]}
+                        onChange={(v) => setDesignerDuration(d.id, v)}
+                        suffix="분"
+                      />
+                      {picked[d.id] !== baseDuration && (
+                        <span className="text-[11px] text-brand">조정됨</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
-        {errors.designer_ids && <p className="mt-1 text-xs text-red-600">{errors.designer_ids.message}</p>}
       </div>
 
-      <Field label="사장님 태그 (owner_tags)" error={errors.owner_tags?.message} hint="쉼표로 구분 (예: 심플, 그라데이션)">
-        <input className={inputCls} {...register('owner_tags')} />
-      </Field>
+      {/* 사장님 태그 */}
+      <div>
+        <label className="mb-1 block text-sm font-medium">
+          사장님 태그 <span className="text-[11px] text-neutral-400">최대 {MAX_OWNER_TAGS}개</span>
+        </label>
+        <TagInput tags={tags} onChange={setTags} />
+      </div>
 
       {formError && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{formError}</p>}
 
@@ -299,11 +553,263 @@ function CreateForm({ designers, onCreated }: { designers: import('@/services').
   );
 }
 
+/* ───────────── 폴더 선택/만들기 ───────────── */
+
+function FolderField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const qc = useQueryClient();
+  const [creating, setCreating] = useState(false);
+  const [name, setName] = useState('');
+  const [error, setError] = useState<string | null>(null);
+
+  const foldersQuery = useQuery({
+    queryKey: ['design-folders'],
+    queryFn: () => designsApi.listFolders(),
+  });
+  const folders: DesignFolder[] = foldersQuery.data ?? [];
+
+  const create = useMutation({
+    mutationFn: (n: string) => designsApi.createFolder({ name: n }),
+    onSuccess: (folder) => {
+      setError(null);
+      setName('');
+      setCreating(false);
+      qc.invalidateQueries({ queryKey: ['design-folders'] });
+      onChange(folder.id);
+    },
+    onError: (e) => setError(toUserMessage(e)),
+  });
+
+  return (
+    <div>
+      <label className="mb-1 block text-sm font-medium">
+        폴더 <span className="text-[11px] text-neutral-400">선택</span>
+      </label>
+      {creating ? (
+        <div className="flex items-center gap-2">
+          <input
+            autoFocus
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="예: 7월 이달의 아트"
+            maxLength={60}
+            className={inputCls}
+          />
+          <button
+            type="button"
+            onClick={() => name.trim() && create.mutate(name.trim())}
+            disabled={create.isPending || !name.trim()}
+            className="shrink-0 rounded-md border border-brand px-3 py-2 text-sm font-medium text-brand disabled:opacity-50"
+          >
+            만들기
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setCreating(false);
+              setName('');
+              setError(null);
+            }}
+            className="shrink-0 rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-500"
+          >
+            취소
+          </button>
+        </div>
+      ) : (
+        <div className="flex items-center gap-2">
+          <select
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            className={`${inputCls} bg-white`}
+          >
+            <option value="">폴더 없음</option>
+            {folders.map((f) => (
+              <option key={f.id} value={f.id}>
+                {f.name} ({f.design_count})
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            onClick={() => setCreating(true)}
+            className="shrink-0 rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-600"
+          >
+            + 새 폴더
+          </button>
+        </div>
+      )}
+      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+    </div>
+  );
+}
+
+/* ───────────── 태그 입력(칩) ───────────── */
+
+function TagInput({ tags, onChange }: { tags: string[]; onChange: (next: string[]) => void }) {
+  const [draft, setDraft] = useState('');
+
+  const add = () => {
+    const v = draft.trim().replace(/^#/, '').slice(0, TAG_MAXLEN);
+    if (!v) return;
+    if (tags.includes(v)) {
+      setDraft('');
+      return;
+    }
+    if (tags.length >= MAX_OWNER_TAGS) return;
+    onChange([...tags, v]);
+    setDraft('');
+  };
+  const remove = (t: string) => onChange(tags.filter((x) => x !== t));
+
+  return (
+    <div className="rounded-md border border-neutral-300 p-2 focus-within:border-brand">
+      <div className="flex flex-wrap items-center gap-1.5">
+        {tags.map((t) => (
+          <span
+            key={t}
+            className="inline-flex items-center gap-1 rounded-full bg-brand/10 py-1 pl-2.5 pr-1 text-xs font-medium text-brand"
+          >
+            #{t}
+            <button
+              type="button"
+              onClick={() => remove(t)}
+              aria-label={`${t} 삭제`}
+              className="grid h-4 w-4 place-items-center rounded-full text-brand/70 hover:bg-brand/20"
+            >
+              ×
+            </button>
+          </span>
+        ))}
+        {tags.length < MAX_OWNER_TAGS && (
+          <input
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ',') {
+                e.preventDefault();
+                add();
+              } else if (e.key === 'Backspace' && !draft && tags.length > 0) {
+                remove(tags[tags.length - 1]);
+              }
+            }}
+            onBlur={add}
+            placeholder={tags.length === 0 ? '단어 입력 후 Enter (예: 심플)' : ''}
+            maxLength={TAG_MAXLEN}
+            className="min-w-[8rem] flex-1 bg-transparent px-1 py-1 text-sm outline-none"
+          />
+        )}
+      </div>
+      <p className="mt-1 px-1 text-[11px] text-neutral-400">
+        {tags.length}/{MAX_OWNER_TAGS} · Enter로 등록, X로 삭제
+      </p>
+    </div>
+  );
+}
+
+/* ───────────── +/- 스텝퍼 ───────────── */
+
+function Stepper({
+  value,
+  onChange,
+  suffix,
+}: {
+  value: number;
+  onChange: (v: number) => void;
+  suffix?: string;
+}) {
+  return (
+    <div className="flex items-center rounded-md border border-neutral-300">
+      <button
+        type="button"
+        onClick={() => onChange(value - DURATION_STEP)}
+        className="grid h-8 w-8 place-items-center text-neutral-500 hover:bg-neutral-100"
+        aria-label="감소"
+      >
+        −
+      </button>
+      <span className="min-w-[3.5rem] text-center text-sm font-medium tabular-nums">
+        {value}
+        {suffix}
+      </span>
+      <button
+        type="button"
+        onClick={() => onChange(value + DURATION_STEP)}
+        className="grid h-8 w-8 place-items-center text-neutral-500 hover:bg-neutral-100"
+        aria-label="증가"
+      >
+        +
+      </button>
+    </div>
+  );
+}
+
+/* ───────────── 사진 타일 ───────────── */
+
+function PhotoTile({ photo: p, onRemove, badge }: { photo: PhotoItem; onRemove: () => void; badge?: string }) {
+  return (
+    <div className="relative h-24 w-24 overflow-hidden rounded-md border border-neutral-200">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={p.previewUrl} alt={p.name} className="h-full w-full object-cover" />
+      {badge && (
+        <span className="absolute left-0 top-0 bg-brand px-1.5 py-0.5 text-[10px] font-semibold text-white">
+          {badge}
+        </span>
+      )}
+      {p.status === 'uploading' && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/40 text-[10px] text-white">
+          업로드 중…
+        </div>
+      )}
+      {p.status === 'error' && (
+        <div className="absolute inset-0 flex items-center justify-center bg-red-600/70 px-1 text-center text-[9px] text-white">
+          {p.error ?? '실패'}
+        </div>
+      )}
+      <button
+        type="button"
+        onClick={onRemove}
+        className="absolute right-0 top-0 bg-black/50 px-1 text-xs text-white"
+        aria-label="삭제"
+      >
+        ×
+      </button>
+    </div>
+  );
+}
+
+function UploadTile({
+  label,
+  multiple,
+  onFiles,
+}: {
+  label: string;
+  multiple?: boolean;
+  onFiles: (files: FileList | null) => void;
+}) {
+  return (
+    <label className="flex h-24 w-24 cursor-pointer flex-col items-center justify-center rounded-md border border-dashed border-neutral-300 text-neutral-400 hover:border-brand">
+      <span className="text-2xl leading-none">+</span>
+      <span className="mt-1 text-[11px]">{label}</span>
+      <input
+        type="file"
+        accept="image/*"
+        multiple={multiple}
+        className="hidden"
+        onChange={(e) => {
+          onFiles(e.target.files);
+          e.target.value = '';
+        }}
+      />
+    </label>
+  );
+}
+
+/* ───────────── 디자인 카드 ───────────── */
+
 function DesignCard({ design }: { design: Design }) {
   const qc = useQueryClient();
   const [actionError, setActionError] = useState<string | null>(null);
+  const [showPhotos, setShowPhotos] = useState(false);
 
-  // pending/in_progress면 폴링해서 최신 상태 반영
   const { data } = useQuery({
     queryKey: ['design', design.id],
     queryFn: () => designsApi.getDesign(design.id),
@@ -314,6 +820,13 @@ function DesignCard({ design }: { design: Design }) {
     },
   });
   const d = data ?? design;
+  const designerLine = useMemo(
+    () =>
+      (d.designers ?? [])
+        .map((dz) => (dz.duration_minutes != null ? `${dz.name} ${dz.duration_minutes}분` : dz.name))
+        .join(', '),
+    [d.designers],
+  );
 
   const reanalyze = useMutation({
     mutationFn: () => designsApi.reanalyze(d.id),
@@ -327,26 +840,82 @@ function DesignCard({ design }: { design: Design }) {
 
   const remove = useMutation({
     mutationFn: () => designsApi.deleteDesign(d.id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['designs'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['designs'] });
+      qc.invalidateQueries({ queryKey: ['design-folders'] });
+    },
     onError: (e) => setActionError(toUserMessage(e)),
   });
 
+  const images = d.images ?? [];
+  const photoCount = images.length || (d.thumbnail_url ? 1 : 0);
+
   return (
     <li className="rounded-lg border border-neutral-200 bg-white p-4">
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="truncate font-medium">{d.title}</p>
-          <p className="mt-0.5 text-sm text-neutral-500">
-            {d.base_price.toLocaleString('ko-KR')}원 · {d.duration_minutes}분
-          </p>
+      <div className="flex items-start gap-3">
+        {/* 대표 사진 — 클릭 시 상세 사진 펼침 */}
+        <button
+          type="button"
+          onClick={() => setShowPhotos((v) => !v)}
+          className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-neutral-200"
+          title="사진 보기"
+        >
+          {d.thumbnail_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={d.thumbnail_url} alt="" className="h-full w-full object-cover" />
+          ) : (
+            <span className="block h-full w-full bg-neutral-100" />
+          )}
+          <span className="absolute inset-x-0 bottom-0 bg-black/40 py-0.5 text-center text-[9px] font-medium text-white">
+            {showPhotos ? '접기' : `사진 ${photoCount}`}
+          </span>
+        </button>
+
+        <div className="flex min-w-0 flex-1 items-start justify-between gap-2">
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5">
+              {d.folder_name && (
+                <span className="shrink-0 rounded bg-neutral-100 px-1.5 py-0.5 text-[11px] text-neutral-500">
+                  📁 {d.folder_name}
+                </span>
+              )}
+              <p className="truncate font-medium">{d.title}</p>
+            </div>
+            <p className="mt-0.5 text-sm text-neutral-500">
+              {d.base_price.toLocaleString('ko-KR')}원 · 기본 {d.duration_minutes}분
+            </p>
+            {designerLine && <p className="mt-0.5 truncate text-xs text-neutral-400">{designerLine}</p>}
+          </div>
+          <span className={`shrink-0 rounded px-2 py-0.5 text-xs font-medium ${AI_CLS[d.ai_analysis_status]}`}>
+            {AI_LABEL[d.ai_analysis_status]}
+            {(d.ai_analysis_status === 'pending' || d.ai_analysis_status === 'in_progress') && ' …'}
+          </span>
         </div>
-        <span className={`shrink-0 rounded px-2 py-0.5 text-xs font-medium ${AI_CLS[d.ai_analysis_status]}`}>
-          {AI_LABEL[d.ai_analysis_status]}
-          {(d.ai_analysis_status === 'pending' || d.ai_analysis_status === 'in_progress') && ' …'}
-        </span>
       </div>
 
-      {/* 태그 */}
+      {/* 상세 사진 */}
+      {showPhotos && (
+        <div className="mt-3">
+          {images.length === 0 ? (
+            <p className="text-xs text-neutral-400">등록된 사진이 없어요.</p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {images.map((img) => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  key={img.id}
+                  src={img.original_url}
+                  alt=""
+                  className={`h-20 w-20 rounded-xl border object-cover ${
+                    img.is_thumbnail ? 'border-brand' : 'border-neutral-200'
+                  }`}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {(d.owner_tags.length > 0 || d.ai_tags.length > 0) && (
         <div className="mt-2 flex flex-wrap gap-1">
           {d.owner_tags.map((t) => (
@@ -363,7 +932,6 @@ function DesignCard({ design }: { design: Design }) {
         </div>
       )}
 
-      {/* 실패 사유 + 재분석 */}
       {d.ai_analysis_status === 'failed' && (
         <div className="mt-2 rounded-md bg-red-50 p-2 text-xs text-red-700">
           {d.ai_error_message ?? 'AI 분석에 실패했습니다.'}

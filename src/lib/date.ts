@@ -17,3 +17,21 @@ export function todayLocalDate(d: Date = new Date()): string {
 export function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false });
 }
+
+/** "YYYY-MM-DD"에 days만큼 더한 날짜 문자열. (타임존 안전: 로컬 정오 기준) */
+export function shiftLocalDate(date: string, days: number): string {
+  const [y, m, d] = date.split('-').map(Number);
+  const dt = new Date(y, m - 1, d + days, 12);
+  return todayLocalDate(dt);
+}
+
+/** "YYYY-MM-DD" → "2024년 4월 6일 (토)" */
+export function formatDayLabel(date: string): string {
+  const [y, m, d] = date.split('-').map(Number);
+  return new Date(y, m - 1, d, 12).toLocaleDateString('ko-KR', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    weekday: 'short',
+  });
+}

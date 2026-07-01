@@ -1,203 +1,468 @@
 'use client';
 
 /**
- * 예약 관리 — 목록 + 상태 전이.
+ * 예약 관리 — 콘솔형.
  *
- *  - URL query(status/from/to)로 필터. 대시보드 카드 딥링크가 그대로 동작한다.
- *  - 상태 전이: pending→수락/거절, payment_pending→입금확인,
- *    confirmed→방문완료/노쇼/취소. 거절·취소는 사유 필수(인라인 입력).
- *  - 액션 성공 시 예약 목록 + 대시보드 요약 캐시를 무효화한다.
+ *  - 상태 탭: 방문 요청(pending) / 방문 확정(confirmed·payment_pending) / 방문 완료(completed) + 건수 배지
+ *  - 필터: 오늘·전체 기간 · 디자이너 · 입금 상태 · 고객명 검색
+ *  - 행 클릭 시 인라인 상세: 디자인·결제·고객 요청사항(읽기 전용)·상태 액션·변경 이력(타임스탬프)
+ *  - 상태 전이/입금확인은 실제 API로 처리. (손기 예약 추가·요청 답변·재예약은 백엔드 미지원 → 제외)
+ *
+ * 거절/취소는 사유 필수라 상세에서 사유 입력 후 확정한다.
  */
-import { Suspense, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { reservationsApi } from '@/services';
+import { designersApi, reservationsApi } from '@/services';
 import type { Reservation, ReservationStatus } from '@/services';
 import { toUserMessage } from '@/lib/error-messages';
-import { formatTime } from '@/lib/date';
-import { RESERVATION_STATUS_CLS, RESERVATION_STATUS_LABEL } from '@/lib/reservation-status';
+import { collectAll } from '@/lib/api-client';
+import { formatTime, todayLocalDate } from '@/lib/date';
+import { TIMELINE_PALETTE } from '@/lib/timeline';
+import { InquiryThread, ReservationDesignBlock } from '@/components/reservation-design';
 
-const STATUS_FILTERS: { label: string; value: ReservationStatus | 'all' }[] = [
-  { label: '전체', value: 'all' },
-  { label: '대기', value: 'pending' },
-  { label: '입금대기', value: 'payment_pending' },
-  { label: '확정', value: 'confirmed' },
-  { label: '완료', value: 'completed' },
+type Palette = (typeof TIMELINE_PALETTE)[number];
+type TabKey = 'pending' | 'confirmed' | 'completed';
+type PayState = 'WAIT' | 'DONE' | null;
+
+const TABS: { key: TabKey; label: string }[] = [
+  { key: 'pending', label: '방문 요청' },
+  { key: 'confirmed', label: '방문 확정' },
+  { key: 'completed', label: '방문 완료' },
 ];
+
+const DOW = ['일', '월', '화', '수', '목', '금', '토'];
+
+/** 상태 → 어느 탭에 속하는지 (종료 상태는 탭 없음) */
+function tabOf(status: ReservationStatus): TabKey | null {
+  if (status === 'pending') return 'pending';
+  if (status === 'confirmed' || status === 'payment_pending') return 'confirmed';
+  if (status === 'completed') return 'completed';
+  return null; // rejected / cancelled_* / no_show
+}
+
+/** 상태 배지(입금대기는 '확정'으로 표시하고 결제는 별도 pill로) */
+function badgeMeta(status: ReservationStatus): { label: string; bg: string; tx: string } {
+  switch (status) {
+    case 'pending':
+      return { label: '요청', bg: '#fff0d6', tx: '#aa7510' };
+    case 'confirmed':
+    case 'payment_pending':
+      return { label: '확정', bg: '#e7f6ee', tx: '#1c8a5b' };
+    case 'completed':
+      return { label: '완료', bg: '#eceae4', tx: '#5f5d57' };
+    case 'no_show':
+      return { label: '노쇼', bg: '#fdeaea', tx: '#cf3b3b' };
+    default:
+      return { label: status === 'rejected' ? '거절' : '취소', bg: '#f3f2ee', tx: '#8f8c85' };
+  }
+}
+
+function payState(r: Reservation): PayState {
+  if (r.status === 'payment_pending') return 'WAIT';
+  if (r.owner_payment_confirmed_at) return 'DONE';
+  return null;
+}
+
+function dayLabel(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getMonth() + 1}.${d.getDate()} (${DOW[d.getDay()]})`;
+}
+function dateTimeLabel(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getMonth() + 1}.${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+const won = (n: number) => `${n.toLocaleString('ko-KR')}원`;
 
 export default function ReservationsPage() {
   return (
     <Suspense fallback={<p className="text-sm text-neutral-500">불러오는 중…</p>}>
-      <ReservationsView />
+      <ReservationsConsole />
     </Suspense>
   );
 }
 
-function ReservationsView() {
-  const router = useRouter();
-  const params = useSearchParams();
+function ReservationsConsole() {
   const qc = useQueryClient();
+  const [tab, setTab] = useState<TabKey>('pending');
+  const [day, setDay] = useState<string | null>(null); // null = 전체 기간
+  const [designerId, setDesignerId] = useState<string>('all');
+  const [pay, setPay] = useState<'all' | 'WAIT' | 'DONE'>('all');
+  const [q, setQ] = useState('');
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  const status = (params.get('status') as ReservationStatus | null) ?? null;
-  const from = params.get('from') ?? undefined;
-  const to = params.get('to') ?? undefined;
+  const designersQuery = useQuery({
+    queryKey: ['designers'],
+    queryFn: () => designersApi.listDesigners(),
+  });
+  const designers = useMemo(() => designersQuery.data ?? [], [designersQuery.data]);
+  const colorOf = useMemo(() => {
+    const map = new Map<string, Palette>();
+    designers.forEach((d, i) => map.set(d.id, TIMELINE_PALETTE[i % TIMELINE_PALETTE.length]));
+    return map;
+  }, [designers]);
 
-  const query = useQuery({
-    queryKey: ['reservations', { status, from, to }],
+  const reservationsQuery = useQuery({
+    queryKey: ['reservations', 'console', day ?? 'all'],
     queryFn: () =>
-      reservationsApi.listReservations({
-        status: status ?? undefined,
-        from,
-        to,
-        limit: 50,
-      }),
+      collectAll<Reservation>((cursor) =>
+        reservationsApi.listReservations({
+          from: day ?? undefined,
+          to: day ?? undefined,
+          cursor,
+          limit: 50,
+        }),
+      ),
+  });
+  const all = useMemo(() => reservationsQuery.data ?? [], [reservationsQuery.data]);
+
+  const action = useMutation({
+    mutationFn: (fn: () => Promise<unknown>) => fn(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['reservations'] });
+      qc.invalidateQueries({ queryKey: ['dashboard', 'summary'] });
+    },
   });
 
-  const invalidate = () => {
-    qc.invalidateQueries({ queryKey: ['reservations'] });
-    qc.invalidateQueries({ queryKey: ['dashboard', 'summary'] });
-  };
+  // 탭 제외 공통 필터 통과 집합
+  const visible = useMemo(() => {
+    const query = q.trim();
+    return all.filter((r) => {
+      if (tabOf(r.status) == null) return false;
+      if (designerId !== 'all' && r.designer_id !== designerId) return false;
+      if (pay !== 'all' && payState(r) !== pay) return false;
+      if (query && !(r.user?.nickname ?? '').includes(query)) return false;
+      return true;
+    });
+  }, [all, designerId, pay, q]);
 
-  const setStatus = (next: ReservationStatus | 'all') => {
-    const sp = new URLSearchParams(params.toString());
-    if (next === 'all') sp.delete('status');
-    else sp.set('status', next);
-    router.replace(`/dashboard/reservations?${sp.toString()}`);
-  };
+  const counts = useMemo(() => {
+    const c: Record<TabKey, number> = { pending: 0, confirmed: 0, completed: 0 };
+    for (const r of visible) {
+      const t = tabOf(r.status);
+      if (t) c[t] += 1;
+    }
+    return c;
+  }, [visible]);
 
-  const clearDates = () => {
-    const sp = new URLSearchParams(params.toString());
-    sp.delete('from');
-    sp.delete('to');
-    router.replace(`/dashboard/reservations?${sp.toString()}`);
-  };
+  const list = useMemo(() => {
+    const rows = visible.filter((r) => tabOf(r.status) === tab);
+    rows.sort((a, b) => {
+      if (tab === 'pending') return b.created_at.localeCompare(a.created_at); // 최근 요청 먼저
+      if (tab === 'confirmed') return a.start_at.localeCompare(b.start_at); // 방문 임박 순
+      return b.start_at.localeCompare(a.start_at); // 최근 완료 먼저
+    });
+    return rows;
+  }, [visible, tab]);
 
-  const reservations = query.data?.data ?? [];
-  const activeStatus = status ?? 'all';
+  const loading = reservationsQuery.isLoading || designersQuery.isLoading;
 
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-xl font-bold">예약 관리</h1>
-        <p className="mt-1 text-sm text-neutral-500">예약을 확인하고 수락·거절 등 상태를 처리합니다.</p>
+        <h1 className="text-2xl font-bold tracking-tight">예약 관리</h1>
+        <p className="mt-1 text-sm text-neutral-500">들어온 예약을 상태에 따라 확인하고 처리합니다.</p>
       </div>
 
-      {/* 상태 필터 */}
-      <div className="flex flex-wrap items-center gap-2">
-        {STATUS_FILTERS.map((f) => (
-          <button
-            key={f.value}
-            onClick={() => setStatus(f.value)}
-            className={`rounded-full border px-3 py-1.5 text-sm ${
-              activeStatus === f.value
-                ? 'border-brand bg-brand text-white'
-                : 'border-neutral-300 text-neutral-600'
-            }`}
-          >
-            {f.label}
-          </button>
-        ))}
-        {(from || to) && (
-          <span className="ml-1 inline-flex items-center gap-1 rounded-full bg-neutral-100 px-3 py-1 text-xs text-neutral-600">
-            기간: {from ?? '…'} ~ {to ?? '…'}
-            <button onClick={clearDates} className="font-bold text-neutral-400">
-              ×
+      {/* 탭 */}
+      <div className="flex gap-1 overflow-x-auto border-b border-neutral-200">
+        {TABS.map((t) => {
+          const on = tab === t.key;
+          const need = t.key === 'pending' && counts.pending > 0;
+          return (
+            <button
+              key={t.key}
+              onClick={() => {
+                setTab(t.key);
+                setExpandedId(null);
+              }}
+              className={`flex items-center gap-1.5 whitespace-nowrap border-b-2 px-3.5 pb-3 pt-2.5 text-sm font-semibold ${
+                on ? 'border-brand text-neutral-900' : 'border-transparent text-neutral-400'
+              }`}
+            >
+              {t.label}
+              <span
+                className={`rounded-full px-1.5 py-0.5 text-[11px] font-bold ${
+                  on ? 'bg-brand/15 text-brand' : need ? 'bg-brand/15 text-brand' : 'bg-neutral-100 text-neutral-500'
+                }`}
+              >
+                {counts[t.key]}
+              </span>
             </button>
-          </span>
-        )}
+          );
+        })}
       </div>
 
-      {query.isLoading ? (
-        <p className="text-sm text-neutral-400">불러오는 중…</p>
-      ) : query.isError ? (
-        <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{toUserMessage(query.error)}</p>
-      ) : reservations.length === 0 ? (
-        <p className="rounded-md border border-dashed border-neutral-300 p-8 text-center text-sm text-neutral-500">
-          조건에 맞는 예약이 없습니다.
-        </p>
-      ) : (
-        <ul className="space-y-3">
-          {reservations.map((r) => (
-            <ReservationCard key={r.id} reservation={r} onChanged={invalidate} />
+      {/* 필터 */}
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          onClick={() => setDay(todayLocalDate())}
+          className={`rounded-full border px-3 py-1.5 text-sm font-semibold ${
+            day ? 'border-brand bg-brand text-white' : 'border-neutral-200 bg-white text-neutral-600'
+          }`}
+        >
+          오늘
+        </button>
+        <button
+          onClick={() => setDay(null)}
+          className={`rounded-full border px-3 py-1.5 text-sm font-semibold ${
+            day ? 'border-neutral-200 bg-white text-neutral-600' : 'border-brand bg-brand text-white'
+          }`}
+        >
+          전체 기간
+        </button>
+        <select
+          value={designerId}
+          onChange={(e) => setDesignerId(e.target.value)}
+          className="h-9 rounded-lg border border-neutral-200 bg-white px-2.5 text-sm"
+        >
+          <option value="all">디자이너 전체</option>
+          {designers.map((d) => (
+            <option key={d.id} value={d.id}>
+              {d.name}
+            </option>
           ))}
-        </ul>
+        </select>
+        <select
+          value={pay}
+          onChange={(e) => setPay(e.target.value as 'all' | 'WAIT' | 'DONE')}
+          className="h-9 rounded-lg border border-neutral-200 bg-white px-2.5 text-sm"
+        >
+          <option value="all">입금 전체</option>
+          <option value="WAIT">입금 대기</option>
+          <option value="DONE">입금 완료</option>
+        </select>
+        <input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="고객명 검색"
+          className="h-9 min-w-[160px] flex-1 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:border-brand sm:flex-none"
+        />
+      </div>
+
+      {action.isError && (
+        <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{toUserMessage(action.error)}</p>
       )}
 
-      {query.data?.page?.has_next && (
-        <p className="text-center text-xs text-neutral-400">
-          더 많은 예약이 있습니다. (페이지네이션은 추후 추가)
-        </p>
+      {/* 목록 */}
+      {loading ? (
+        <p className="py-10 text-center text-sm text-neutral-400">불러오는 중…</p>
+      ) : reservationsQuery.isError ? (
+        <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{toUserMessage(reservationsQuery.error)}</p>
+      ) : list.length === 0 ? (
+        <div className="rounded-2xl border border-neutral-200 bg-white p-14 text-center text-sm text-neutral-400">
+          해당하는 예약이 없어요.
+        </div>
+      ) : (
+        <div className="overflow-x-auto rounded-2xl border border-neutral-200 bg-white">
+          <div className="min-w-[880px]">
+            <div className="grid grid-cols-[84px_130px_140px_minmax(120px,1fr)_110px_minmax(150px,1.2fr)_90px_150px_20px] items-center gap-2.5 border-b border-neutral-200 bg-neutral-50 px-4 py-2.5 text-xs font-semibold text-neutral-400">
+              <div>상태</div>
+              <div>요청 날짜</div>
+              <div>방문 예정</div>
+              <div>고객</div>
+              <div>담당자</div>
+              <div>디자인</div>
+              <div className="text-right">금액</div>
+              <div />
+              <div />
+            </div>
+            {list.map((r) => (
+              <Row
+                key={r.id}
+                r={r}
+                color={colorOf.get(r.designer_id) ?? TIMELINE_PALETTE[0]}
+                open={expandedId === r.id}
+                onToggle={() => setExpandedId((id) => (id === r.id ? null : r.id))}
+                run={(fn) => action.mutate(fn)}
+                busy={action.isPending}
+              />
+            ))}
+          </div>
+        </div>
       )}
     </div>
   );
 }
 
-function ReservationCard({
-  reservation: r,
-  onChanged,
+function Row({
+  r,
+  color,
+  open,
+  onToggle,
+  run,
+  busy,
 }: {
-  reservation: Reservation;
-  onChanged: () => void;
+  r: Reservation;
+  color: Palette;
+  open: boolean;
+  onToggle: () => void;
+  run: (fn: () => Promise<unknown>) => void;
+  busy: boolean;
 }) {
-  const [error, setError] = useState<string | null>(null);
-  // 사유 입력 모드: 'reject' | 'cancel' | null
-  const [reasonMode, setReasonMode] = useState<'reject' | 'cancel' | null>(null);
-  const [reason, setReason] = useState('');
+  const badge = badgeMeta(r.status);
+  const ps = payState(r);
 
-  const action = useMutation({
-    mutationFn: async (fn: () => Promise<unknown>) => fn(),
-    onSuccess: () => {
-      setError(null);
-      setReasonMode(null);
-      setReason('');
-      onChanged();
-    },
-    onError: (e) => setError(toUserMessage(e)),
-  });
-
-  const run = (fn: () => Promise<unknown>) => action.mutate(fn);
-  const busy = action.isPending;
-
-  const date = new Date(r.start_at);
-  const dateLabel = date.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' });
+  const inline: { label: string; cls: string; fn: () => Promise<unknown> }[] = [];
+  if (r.status === 'pending') inline.push({ label: '확정', cls: 'primary', fn: () => reservationsApi.accept(r.id) });
+  if (r.status === 'payment_pending')
+    inline.push({ label: '입금완료', cls: 'primary', fn: () => reservationsApi.confirmPayment(r.id) });
+  if (r.status === 'confirmed') {
+    inline.push({ label: '완료', cls: 'primary', fn: () => reservationsApi.complete(r.id) });
+    inline.push({ label: '노쇼', cls: 'ghost', fn: () => reservationsApi.noShow(r.id) });
+  }
 
   return (
-    <li className="rounded-lg border border-neutral-200 bg-white p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <span className={`rounded px-2 py-0.5 text-xs font-medium ${RESERVATION_STATUS_CLS[r.status]}`}>
-              {RESERVATION_STATUS_LABEL[r.status]}
-            </span>
-            <span className="text-sm font-medium">
-              {dateLabel} {formatTime(r.start_at)}
-            </span>
-          </div>
-          <p className="mt-1 truncate text-sm text-neutral-700">
-            {r.design?.title ?? '시술'}
-            {r.designer?.name && <span className="text-neutral-400"> · {r.designer.name}</span>}
-          </p>
-          <p className="mt-0.5 text-xs text-neutral-400">
-            {r.user?.nickname ? `${r.user.nickname} · ` : ''}
-            {r.total_price.toLocaleString('ko-KR')}원
-          </p>
-          {r.user_request && (
-            <p className="mt-1 rounded bg-neutral-50 px-2 py-1 text-xs text-neutral-600">
-              요청: {r.user_request}
-            </p>
-          )}
+    <div className={`border-b border-neutral-100 last:border-b-0 ${open ? 'bg-[#fdf4f7]' : ''}`}>
+      <div
+        onClick={onToggle}
+        className="grid cursor-pointer grid-cols-[84px_130px_140px_minmax(120px,1fr)_110px_minmax(150px,1.2fr)_90px_150px_20px] items-center gap-2.5 px-4 py-3 hover:bg-neutral-50"
+      >
+        <div className="flex flex-col items-start gap-1">
+          <span className="rounded-full px-2.5 py-1 text-xs font-bold" style={{ background: badge.bg, color: badge.tx }}>
+            {badge.label}
+          </span>
+          {ps && <PayPill state={ps} />}
         </div>
+        <div className="text-[13px]">
+          <div className="font-medium">{dateTimeLabel(r.created_at).split(' ')[0]}</div>
+          <div className="text-[11px] text-neutral-400">{dateTimeLabel(r.created_at).split(' ')[1]}</div>
+        </div>
+        <div className="text-[13px]">
+          <div className="font-medium">{dayLabel(r.start_at)}</div>
+          <div className="text-[11px] text-neutral-400">
+            {formatTime(r.start_at)}~{formatTime(r.end_at)}
+          </div>
+        </div>
+        <div className="min-w-0">
+          <div className="truncate text-[13px] font-medium">{r.user?.nickname ?? '고객'}</div>
+          {r.user_request && <span className="text-[10px] font-bold text-brand">요청사항</span>}
+        </div>
+        <div className="flex items-center gap-1.5 text-[13px] font-medium">
+          <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: color.border }} />
+          <span className="truncate">{r.designer?.name ?? '-'}</span>
+        </div>
+        <div className="flex min-w-0 items-center gap-2 text-[13px]">
+          {r.design?.thumbnail_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={r.design.thumbnail_url} alt="" className="h-6 w-6 shrink-0 rounded-md border border-neutral-200 object-cover" />
+          ) : (
+            <span className="h-6 w-6 shrink-0 rounded-md border border-neutral-200 bg-neutral-100" />
+          )}
+          <span className="truncate">{r.design?.title ?? '시술'}</span>
+        </div>
+        <div className="text-right text-[13px] font-bold">{won(r.total_price)}</div>
+        <div className="flex justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
+          {inline.map((a) => (
+            <button
+              key={a.label}
+              disabled={busy}
+              onClick={() => run(a.fn)}
+              className={`rounded-lg px-2.5 py-1.5 text-xs font-bold disabled:opacity-50 ${
+                a.cls === 'primary' ? 'bg-brand text-white' : 'bg-neutral-100 text-neutral-600'
+              }`}
+            >
+              {a.label}
+            </button>
+          ))}
+        </div>
+        <div className={`text-center text-xs text-neutral-300 transition-transform ${open ? 'rotate-180' : ''}`}>⌄</div>
       </div>
 
+      {open && <Detail r={r} run={run} busy={busy} />}
+    </div>
+  );
+}
+
+function PayPill({ state }: { state: 'WAIT' | 'DONE' }) {
+  const meta =
+    state === 'WAIT'
+      ? { label: '입금 대기', bg: '#fff0d6', tx: '#aa7510' }
+      : { label: '입금 완료', bg: '#e7f6ee', tx: '#1c8a5b' };
+  return (
+    <span className="rounded-full px-2 py-0.5 text-[11px] font-bold" style={{ background: meta.bg, color: meta.tx }}>
+      {meta.label}
+    </span>
+  );
+}
+
+function Detail({
+  r,
+  run,
+  busy,
+}: {
+  r: Reservation;
+  run: (fn: () => Promise<unknown>) => void;
+  busy: boolean;
+}) {
+  const [reasonMode, setReasonMode] = useState<'reject' | 'cancel' | null>(null);
+  const [reason, setReason] = useState('');
+  const [reply, setReply] = useState('');
+  const ps = payState(r);
+
+  const timeline: { label: string; at: string }[] = [{ label: '예약 요청', at: r.created_at }];
+  if (r.owner_payment_confirmed_at) timeline.push({ label: '입금 확인', at: r.owner_payment_confirmed_at });
+  if (r.completed_at) timeline.push({ label: '방문 완료', at: r.completed_at });
+  if (r.no_show_at) timeline.push({ label: '노쇼 처리', at: r.no_show_at });
+
+  return (
+    <div className="border-t border-neutral-100 bg-[#fdf8fa] px-5 pb-6 pt-1">
+      <InfoLine k="요청일" v={dateTimeLabel(r.created_at)} />
+      <InfoLine k="방문일" v={`${dayLabel(r.start_at)} ${formatTime(r.start_at)}~${formatTime(r.end_at)}`} />
+      <InfoLine k="담당자" v={r.designer?.name ?? '-'} />
+      <InfoLine k="금액" v={won(r.total_price)} />
+
+      <SectionTitle>디자인</SectionTitle>
+      {r.design ? <ReservationDesignBlock reservation={r} /> : <p className="text-[13px] text-neutral-400">디자인 정보가 없어요.</p>}
+
+      {ps && (
+        <>
+          <SectionTitle>결제 (플랫폼 → 사장님 계좌)</SectionTitle>
+          <div className="flex flex-wrap items-center gap-2.5">
+            <PayPill state={ps} />
+            {r.deposit_amount_snapshot != null && (
+              <span className="text-xs text-neutral-500">예약금 {won(r.deposit_amount_snapshot)}</span>
+            )}
+            {r.status === 'payment_pending' && (
+              <button
+                disabled={busy}
+                onClick={() => run(() => reservationsApi.confirmPayment(r.id))}
+                className="rounded-lg bg-brand px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50"
+              >
+                입금 완료 처리
+              </button>
+            )}
+          </div>
+        </>
+      )}
+
+      <SectionTitle>문의사항</SectionTitle>
+      <InquiryThread reservation={r} />
+
+      {/* 예약 확정 시 문의 답변(선택) — 아직 승인 전 & 답변 없음 */}
+      {r.status === 'pending' && !r.owner_reply && !reasonMode && (
+        <div className="mt-3">
+          <label className="mb-1 block text-xs font-semibold text-neutral-500">
+            답변 (선택) — 예약 확정 시 함께 전달돼요
+          </label>
+          <textarea
+            rows={2}
+            value={reply}
+            onChange={(e) => setReply(e.target.value)}
+            placeholder="문의에 대한 답변을 적어주세요."
+            className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-brand"
+          />
+        </div>
+      )}
+
       {/* 사유 입력 */}
-      {reasonMode && (
-        <div className="mt-3 space-y-2">
+      {reasonMode ? (
+        <div className="mt-4 space-y-2">
           <textarea
             rows={2}
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             placeholder={reasonMode === 'reject' ? '거절 사유를 입력해주세요.' : '취소 사유를 입력해주세요.'}
-            className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-brand"
+            className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-brand"
           />
           <div className="flex gap-2">
             <button
@@ -209,7 +474,7 @@ function ReservationCard({
                     : reservationsApi.cancel(r.id, reason.trim()),
                 )
               }
-              className="rounded-md bg-red-600 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+              className="rounded-xl bg-[#fdeaea] px-4 py-2 text-[13px] font-bold text-[#cf3b3b] disabled:opacity-50"
             >
               {reasonMode === 'reject' ? '거절 확정' : '취소 확정'}
             </button>
@@ -218,74 +483,91 @@ function ReservationCard({
                 setReasonMode(null);
                 setReason('');
               }}
-              className="rounded-md border border-neutral-300 px-3 py-1.5 text-xs text-neutral-500"
+              className="rounded-xl bg-neutral-100 px-4 py-2 text-[13px] font-bold text-neutral-600"
             >
               닫기
             </button>
           </div>
         </div>
-      )}
-
-      {/* 액션 버튼 */}
-      {!reasonMode && (
-        <div className="mt-3 flex flex-wrap gap-2">
+      ) : (
+        <div className="mt-4 flex flex-wrap gap-2">
           {r.status === 'pending' && (
             <>
-              <PrimaryBtn disabled={busy} onClick={() => run(() => reservationsApi.accept(r.id))}>
-                수락
-              </PrimaryBtn>
-              <DangerBtn disabled={busy} onClick={() => setReasonMode('reject')}>
+              <ActBtn kind="primary" busy={busy} onClick={() => run(() => reservationsApi.accept(r.id, reply.trim() || undefined))}>
+                {reply.trim() ? '답변과 함께 확정' : '예약 확정'}
+              </ActBtn>
+              <ActBtn kind="danger" busy={busy} onClick={() => setReasonMode('reject')}>
                 거절
-              </DangerBtn>
+              </ActBtn>
             </>
-          )}
-          {r.status === 'payment_pending' && (
-            <PrimaryBtn disabled={busy} onClick={() => run(() => reservationsApi.confirmPayment(r.id))}>
-              입금 확인
-            </PrimaryBtn>
           )}
           {r.status === 'confirmed' && (
             <>
-              <PrimaryBtn disabled={busy} onClick={() => run(() => reservationsApi.complete(r.id))}>
+              <ActBtn kind="primary" busy={busy} onClick={() => run(() => reservationsApi.complete(r.id))}>
                 방문 완료
-              </PrimaryBtn>
-              <NeutralBtn disabled={busy} onClick={() => run(() => reservationsApi.noShow(r.id))}>
+              </ActBtn>
+              <ActBtn kind="ghost" busy={busy} onClick={() => run(() => reservationsApi.noShow(r.id))}>
                 노쇼
-              </NeutralBtn>
-              <DangerBtn disabled={busy} onClick={() => setReasonMode('cancel')}>
+              </ActBtn>
+              <ActBtn kind="danger" busy={busy} onClick={() => setReasonMode('cancel')}>
                 취소
-              </DangerBtn>
+              </ActBtn>
             </>
+          )}
+          {r.status === 'payment_pending' && (
+            <ActBtn kind="danger" busy={busy} onClick={() => setReasonMode('cancel')}>
+              취소
+            </ActBtn>
           )}
         </div>
       )}
 
-      {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
-    </li>
+      <SectionTitle>변경 이력</SectionTitle>
+      <ul className="space-y-1.5">
+        {timeline.map((t) => (
+          <li key={t.label} className="flex gap-2.5 text-xs text-neutral-500">
+            <span className="min-w-[88px] shrink-0 text-neutral-300">{dateTimeLabel(t.at)}</span>
+            <span>{t.label}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
-function PrimaryBtn(props: React.ButtonHTMLAttributes<HTMLButtonElement>) {
+function InfoLine({ k, v }: { k: string; v: string }) {
   return (
-    <button
-      {...props}
-      className="rounded-md bg-brand px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
-    />
+    <div className="flex gap-2.5 border-b border-neutral-100 py-2.5 text-[13px]">
+      <span className="w-16 shrink-0 text-neutral-400">{k}</span>
+      <span className="font-semibold">{v}</span>
+    </div>
   );
 }
-function DangerBtn(props: React.ButtonHTMLAttributes<HTMLButtonElement>) {
-  return (
-    <button
-      {...props}
-      className="rounded-md border border-red-300 px-3 py-1.5 text-xs font-semibold text-red-600 disabled:opacity-50"
-    />
-  );
+
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return <div className="mb-2 mt-4 text-xs font-bold text-neutral-400">{children}</div>;
 }
-function NeutralBtn(props: React.ButtonHTMLAttributes<HTMLButtonElement>) {
+
+function ActBtn({
+  kind,
+  busy,
+  onClick,
+  children,
+}: {
+  kind: 'primary' | 'ghost' | 'danger';
+  busy: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  const cls =
+    kind === 'primary'
+      ? 'bg-brand text-white'
+      : kind === 'danger'
+        ? 'bg-[#fdeaea] text-[#cf3b3b]'
+        : 'bg-neutral-100 text-neutral-600';
   return (
-    <button
-      {...props}
-      className="rounded-md border border-neutral-300 px-3 py-1.5 text-xs font-semibold text-neutral-600 disabled:opacity-50"
-    />
+    <button disabled={busy} onClick={onClick} className={`rounded-xl px-4 py-2 text-[13px] font-bold disabled:opacity-50 ${cls}`}>
+      {children}
+    </button>
   );
 }

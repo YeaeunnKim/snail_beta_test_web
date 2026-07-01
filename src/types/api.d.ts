@@ -38,6 +38,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/google": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 구글 로그인 */
+        post: operations["auth_google_sign_in"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/dev-login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 개발용 유저 로그인 */
+        post: operations["auth_dev_login"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/owner/signup": {
         parameters: {
             query?: never;
@@ -139,6 +173,40 @@ export interface paths {
         head?: never;
         /** 내 사용자 정보 수정 */
         patch: operations["users_update_me"];
+        trace?: never;
+    };
+    "/api/v1/users/{user_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 유저 공개 프로필 조회 */
+        get: operations["users_get_user_profile"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/users/{user_id}/snails": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 유저 스네일 목록 조회 */
+        get: operations["users_list_user_snails"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/me/device-tokens": {
@@ -309,6 +377,40 @@ export interface paths {
         get: operations["shops_get_public_shop"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/shops/me/uploads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 사장 업로드 */
+        post: operations["uploads_create_owner_upload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/uploads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 유저 업로드 */
+        post: operations["uploads_create_user_upload"];
         delete?: never;
         options?: never;
         head?: never;
@@ -526,6 +628,76 @@ export interface paths {
         patch: operations["designs_update_design_option"];
         trace?: never;
     };
+    "/api/v1/shops/me/design-folders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 디자인 폴더 목록 조회 */
+        get: operations["designs_list_design_folders"];
+        put?: never;
+        /** 디자인 폴더 생성 */
+        post: operations["designs_create_design_folder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/shops/me/design-folders/{folder_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** 디자인 폴더 삭제(디자인은 유지) */
+        delete: operations["designs_delete_design_folder"];
+        options?: never;
+        head?: never;
+        /** 디자인 폴더 이름 변경 */
+        patch: operations["designs_update_design_folder"];
+        trace?: never;
+    };
+    "/api/v1/shops/{shop_id}/designs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 샵 디자인 목록 조회 */
+        get: operations["designs_list_shop_designs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/designs/{design_id}/related": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 연관 디자인 추천 */
+        get: operations["designs_list_related_designs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/designs/{design_id}": {
         parameters: {
             query?: never;
@@ -662,7 +834,8 @@ export interface paths {
         delete: operations["snails_delete_comment"];
         options?: never;
         head?: never;
-        patch?: never;
+        /** 댓글 수정 */
+        patch: operations["snails_update_comment"];
         trace?: never;
     };
     "/api/v1/comments/{comment_id}/like": {
@@ -862,6 +1035,23 @@ export interface paths {
         };
         /** 통합 검색 */
         get: operations["search_search"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/taxonomy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 필터 통제어휘 */
+        get: operations["taxonomy_get_taxonomy"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1108,6 +1298,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 내 알림 목록 조회 */
+        get: operations["notifications_list_my_notifications"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/shops/me/notifications": {
         parameters: {
             query?: never;
@@ -1136,6 +1343,23 @@ export interface paths {
         get: operations["notifications_list_owner_notifications"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/notifications/{notification_id}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 내 알림 읽음 처리 */
+        post: operations["notifications_mark_my_notification_read"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1176,6 +1400,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/notifications/read-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 내 알림 전체 읽음 처리 */
+        post: operations["notifications_mark_all_my_notifications_read"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/owners/me/notifications/read-all": {
         parameters: {
             query?: never;
@@ -1187,6 +1428,74 @@ export interface paths {
         put?: never;
         /** 사장님 알림 전체 읽음 처리 */
         post: operations["notifications_mark_all_owner_notifications_read"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/inquiries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 내 문의 목록 조회 */
+        get: operations["inquiries_list_my_inquiries"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/shops/me/inquiries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 내 샵 문의 목록 조회 */
+        get: operations["inquiries_list_owner_shop_inquiries"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/shops/me/inquiries/{inquiry_id}/reply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 샵 문의 답변 */
+        post: operations["inquiries_reply_inquiry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/shops/{shop_id}/inquiries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 샵 문의 생성 */
+        post: operations["inquiries_create_inquiry"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1254,6 +1563,24 @@ export interface components {
             end_at: string;
             /** Available Designer Ids */
             available_designer_ids?: string[];
+        };
+        /** Body_uploads_create_owner_upload */
+        Body_uploads_create_owner_upload: {
+            /**
+             * File
+             * Format: binary
+             */
+            file: string;
+            target_type: components["schemas"]["UploadTargetType"];
+        };
+        /** Body_uploads_create_user_upload */
+        Body_uploads_create_user_upload: {
+            /**
+             * File
+             * Format: binary
+             */
+            file: string;
+            target_type: components["schemas"]["UploadTargetType"];
         };
         /** BusinessHourEntry */
         BusinessHourEntry: {
@@ -1334,10 +1661,26 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** CommentUpdate */
+        CommentUpdate: {
+            /** Body */
+            body: string;
         };
         /** DataResponse[OwnerNotificationPublic] */
         DataResponse_OwnerNotificationPublic_: {
             data: components["schemas"]["OwnerNotificationPublic"];
+            /** Request Id */
+            request_id: string;
+        };
+        /** DataResponse[UserNotificationPublic] */
+        DataResponse_UserNotificationPublic_: {
+            data: components["schemas"]["UserNotificationPublic"];
             /** Request Id */
             request_id: string;
         };
@@ -1362,6 +1705,10 @@ export interface components {
             duration_minutes: number;
             /** Designer Ids */
             designer_ids: string[];
+            /** Designer Durations */
+            designer_durations?: components["schemas"]["DesignerDurationInput"][] | null;
+            /** Folder Id */
+            folder_id?: string | null;
             /** Image Upload Keys */
             image_upload_keys: string[];
             /** Owner Tags */
@@ -1387,6 +1734,43 @@ export interface components {
             profile_image_url?: string | null;
             /** Specialty Tags */
             specialty_tags: string[];
+            /** Duration Minutes */
+            duration_minutes?: number | null;
+        };
+        /** DesignFolderCreate */
+        DesignFolderCreate: {
+            /** Name */
+            name: string;
+        };
+        /** DesignFolderPublic */
+        DesignFolderPublic: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Shop Id
+             * Format: uuid
+             */
+            shop_id: string;
+            /** Name */
+            name: string;
+            /**
+             * Design Count
+             * @default 0
+             */
+            design_count: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** DesignFolderUpdate */
+        DesignFolderUpdate: {
+            /** Name */
+            name: string;
         };
         /** DesignImagePublic */
         DesignImagePublic: {
@@ -1416,6 +1800,10 @@ export interface components {
              * Format: uuid
              */
             shop_id: string;
+            /** Folder Id */
+            folder_id?: string | null;
+            /** Folder Name */
+            folder_name?: string | null;
             /** Title */
             title: string;
             /** Description */
@@ -1559,8 +1947,8 @@ export interface components {
             thumbnail_url?: string | null;
             /** Images */
             images?: components["schemas"]["DesignImagePublic"][];
-            /** Ai Tags */
-            ai_tags: string[];
+            /** Owner Tags */
+            owner_tags?: string[];
             /** Color Palette */
             color_palette: string[];
             /** Style Category */
@@ -1625,6 +2013,10 @@ export interface components {
             duration_minutes?: number | null;
             /** Designer Ids */
             designer_ids?: string[] | null;
+            /** Designer Durations */
+            designer_durations?: components["schemas"]["DesignerDurationInput"][] | null;
+            /** Folder Id */
+            folder_id?: string | null;
             /** Image Upload Keys */
             image_upload_keys?: string[] | null;
             /** Owner Tags */
@@ -1646,6 +2038,19 @@ export interface components {
             profile_image_object_key?: string | null;
             /** Specialty Tags */
             specialty_tags?: string[];
+        };
+        /**
+         * DesignerDurationInput
+         * @description 디자이너별 소요시간 오버라이드. designer_ids에 포함된 디자이너만 지정 가능.
+         */
+        DesignerDurationInput: {
+            /**
+             * Designer Id
+             * Format: uuid
+             */
+            designer_id: string;
+            /** Duration Minutes */
+            duration_minutes: number;
         };
         /** DesignerPublic */
         DesignerPublic: {
@@ -1690,6 +2095,11 @@ export interface components {
             /** Specialty Tags */
             specialty_tags?: string[] | null;
         };
+        /** DevLoginRequest */
+        DevLoginRequest: {
+            /** Nickname */
+            nickname?: string | null;
+        };
         /** DeviceTokenRegister */
         DeviceTokenRegister: {
             /** Token */
@@ -1707,6 +2117,22 @@ export interface components {
             /** Follower Count */
             follower_count: number;
         };
+        /** GoogleSignInRequest */
+        GoogleSignInRequest: {
+            /** Id Token */
+            id_token: string;
+            /** Accepted Terms Version */
+            accepted_terms_version: string;
+            /** Accepted Privacy Version */
+            accepted_privacy_version: string;
+            /** Nonce */
+            nonce?: string | null;
+        };
+        /** GoogleSignInResponse */
+        GoogleSignInResponse: {
+            tokens: components["schemas"]["TokenPair"];
+            user: components["schemas"]["UserMe"];
+        };
         /** HealthResponse */
         HealthResponse: {
             /** Status */
@@ -1721,6 +2147,11 @@ export interface components {
          * @enum {string}
          */
         ImageViewMode: "model" | "wear";
+        /**
+         * InquiryStatus
+         * @enum {string}
+         */
+        InquiryStatus: "pending" | "answered";
         /**
          * JobStatus
          * @enum {string}
@@ -1891,6 +2322,13 @@ export interface components {
              */
             has_next: boolean;
         };
+        /** PageResult[DesignPublic] */
+        PageResult_DesignPublic_: {
+            /** Items */
+            items: components["schemas"]["DesignPublic"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
         /** PageResult[SnapPublic] */
         PageResult_SnapPublic_: {
             /** Items */
@@ -1974,6 +2412,8 @@ export interface components {
             reject_reason?: string | null;
             /** Cancel Reason */
             cancel_reason?: string | null;
+            /** Owner Reply */
+            owner_reply?: string | null;
         };
         /** ReservationCreate */
         ReservationCreate: {
@@ -2066,6 +2506,8 @@ export interface components {
             status: components["schemas"]["ReservationStatus"];
             /** User Request */
             user_request?: string | null;
+            /** Owner Reply */
+            owner_reply?: string | null;
             /** Selected Option Ids */
             selected_option_ids?: string[];
             /** Total Price */
@@ -2147,6 +2589,8 @@ export interface components {
             status: components["schemas"]["ReservationStatus"];
             /** User Request */
             user_request?: string | null;
+            /** Owner Reply */
+            owner_reply?: string | null;
             /** Selected Option Ids */
             selected_option_ids?: string[];
             /** Total Price */
@@ -2418,6 +2862,53 @@ export interface components {
             /** Is Thumbnail */
             is_thumbnail: boolean;
         };
+        /** ShopInquiryCreate */
+        ShopInquiryCreate: {
+            /** Body */
+            body: string;
+            /** Design Id */
+            design_id?: string | null;
+        };
+        /** ShopInquiryListResponse */
+        ShopInquiryListResponse: {
+            /** Data */
+            data: components["schemas"]["ShopInquiryPublic"][];
+            page?: components["schemas"]["PageMeta"];
+            /** Request Id */
+            request_id: string;
+        };
+        /** ShopInquiryPublic */
+        ShopInquiryPublic: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Shop Id
+             * Format: uuid
+             */
+            shop_id: string;
+            /** Design Id */
+            design_id?: string | null;
+            /** Body */
+            body: string;
+            status: components["schemas"]["InquiryStatus"];
+            /** Owner Reply */
+            owner_reply?: string | null;
+            /** Owner Replied At */
+            owner_replied_at?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** ShopInquiryReply */
+        ShopInquiryReply: {
+            /** Body */
+            body: string;
+        };
         /** ShopMe */
         ShopMe: {
             /**
@@ -2634,6 +3125,17 @@ export interface components {
              */
             created_at: string;
         };
+        /** TaxonomyResponse */
+        TaxonomyResponse: {
+            /** Colors */
+            colors: string[];
+            /** Moods */
+            moods: string[];
+            /** Seasons */
+            seasons: string[];
+            /** Regions */
+            regions: string[];
+        };
         /** TimeOffCreate */
         TimeOffCreate: {
             /**
@@ -2691,6 +3193,22 @@ export interface components {
              */
             refresh_expires_at: string;
         };
+        /** UploadResultPublic */
+        UploadResultPublic: {
+            /** Object Key */
+            object_key: string;
+            /** Url */
+            url: string;
+            /** Content Type */
+            content_type: string;
+            /** Byte Size */
+            byte_size: number;
+        };
+        /**
+         * UploadTargetType
+         * @enum {string}
+         */
+        UploadTargetType: "profile" | "shop" | "design" | "snap" | "review" | "business_license";
         /** UserMe */
         UserMe: {
             /**
@@ -2719,6 +3237,67 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+        };
+        /** UserNotificationListResponse */
+        UserNotificationListResponse: {
+            /** Data */
+            data: components["schemas"]["UserNotificationPublic"][];
+            page?: components["schemas"]["PageMeta"];
+            /** Unread Count */
+            unread_count: number;
+            /** Request Id */
+            request_id: string;
+        };
+        /** UserNotificationPublic */
+        UserNotificationPublic: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Type */
+            type: string;
+            /** Title */
+            title: string;
+            /** Body */
+            body: string;
+            /** Resource Type */
+            resource_type?: string | null;
+            /** Resource Id */
+            resource_id?: string | null;
+            /** Deeplink */
+            deeplink?: string | null;
+            /** Metadata */
+            metadata?: Record<string, never> | null;
+            /** Read At */
+            read_at?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** UserProfilePublic */
+        UserProfilePublic: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Nickname */
+            nickname: string;
+            /** Profile Image Url */
+            profile_image_url?: string | null;
+            /** Bio */
+            bio?: string | null;
+            /** Snap Count */
+            snap_count: number;
+            /** Follower Count */
+            follower_count: number;
+            /** Following Count */
+            following_count: number;
+            /** Is Following */
+            is_following: boolean;
         };
         /** UserPublic */
         UserPublic: {
@@ -2879,6 +3458,171 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["AppleSignInRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppleSignInResponse"];
+                };
+            };
+            /** @description UNAUTHORIZED */
+            401: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description NOT_FOUND */
+            404: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description CONFLICT */
+            409: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description VALIDATION_ERROR */
+            422: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    auth_google_sign_in: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required for mutating requests. */
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GoogleSignInRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GoogleSignInResponse"];
+                };
+            };
+            /** @description UNAUTHORIZED */
+            401: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description NOT_FOUND */
+            404: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description CONFLICT */
+            409: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description VALIDATION_ERROR */
+            422: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    auth_dev_login: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["DevLoginRequest"] | null;
             };
         };
         responses: {
@@ -3471,6 +4215,171 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UserMe"];
+                };
+            };
+            /** @description UNAUTHORIZED */
+            401: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description NOT_FOUND */
+            404: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description CONFLICT */
+            409: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description VALIDATION_ERROR */
+            422: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    users_get_user_profile: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserProfilePublic"];
+                };
+            };
+            /** @description UNAUTHORIZED */
+            401: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description NOT_FOUND */
+            404: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description CONFLICT */
+            409: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description VALIDATION_ERROR */
+            422: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    users_list_user_snails: {
+        parameters: {
+            query?: {
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PageResult_SnapPublic_"];
                 };
             };
             /** @description UNAUTHORIZED */
@@ -4681,6 +5590,172 @@ export interface operations {
             };
         };
     };
+    uploads_create_owner_upload: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_uploads_create_owner_upload"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UploadResultPublic"];
+                };
+            };
+            /** @description UNAUTHORIZED */
+            401: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description NOT_FOUND */
+            404: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description CONFLICT */
+            409: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description VALIDATION_ERROR */
+            422: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    uploads_create_user_upload: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_uploads_create_user_upload"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UploadResultPublic"];
+                };
+            };
+            /** @description UNAUTHORIZED */
+            401: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description NOT_FOUND */
+            404: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description CONFLICT */
+            409: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description VALIDATION_ERROR */
+            422: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     designers_list_my_designers: {
         parameters: {
             query?: never;
@@ -5349,6 +6424,10 @@ export interface operations {
     designs_list_my_designs: {
         parameters: {
             query?: {
+                /** @description 특정 폴더의 디자인만 */
+                folder_id?: string | null;
+                /** @description 폴더 미지정(미분류) 디자인만 */
+                unfiled?: boolean;
                 cursor?: string | null;
                 limit?: number;
             };
@@ -6270,6 +7349,506 @@ export interface operations {
             };
         };
     };
+    designs_list_design_folders: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DesignFolderPublic"][];
+                };
+            };
+            /** @description UNAUTHORIZED */
+            401: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description NOT_FOUND */
+            404: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description CONFLICT */
+            409: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description VALIDATION_ERROR */
+            422: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    designs_create_design_folder: {
+        parameters: {
+            query?: never;
+            header: {
+                authorization?: string | null;
+                /** @description Required for mutating requests. */
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DesignFolderCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DesignFolderPublic"];
+                };
+            };
+            /** @description UNAUTHORIZED */
+            401: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description NOT_FOUND */
+            404: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description CONFLICT */
+            409: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description VALIDATION_ERROR */
+            422: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    designs_delete_design_folder: {
+        parameters: {
+            query?: never;
+            header: {
+                authorization?: string | null;
+                /** @description Required for mutating requests. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                folder_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description UNAUTHORIZED */
+            401: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description NOT_FOUND */
+            404: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description CONFLICT */
+            409: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description VALIDATION_ERROR */
+            422: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    designs_update_design_folder: {
+        parameters: {
+            query?: never;
+            header: {
+                authorization?: string | null;
+                /** @description Required for mutating requests. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                folder_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DesignFolderUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DesignFolderPublic"];
+                };
+            };
+            /** @description UNAUTHORIZED */
+            401: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description NOT_FOUND */
+            404: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description CONFLICT */
+            409: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description VALIDATION_ERROR */
+            422: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    designs_list_shop_designs: {
+        parameters: {
+            query?: {
+                sort?: "latest" | "popular" | "price_asc" | "price_desc" | "rating";
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                shop_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PageResult_DesignPublic_"];
+                };
+            };
+            /** @description UNAUTHORIZED */
+            401: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description NOT_FOUND */
+            404: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description CONFLICT */
+            409: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description VALIDATION_ERROR */
+            422: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    designs_list_related_designs: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                design_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DesignPublic"][];
+                };
+            };
+            /** @description UNAUTHORIZED */
+            401: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description NOT_FOUND */
+            404: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description CONFLICT */
+            409: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description VALIDATION_ERROR */
+            422: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     designs_get_public_design: {
         parameters: {
             query?: never;
@@ -6372,9 +7951,10 @@ export interface operations {
                 moods?: string[] | null;
                 price_min?: number | null;
                 price_max?: number | null;
+                duration_min?: number | null;
                 duration_max?: number | null;
                 /** @example popular */
-                sort?: ("relevance" | "popular" | "latest" | "price_asc" | "price_desc" | "rating" | "distance") | null;
+                sort?: ("relevance" | "popular" | "latest" | "price_asc" | "price_desc" | "rating" | "monthly" | "distance") | null;
                 cursor?: string | null;
                 /** @example 20 */
                 limit?: number;
@@ -7148,6 +8728,93 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description UNAUTHORIZED */
+            401: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description NOT_FOUND */
+            404: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description CONFLICT */
+            409: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description VALIDATION_ERROR */
+            422: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    snails_update_comment: {
+        parameters: {
+            query?: never;
+            header: {
+                authorization?: string | null;
+                /** @description Required for mutating requests. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                comment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CommentUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommentPublic"];
+                };
             };
             /** @description UNAUTHORIZED */
             401: {
@@ -8220,8 +9887,9 @@ export interface operations {
                 moods?: string[] | null;
                 price_min?: number | null;
                 price_max?: number | null;
+                duration_min?: number | null;
                 duration_max?: number | null;
-                sort?: ("relevance" | "popular" | "latest" | "price_asc" | "price_desc" | "rating" | "distance") | null;
+                sort?: ("relevance" | "popular" | "latest" | "price_asc" | "price_desc" | "rating" | "monthly" | "distance") | null;
                 cursor?: string | null;
                 limit?: number;
             };
@@ -8242,6 +9910,83 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SearchResult"];
+                };
+            };
+            /** @description UNAUTHORIZED */
+            401: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description NOT_FOUND */
+            404: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description CONFLICT */
+            409: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description VALIDATION_ERROR */
+            422: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    taxonomy_get_taxonomy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaxonomyResponse"];
                 };
             };
             /** @description UNAUTHORIZED */
@@ -8987,7 +10732,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ReservationActionRequest"] | null;
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -9480,6 +11229,89 @@ export interface operations {
             };
         };
     };
+    notifications_list_my_notifications: {
+        parameters: {
+            query?: {
+                status?: "unread" | "all";
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserNotificationListResponse"];
+                };
+            };
+            /** @description UNAUTHORIZED */
+            401: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description NOT_FOUND */
+            404: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description CONFLICT */
+            409: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description VALIDATION_ERROR */
+            422: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     notifications_list_shop_notifications: {
         parameters: {
             query?: {
@@ -9587,6 +11419,89 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OwnerNotificationListResponse"];
+                };
+            };
+            /** @description UNAUTHORIZED */
+            401: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description NOT_FOUND */
+            404: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description CONFLICT */
+            409: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description VALIDATION_ERROR */
+            422: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    notifications_mark_my_notification_read: {
+        parameters: {
+            query?: never;
+            header: {
+                authorization?: string | null;
+                /** @description Required for mutating requests. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                notification_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataResponse_UserNotificationPublic_"];
                 };
             };
             /** @description UNAUTHORIZED */
@@ -9812,6 +11727,87 @@ export interface operations {
             };
         };
     };
+    notifications_mark_all_my_notifications_read: {
+        parameters: {
+            query?: never;
+            header: {
+                authorization?: string | null;
+                /** @description Required for mutating requests. */
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataResponse_dict_str__int__"];
+                };
+            };
+            /** @description UNAUTHORIZED */
+            401: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description NOT_FOUND */
+            404: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description CONFLICT */
+            409: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description VALIDATION_ERROR */
+            422: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     notifications_mark_all_owner_notifications_read: {
         parameters: {
             query?: never;
@@ -9834,6 +11830,344 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DataResponse_dict_str__int__"];
+                };
+            };
+            /** @description UNAUTHORIZED */
+            401: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description NOT_FOUND */
+            404: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description CONFLICT */
+            409: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description VALIDATION_ERROR */
+            422: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    inquiries_list_my_inquiries: {
+        parameters: {
+            query?: {
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShopInquiryListResponse"];
+                };
+            };
+            /** @description UNAUTHORIZED */
+            401: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description NOT_FOUND */
+            404: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description CONFLICT */
+            409: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description VALIDATION_ERROR */
+            422: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    inquiries_list_owner_shop_inquiries: {
+        parameters: {
+            query?: {
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShopInquiryListResponse"];
+                };
+            };
+            /** @description UNAUTHORIZED */
+            401: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description NOT_FOUND */
+            404: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description CONFLICT */
+            409: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description VALIDATION_ERROR */
+            422: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    inquiries_reply_inquiry: {
+        parameters: {
+            query?: never;
+            header: {
+                authorization?: string | null;
+                /** @description Required for mutating requests. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                inquiry_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShopInquiryReply"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShopInquiryPublic"];
+                };
+            };
+            /** @description UNAUTHORIZED */
+            401: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description NOT_FOUND */
+            404: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description CONFLICT */
+            409: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description VALIDATION_ERROR */
+            422: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    inquiries_create_inquiry: {
+        parameters: {
+            query?: never;
+            header: {
+                authorization?: string | null;
+                /** @description Required for mutating requests. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                shop_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShopInquiryCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShopInquiryPublic"];
                 };
             };
             /** @description UNAUTHORIZED */
