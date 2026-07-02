@@ -52,5 +52,10 @@ export type ReservationActionRequest = Schemas['ReservationActionRequest'];
 export type Review = Schemas['ReviewPublic'];
 export type ReviewReplyCreate = Schemas['ReviewReplyCreate'];
 
+// 문의 (앱에서 특정 디자인에 남긴 문의)
+export type ShopInquiry = Schemas['ShopInquiryPublic'];
+export type ShopInquiryReply = Schemas['ShopInquiryReply'];
+export type InquiryStatus = Schemas['InquiryStatus'];
+
 // 알림
 export type OwnerNotification = Schemas['OwnerNotificationPublic'];

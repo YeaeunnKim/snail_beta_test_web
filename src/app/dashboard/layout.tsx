@@ -15,13 +15,14 @@ import { config } from '@/lib/config';
 
 const NAV = [
   { href: '/dashboard', label: '홈' },
-  { href: '/business-verification', label: '사업자 인증' },
+  { href: '/dashboard/verification', label: '사업자 인증' },
   { href: '/dashboard/shop', label: '샵 관리' },
   { href: '/dashboard/designers', label: '디자이너' },
   { href: '/dashboard/designs', label: '디자인' },
   { href: '/dashboard/reservations', label: '예약' },
   { href: '/dashboard/timeline', label: '일정' },
   { href: '/dashboard/reviews', label: '리뷰' },
+  { href: '/dashboard/inquiries', label: '문의' },
   { href: '/dashboard/notifications', label: '알림' },
 ];
 
@@ -48,8 +49,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="flex min-h-screen">
-      <aside className="w-56 shrink-0 border-r border-neutral-200 bg-neutral-50 p-4">
-        <p className="mb-6 text-sm font-bold text-brand">{config.appName}</p>
+      <aside className="w-56 shrink-0 border-r border-line bg-surface p-4">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/snail-logo.png" alt={config.appName} className="mb-6 h-7 w-auto" />
         <nav className="space-y-1">
           {NAV.map((item) => {
             const active =
@@ -72,7 +74,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </aside>
 
       <div className="flex flex-1 flex-col">
-        <header className="flex items-center justify-between border-b border-neutral-200 px-6 py-3">
+        <header className="flex items-center justify-between border-b border-line px-6 py-3">
           <span className="text-sm text-neutral-600">{owner?.representative_name ?? owner?.email}</span>
           <button
             onClick={() => {

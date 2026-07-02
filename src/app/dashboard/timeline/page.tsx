@@ -34,7 +34,8 @@ import {
 import { WEEKDAYS } from '@/lib/weekday';
 import { RESERVATION_STATUS_CLS, RESERVATION_STATUS_LABEL } from '@/lib/reservation-status';
 import { InquiryThread, ReservationDesignBlock } from '@/components/reservation-design';
-import { computeWindow, isoToMinutes, kindOf, TIMELINE_PALETTE } from '@/lib/timeline';
+import { DayTimeline } from '@/components/day-timeline';
+import { kindOf, TIMELINE_PALETTE } from '@/lib/timeline';
 
 type ViewMode = 'day' | 'week' | 'month';
 type Palette = (typeof TIMELINE_PALETTE)[number];
@@ -173,7 +174,7 @@ export default function TimelinePage() {
             등록된 디자이너가 없습니다. 디자이너 탭에서 추가해주세요.
           </p>
         ) : mode === 'day' ? (
-          <DayView
+          <DayTimeline
             designers={visibleDesigners}
             reservations={reservations}
             businessHours={shop?.business_hours}
@@ -230,7 +231,7 @@ function Filters({
           allOn ? 'border-brand text-neutral-800' : 'border-neutral-300 bg-neutral-50 text-neutral-400'
         }`}
       >
-        <span className="h-2.5 w-2.5 rounded-full" style={{ background: allOn ? 'var(--brand, #f6648a)' : '#ccc' }} />
+        <span className="h-2.5 w-2.5 rounded-full" style={{ background: allOn ? 'var(--color-brand, #c97f7f)' : '#ccc' }} />
         전체
       </button>
       {designers.map((d) => {
@@ -253,158 +254,6 @@ function Filters({
         );
       })}
     </div>
-  );
-}
-
-/* ───────────────────────── 일 뷰 ───────────────────────── */
-
-function DayView({
-  designers,
-  reservations,
-  businessHours,
-  date,
-  colorOf,
-  onSelect,
-}: {
-  designers: Designer[];
-  reservations: Reservation[];
-  businessHours: Parameters<typeof computeWindow>[0];
-  date: string;
-  colorOf: Map<string, Palette>;
-  onSelect: (id: string) => void;
-}) {
-  const dayRes = useMemo(
-    () => reservations.filter((r) => localDateOf(r.start_at) === date),
-    [reservations, date],
-  );
-  const win = useMemo(
-    () => computeWindow(businessHours, dayRes.filter((r) => !isCancelled(r))),
-    [businessHours, dayRes],
-  );
-
-  const byDesigner = useMemo(() => {
-    const map = new Map<string, Reservation[]>();
-    for (const r of dayRes) {
-      const list = map.get(r.designer_id) ?? [];
-      list.push(r);
-      map.set(r.designer_id, list);
-    }
-    for (const list of map.values()) list.sort((a, b) => a.start_at.localeCompare(b.start_at));
-    return map;
-  }, [dayRes]);
-
-  const { startHour, endHour } = win;
-  const hourCount = endHour - startHour;
-  const startMin = startHour * 60;
-  const spanMin = hourCount * 60;
-  const step = 100 / hourCount;
-  const pct = (min: number) => ((min - startMin) / spanMin) * 100;
-  const grid = `repeating-linear-gradient(to right, transparent 0, transparent calc(${step}% - 1px), #f4f3ee calc(${step}% - 1px), #f4f3ee ${step}%)`;
-
-  const now = new Date();
-  const nowMin = date === todayLocalDate() ? now.getHours() * 60 + now.getMinutes() : null;
-  const nowPct = nowMin != null ? pct(nowMin) : null;
-  const showNow = nowPct != null && nowPct >= 0 && nowPct <= 100;
-
-  return (
-    <div className="overflow-x-auto">
-      <div className="min-w-[760px]">
-        <div className="sticky top-0 z-10 flex border-b border-neutral-200 bg-neutral-50">
-          <div className="w-[116px] shrink-0 border-r border-neutral-200 px-3.5 py-2 text-xs text-neutral-400">
-            디자이너
-          </div>
-          <div className="flex flex-1">
-            {Array.from({ length: hourCount }, (_, i) => (
-              <span
-                key={i}
-                className="flex-1 border-r border-neutral-100 px-1.5 pt-2.5 text-[11px] text-neutral-400 last:border-r-0"
-              >
-                {startHour + i}
-              </span>
-            ))}
-          </div>
-        </div>
-
-        {designers.map((d, i) => {
-          const color = colorOf.get(d.id) ?? TIMELINE_PALETTE[0];
-          const jobs = byDesigner.get(d.id) ?? [];
-          const live = jobs.filter((r) => !isCancelled(r)).length;
-          const last = i === designers.length - 1;
-          return (
-            <div key={d.id} className={`flex ${last ? '' : 'border-b border-neutral-100'}`}>
-              <div className="flex w-[116px] shrink-0 items-center gap-2 border-r border-neutral-200 bg-neutral-50/60 px-3.5">
-                <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: color.border }} />
-                <span className="truncate text-[13.5px] font-semibold">{d.name}</span>
-                <span className="ml-auto text-[11px] text-neutral-300">{live}건</span>
-              </div>
-              <div className="relative h-[62px] flex-1" style={{ background: grid }}>
-                {showNow && (
-                  <div className="absolute inset-y-0 z-[2] w-0.5 bg-brand/70" style={{ left: `${nowPct}%` }}>
-                    <span className="absolute -left-[3px] -top-0.5 h-2 w-2 rounded-full bg-brand" />
-                  </div>
-                )}
-                {jobs.map((r) => (
-                  <DayBar key={r.id} reservation={r} color={color} pct={pct} onSelect={onSelect} />
-                ))}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-function DayBar({
-  reservation: r,
-  color,
-  pct,
-  onSelect,
-}: {
-  reservation: Reservation;
-  color: Palette;
-  pct: (min: number) => number;
-  onSelect: (id: string) => void;
-}) {
-  const startPct = Math.max(0, pct(isoToMinutes(r.start_at)));
-  const endPct = Math.min(100, pct(isoToMinutes(r.end_at)));
-  const width = Math.max(0, endPct - startPct);
-  if (width <= 0) return null;
-
-  const kind = kindOf(r.status);
-  const requested = kind === 'requested';
-  const cancelled = kind === 'cancelled';
-  const who = r.user?.nickname ?? '고객';
-  const svc = r.design?.title ?? '시술';
-
-  return (
-    <button
-      onClick={() => onSelect(r.id)}
-      className={`absolute inset-y-[8px] overflow-hidden rounded-r-lg px-2 py-1 text-left transition-transform hover:-translate-y-px ${cancelled ? 'opacity-45' : ''}`}
-      style={{
-        left: `${startPct}%`,
-        width: `${width}%`,
-        background: requested ? '#ffffff' : color.bg,
-        borderLeft: `3px solid ${color.border}`,
-        borderTop: requested ? `1px dashed ${color.border}` : undefined,
-        borderRight: requested ? `1px dashed ${color.border}` : undefined,
-        borderBottom: requested ? `1px dashed ${color.border}` : undefined,
-        color: color.text,
-      }}
-      title={`${who} · ${svc} · ${formatTime(r.start_at)}~${formatTime(r.end_at)}`}
-    >
-      <div className={`truncate text-[11.5px] font-bold ${cancelled ? 'line-through' : ''}`}>
-        {who}
-        {requested && (
-          <span className="ml-1 rounded px-1 text-[9px] font-bold" style={{ background: color.bg, color: color.text }}>
-            요청
-          </span>
-        )}
-      </div>
-      <div className="truncate text-[10.5px] opacity-85">
-        {svc} · {formatTime(r.start_at)}~{formatTime(r.end_at)}
-      </div>
-    </button>
   );
 }
 
@@ -739,7 +588,7 @@ function DetailSheet({
               <p className="text-[13px] text-neutral-400">디자인 정보가 없어요.</p>
             )}
 
-            <div className="mb-2 mt-4 text-xs font-bold text-neutral-400">문의사항</div>
+            <div className="mb-2 mt-4 text-xs font-bold text-neutral-400">요청사항</div>
             <InquiryThread reservation={r} />
             {r.status === 'pending' && !r.owner_reply && !reasonMode && (
               <div className="mt-3">
@@ -750,7 +599,7 @@ function DetailSheet({
                   rows={2}
                   value={reply}
                   onChange={(e) => setReply(e.target.value)}
-                  placeholder="문의에 대한 답변을 적어주세요."
+                  placeholder="요청에 대한 답변을 적어주세요."
                   className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-brand"
                 />
               </div>

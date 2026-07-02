@@ -3,7 +3,7 @@
 /**
  * 예약 상세에서 공용으로 쓰는 조각들.
  *  - ReservationDesignBlock: 대표 썸네일(클릭 시 등록된 상세 사진 펼침) + 선택 옵션(연장/제거/케어)
- *  - InquiryThread: 고객 문의사항 + 사장님 답변(읽기 전용)
+ *  - InquiryThread: 고객 요청사항 + 사장님 답변(읽기 전용)
  *
  * 예약 응답엔 디자인 요약(썸네일 1장)만 있어, 상세 사진·옵션은 getDesign으로 채운다.
  */
@@ -110,7 +110,7 @@ export function ReservationDesignBlock({ reservation }: { reservation: Reservati
 export function InquiryThread({ reservation }: { reservation: Reservation }) {
   const req = reservation.user_request;
   const reply = reservation.owner_reply;
-  if (!req && !reply) return <p className="text-[13px] text-neutral-400">남긴 문의사항이 없어요.</p>;
+  if (!req && !reply) return <p className="text-[13px] text-neutral-400">남긴 요청사항이 없어요.</p>;
   return (
     <div className="flex flex-col gap-2">
       {req && (

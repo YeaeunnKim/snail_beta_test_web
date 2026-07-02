@@ -12,7 +12,7 @@
  *
  * 목록: 카드별 AI 분석 상태 배지(pending/in_progress면 폴링), failed 시 재분석.
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -36,7 +36,7 @@ const MAX_OWNER_TAGS = 10;
 const TAG_MAXLEN = 40;
 const DURATION_MIN = 30;
 const DURATION_MAX = 600;
-const DURATION_STEP = 5;
+const DURATION_STEP = 10;
 
 const AI_LABEL: Record<string, string> = {
   pending: 'AI 분석 대기',
@@ -716,6 +716,16 @@ function Stepper({
   onChange: (v: number) => void;
   suffix?: string;
 }) {
+  // 직접 입력용 로컬 문자열 상태. +/- 또는 외부 값 변경 시 동기화하고, 입력은 blur/Enter에 확정한다.
+  const [text, setText] = useState(String(value));
+  useEffect(() => setText(String(value)), [value]);
+
+  const commit = () => {
+    const n = parseInt(text, 10);
+    if (Number.isFinite(n)) onChange(n);
+    else setText(String(value));
+  };
+
   return (
     <div className="flex items-center rounded-md border border-neutral-300">
       <button
@@ -726,10 +736,25 @@ function Stepper({
       >
         −
       </button>
-      <span className="min-w-[3.5rem] text-center text-sm font-medium tabular-nums">
-        {value}
-        {suffix}
-      </span>
+      <div className="flex items-center">
+        <input
+          type="text"
+          inputMode="numeric"
+          value={text}
+          onChange={(e) => setText(e.target.value.replace(/[^0-9]/g, ''))}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              commit();
+              (e.target as HTMLInputElement).blur();
+            }
+          }}
+          className="w-10 bg-transparent text-center text-sm font-medium tabular-nums outline-none"
+          aria-label="소요시간 직접 입력"
+        />
+        {suffix && <span className="pr-1.5 text-sm text-neutral-500">{suffix}</span>}
+      </div>
       <button
         type="button"
         onClick={() => onChange(value + DURATION_STEP)}
@@ -809,6 +834,8 @@ function DesignCard({ design }: { design: Design }) {
   const qc = useQueryClient();
   const [actionError, setActionError] = useState<string | null>(null);
   const [showPhotos, setShowPhotos] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [confirmDel, setConfirmDel] = useState(false);
 
   const { data } = useQuery({
     queryKey: ['design', design.id],
@@ -938,27 +965,150 @@ function DesignCard({ design }: { design: Design }) {
         </div>
       )}
 
-      <div className="mt-3 flex items-center gap-2">
-        {d.ai_analysis_status === 'failed' && (
+      {!editing && (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          {d.ai_analysis_status === 'failed' && (
+            <button
+              onClick={() => reanalyze.mutate()}
+              disabled={reanalyze.isPending}
+              className="rounded-md bg-brand px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+            >
+              {reanalyze.isPending ? '요청 중…' : '재분석'}
+            </button>
+          )}
           <button
-            onClick={() => reanalyze.mutate()}
-            disabled={reanalyze.isPending}
-            className="rounded-md bg-brand px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+            onClick={() => {
+              setEditing(true);
+              setConfirmDel(false);
+              setActionError(null);
+            }}
+            className="rounded-md border border-neutral-300 px-3 py-1.5 text-xs font-semibold text-neutral-600 hover:bg-neutral-50"
           >
-            {reanalyze.isPending ? '요청 중…' : '재분석'}
+            수정
           </button>
-        )}
-        <button
-          onClick={() => remove.mutate()}
-          disabled={remove.isPending}
-          className="rounded-md border border-neutral-300 px-3 py-1.5 text-xs text-neutral-500 disabled:opacity-50"
-        >
-          삭제
-        </button>
-      </div>
+          {confirmDel ? (
+            <span className="inline-flex items-center gap-1.5 text-xs text-neutral-500">
+              삭제할까요?
+              <button
+                onClick={() => remove.mutate()}
+                disabled={remove.isPending}
+                className="rounded-md bg-[#fdeaea] px-2.5 py-1.5 text-xs font-bold text-[#cf3b3b] disabled:opacity-50"
+              >
+                {remove.isPending ? '삭제 중…' : '삭제 확인'}
+              </button>
+              <button
+                onClick={() => setConfirmDel(false)}
+                className="rounded-md bg-neutral-100 px-2.5 py-1.5 text-xs font-bold text-neutral-600"
+              >
+                취소
+              </button>
+            </span>
+          ) : (
+            <button
+              onClick={() => setConfirmDel(true)}
+              className="rounded-md border border-neutral-300 px-3 py-1.5 text-xs text-neutral-500 hover:bg-neutral-50"
+            >
+              삭제
+            </button>
+          )}
+        </div>
+      )}
+
+      {editing && <DesignEditForm design={d} onClose={() => setEditing(false)} />}
 
       {actionError && <p className="mt-2 text-xs text-red-600">{actionError}</p>}
     </li>
+  );
+}
+
+/* ───────────── 디자인 수정 폼 ───────────── */
+
+function DesignEditForm({ design: d, onClose }: { design: Design; onClose: () => void }) {
+  const qc = useQueryClient();
+  const [title, setTitle] = useState(d.title);
+  const [description, setDescription] = useState(d.description ?? '');
+  const [price, setPrice] = useState(String(d.base_price));
+  const [duration, setDuration] = useState(clampDuration(d.duration_minutes));
+  const [tags, setTags] = useState<string[]>(d.owner_tags ?? []);
+  const [err, setErr] = useState<string | null>(null);
+
+  const save = useMutation({
+    mutationFn: () =>
+      designsApi.updateDesign(d.id, {
+        title: title.trim(),
+        description: description.trim() || null,
+        base_price: Number(price) || 0,
+        duration_minutes: clampDuration(duration),
+        owner_tags: tags,
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['design', d.id] });
+      qc.invalidateQueries({ queryKey: ['designs'] });
+      onClose();
+    },
+    onError: (e) => setErr(toUserMessage(e)),
+  });
+
+  const inputCls =
+    'w-full rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-brand';
+  const labelCls = 'mb-1 block text-xs font-semibold text-neutral-500';
+
+  return (
+    <div className="mt-3 space-y-3 rounded-lg border border-brand/30 bg-brand/5 p-3">
+      <div>
+        <label className={labelCls}>제목 (관리용 · 고객 미노출)</label>
+        <input value={title} onChange={(e) => setTitle(e.target.value)} className={inputCls} />
+      </div>
+
+      <div className="flex flex-wrap gap-3">
+        <div className="min-w-[8rem] flex-1">
+          <label className={labelCls}>가격(원)</label>
+          <input
+            type="number"
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+            className={inputCls}
+          />
+        </div>
+        <div>
+          <label className={labelCls}>기본 소요시간</label>
+          <Stepper value={duration} onChange={(v) => setDuration(clampDuration(v))} suffix="분" />
+        </div>
+      </div>
+
+      <div>
+        <label className={labelCls}>설명 (앱 미노출 · 메모용)</label>
+        <textarea
+          rows={2}
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          className={inputCls}
+        />
+      </div>
+
+      <div>
+        <label className={labelCls}>사장님 태그</label>
+        <TagInput tags={tags} onChange={setTags} />
+      </div>
+
+      {err && <p className="text-xs text-red-600">{err}</p>}
+
+      <div className="flex gap-2">
+        <button
+          disabled={!title.trim() || save.isPending}
+          onClick={() => save.mutate()}
+          className="rounded-md bg-brand px-4 py-2 text-xs font-bold text-white disabled:opacity-50"
+        >
+          {save.isPending ? '저장 중…' : '저장'}
+        </button>
+        <button
+          onClick={onClose}
+          className="rounded-md bg-neutral-100 px-4 py-2 text-xs font-bold text-neutral-600"
+        >
+          취소
+        </button>
+      </div>
+    </div>
   );
 }
 

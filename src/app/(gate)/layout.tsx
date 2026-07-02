@@ -7,9 +7,10 @@ import { config } from '@/lib/config';
 
 export default function GateLayout({ children }: { children: React.ReactNode }) {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-neutral-50 px-4">
+    <main className="flex min-h-screen items-center justify-center bg-surface px-4">
       <div className="w-full max-w-md">
-        <h1 className="mb-6 text-center text-xl font-bold text-brand">{config.appName}</h1>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/snail-logo.png" alt={config.appName} className="mx-auto mb-6 h-10 w-auto" />
         <AuthGate>{children}</AuthGate>
       </div>
     </main>
