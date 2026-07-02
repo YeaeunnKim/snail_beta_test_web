@@ -26,4 +26,14 @@ export const config = {
   apiDocsUrl: process.env.NEXT_PUBLIC_API_DOCS_URL ?? '',
   /** 브라우저 런타임 여부 */
   isBrowser: typeof window !== 'undefined',
+  /**
+   * 개발용 자동 로그인. NEXT_PUBLIC_DEV_AUTOLOGIN=1 일 때만 동작하며,
+   * 토큰이 없으면 시드 사장님 계정으로 자동 로그인해 로그인 화면을 건너뛴다.
+   * 운영 빌드에서는 이 플래그를 켜지 않는다.
+   */
+  devAutoLogin: {
+    enabled: process.env.NEXT_PUBLIC_DEV_AUTOLOGIN === '1',
+    email: process.env.NEXT_PUBLIC_DEV_OWNER_EMAIL ?? 'owner1@seed.snail.app',
+    password: process.env.NEXT_PUBLIC_DEV_OWNER_PASSWORD ?? 'devpass1234',
+  },
 } as const;

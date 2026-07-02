@@ -9,6 +9,7 @@ import { create } from 'zustand';
 import { authApi, ownersApi } from '@/services';
 import type { Owner, OwnerLoginRequest } from '@/services/types';
 import { clearTokens, hasTokens } from '@/lib/token';
+import { config } from '@/lib/config';
 
 export type AuthStatus = 'idle' | 'loading' | 'authenticated' | 'unauthenticated';
 
@@ -43,6 +44,23 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   bootstrap: async () => {
     if (!hasTokens()) {
+      // 개발용 자동 로그인: 토큰이 없고 플래그가 켜져 있으면 시드 계정으로 로그인.
+      if (config.devAutoLogin.enabled) {
+        set({ status: 'loading' });
+        try {
+          await authApi.login({
+            email: config.devAutoLogin.email,
+            password: config.devAutoLogin.password,
+          });
+          const owner = await ownersApi.getMe();
+          set({ owner, status: 'authenticated' });
+          return;
+        } catch {
+          clearTokens();
+          set({ status: 'unauthenticated', owner: null });
+          return;
+        }
+      }
       set({ status: 'unauthenticated', owner: null });
       return;
     }
