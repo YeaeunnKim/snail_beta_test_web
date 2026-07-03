@@ -206,7 +206,7 @@ function NewFolderCard() {
     return (
       <button
         onClick={() => setEditing(true)}
-        className="flex min-h-[104px] flex-col items-center justify-center rounded-xl border border-dashed border-neutral-300 text-body-sm font-medium text-neutral-400 hover:border-secondary hover:text-secondary"
+        className="flex min-h-[104px] flex-col items-center justify-center rounded-xl border border-dashed border-neutral-300 text-body-sm font-semibold text-neutral-400 hover:border-secondary hover:text-secondary"
       >
         <span className="text-heading-lg leading-none">+</span>
         <span className="mt-1">새 폴더</span>
@@ -241,7 +241,7 @@ function NewFolderCard() {
             setName('');
             setError(null);
           }}
-          className="rounded-md border border-neutral-300 px-2 py-1.5 text-caption text-neutral-500"
+          className="rounded-md border border-neutral-300 px-2 py-1.5 text-caption font-semibold text-neutral-500"
         >
           취소
         </button>
@@ -265,7 +265,7 @@ function FolderDesigns({ view, onBack }: { view: FolderView; onBack: () => void 
       <div className="flex items-center gap-2">
         <button
           onClick={onBack}
-          className="rounded-md border border-neutral-300 px-2.5 py-1.5 text-body-sm text-neutral-600 hover:bg-neutral-50"
+          className="rounded-md border border-neutral-300 px-2.5 py-1.5 text-body-sm font-semibold text-neutral-600 hover:bg-neutral-50"
         >
           ← 폴더
         </button>
@@ -521,7 +521,7 @@ function CreateForm({ designers, onCreated }: { designers: Designer[]; onCreated
                         suffix="분"
                       />
                       {picked[d.id] !== baseDuration && (
-                        <span className="text-caption text-secondary">조정됨</span>
+                        <span className="text-caption font-semibold text-secondary">조정됨</span>
                       )}
                     </div>
                   )}
@@ -598,7 +598,7 @@ function FolderField({ value, onChange }: { value: string; onChange: (v: string)
             type="button"
             onClick={() => name.trim() && create.mutate(name.trim())}
             disabled={create.isPending || !name.trim()}
-            className="shrink-0 rounded-md border border-secondary px-3 py-2 text-body-sm font-medium text-secondary disabled:opacity-50"
+            className="shrink-0 rounded-md border border-secondary px-3 py-2 text-body-sm font-semibold text-secondary disabled:opacity-50"
           >
             만들기
           </button>
@@ -666,7 +666,7 @@ function TagInput({ tags, onChange }: { tags: string[]; onChange: (next: string[
         {tags.map((t) => (
           <span
             key={t}
-            className="inline-flex items-center gap-1 rounded-full bg-secondary/10 py-1 pl-2.5 pr-1 text-caption font-medium text-secondary"
+            className="inline-flex items-center gap-1 rounded-full bg-secondary/10 py-1 pl-2.5 pr-1 text-caption text-secondary"
           >
             #{t}
             <button
@@ -750,7 +750,7 @@ function Stepper({
               (e.target as HTMLInputElement).blur();
             }
           }}
-          className="w-10 bg-transparent text-center text-body-sm font-medium tabular-nums outline-none"
+          className="w-10 bg-transparent text-center text-body-sm tabular-nums outline-none"
           aria-label="소요시간 직접 입력"
         />
         {suffix && <span className="pr-1.5 text-body-sm text-neutral-500">{suffix}</span>}
@@ -893,7 +893,7 @@ function DesignCard({ design }: { design: Design }) {
           ) : (
             <span className="block h-full w-full bg-neutral-100" />
           )}
-          <span className="absolute inset-x-0 bottom-0 bg-black/40 py-0.5 text-center text-caption font-medium text-white">
+          <span className="absolute inset-x-0 bottom-0 bg-black/40 py-0.5 text-center text-caption font-semibold text-white">
             {showPhotos ? '접기' : `사진 ${photoCount}`}
           </span>
         </button>
@@ -902,7 +902,7 @@ function DesignCard({ design }: { design: Design }) {
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
               {d.folder_name && (
-                <span className="shrink-0 rounded bg-neutral-100 px-1.5 py-0.5 text-caption text-neutral-500">
+                <span className="shrink-0 rounded bg-neutral-100 px-1.5 py-0.5 text-caption font-semibold text-neutral-500">
                   📁 {d.folder_name}
                 </span>
               )}
@@ -913,7 +913,7 @@ function DesignCard({ design }: { design: Design }) {
             </p>
             {designerLine && <p className="mt-0.5 truncate text-caption text-neutral-400">{designerLine}</p>}
           </div>
-          <span className={`shrink-0 rounded px-2 py-0.5 text-caption font-medium ${AI_CLS[d.ai_analysis_status]}`}>
+          <span className={`shrink-0 rounded px-2 py-0.5 text-caption font-bold ${AI_CLS[d.ai_analysis_status]}`}>
             {AI_LABEL[d.ai_analysis_status]}
             {(d.ai_analysis_status === 'pending' || d.ai_analysis_status === 'in_progress') && ' …'}
           </span>
@@ -992,13 +992,13 @@ function DesignCard({ design }: { design: Design }) {
               <button
                 onClick={() => remove.mutate()}
                 disabled={remove.isPending}
-                className="rounded-md bg-[#fdeaea] px-2.5 py-1.5 text-caption font-bold text-[#cf3b3b] disabled:opacity-50"
+                className="rounded-md bg-[#fdeaea] px-2.5 py-1.5 text-caption font-semibold text-[#cf3b3b] disabled:opacity-50"
               >
                 {remove.isPending ? '삭제 중…' : '삭제 확인'}
               </button>
               <button
                 onClick={() => setConfirmDel(false)}
-                className="rounded-md bg-neutral-100 px-2.5 py-1.5 text-caption font-bold text-neutral-600"
+                className="rounded-md bg-neutral-100 px-2.5 py-1.5 text-caption font-semibold text-neutral-600"
               >
                 취소
               </button>
@@ -1006,7 +1006,7 @@ function DesignCard({ design }: { design: Design }) {
           ) : (
             <button
               onClick={() => setConfirmDel(true)}
-              className="rounded-md border border-neutral-300 px-3 py-1.5 text-caption text-neutral-500 hover:bg-neutral-50"
+              className="rounded-md border border-neutral-300 px-3 py-1.5 text-caption font-semibold text-neutral-500 hover:bg-neutral-50"
             >
               삭제
             </button>
@@ -1097,13 +1097,13 @@ function DesignEditForm({ design: d, onClose }: { design: Design; onClose: () =>
         <button
           disabled={!title.trim() || save.isPending}
           onClick={() => save.mutate()}
-          className="rounded-md bg-secondary px-4 py-2 text-caption font-bold text-white disabled:opacity-50"
+          className="rounded-md bg-secondary px-4 py-2 text-caption font-semibold text-white disabled:opacity-50"
         >
           {save.isPending ? '저장 중…' : '저장'}
         </button>
         <button
           onClick={onClose}
-          className="rounded-md bg-neutral-100 px-4 py-2 text-caption font-bold text-neutral-600"
+          className="rounded-md bg-neutral-100 px-4 py-2 text-caption font-semibold text-neutral-600"
         >
           취소
         </button>

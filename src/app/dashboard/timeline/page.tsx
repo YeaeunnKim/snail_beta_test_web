@@ -117,13 +117,13 @@ export default function TimelinePage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <div className="text-heading-lg font-bold leading-tight text-secondary">{shop?.name ?? '내 샵'}</div>
-          <div className="text-caption font-medium text-neutral-400">디자이너 스케줄</div>
+          <div className="text-caption font-semibold text-neutral-400">디자이너 스케줄</div>
         </div>
 
         <div className="flex items-center gap-1.5">
           <button
             onClick={() => setDate(todayLocalDate())}
-            className="h-8 rounded-lg border border-neutral-200 bg-white px-3 text-body-sm text-neutral-600 hover:bg-neutral-50"
+            className="h-8 rounded-lg border border-neutral-200 bg-white px-3 text-body-sm font-semibold text-neutral-600 hover:bg-neutral-50"
           >
             오늘
           </button>
@@ -373,7 +373,7 @@ function WeekPill({
       title={`${who} · ${r.design?.title ?? '시술'} · ${formatTime(r.start_at)}~${formatTime(r.end_at)}`}
     >
       {who}
-      <span className="ml-1 text-caption font-medium opacity-80">{formatTime(r.start_at)}</span>
+      <span className="ml-1 text-caption opacity-80">{formatTime(r.start_at)}</span>
     </button>
   );
 }
