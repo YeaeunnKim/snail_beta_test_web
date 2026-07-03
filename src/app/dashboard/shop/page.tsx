@@ -267,7 +267,7 @@ export default function ShopPage() {
         <button
           type="submit"
           disabled={isSubmitting}
-          className="rounded-md bg-brand px-5 py-2 text-sm font-semibold text-white disabled:opacity-50"
+          className="rounded-md bg-secondary px-5 py-2 text-sm font-semibold text-white disabled:opacity-50"
         >
           {isSubmitting ? '저장 중…' : isEdit ? '수정 저장' : '샵 만들기'}
         </button>
@@ -277,7 +277,7 @@ export default function ShopPage() {
 }
 
 const inputCls =
-  'w-full rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-brand';
+  'w-full rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-secondary';
 
 function Field({
   label,

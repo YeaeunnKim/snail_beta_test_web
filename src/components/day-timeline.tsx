@@ -119,8 +119,8 @@ export function DayTimeline({
               </div>
               <div className="relative h-[62px] flex-1" style={{ background: grid }}>
                 {showNow && (
-                  <div className="absolute inset-y-0 z-[2] w-0.5 bg-brand/70" style={{ left: `${nowPct}%` }}>
-                    <span className="absolute -left-[3px] -top-0.5 h-2 w-2 rounded-full bg-brand" />
+                  <div className="absolute inset-y-0 z-[2] w-0.5 bg-secondary/70" style={{ left: `${nowPct}%` }}>
+                    <span className="absolute -left-[3px] -top-0.5 h-2 w-2 rounded-full bg-secondary" />
                   </div>
                 )}
                 {jobs.map((r) => (
@@ -244,12 +244,12 @@ export function TodayTimeline() {
           <button
             onClick={() => setHidden(new Set())}
             className={`inline-flex items-center gap-1.5 rounded-full border border-dashed px-3 py-1.5 text-[12.5px] font-semibold ${
-              hidden.size === 0 ? 'border-brand text-neutral-800' : 'border-neutral-300 bg-neutral-50 text-neutral-400'
+              hidden.size === 0 ? 'border-secondary text-neutral-800' : 'border-neutral-300 bg-neutral-50 text-neutral-400'
             }`}
           >
             <span
               className="h-2.5 w-2.5 rounded-full"
-              style={{ background: hidden.size === 0 ? 'var(--color-brand, #c97f7f)' : '#ccc' }}
+              style={{ background: hidden.size === 0 ? 'var(--color-secondary, #8b7565)' : '#ccc' }}
             />
             전체
           </button>
@@ -272,7 +272,7 @@ export function TodayTimeline() {
         </div>
       )}
 
-      <div className="overflow-hidden rounded-xl border border-line bg-white">
+      <div className="overflow-hidden rounded-xl border border-primary-10 bg-white">
         {loading ? (
           <p className="py-10 text-center text-sm text-neutral-400">불러오는 중…</p>
         ) : designers.length === 0 ? (
@@ -329,7 +329,7 @@ export function DesignerDayTimeline({ reservation: r }: { reservation: Reservati
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-line bg-white">
+    <div className="overflow-hidden rounded-xl border border-primary-10 bg-white">
       <DayTimeline
         designers={rowDesigners}
         reservations={reservations}

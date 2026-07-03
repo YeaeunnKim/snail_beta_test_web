@@ -95,7 +95,7 @@ export function ReservationDesignBlock({ reservation }: { reservation: Reservati
                   src={img.original_url}
                   alt=""
                   className={`h-20 w-20 rounded-xl border object-cover ${
-                    img.is_thumbnail ? 'border-brand' : 'border-neutral-200'
+                    img.is_thumbnail ? 'border-secondary' : 'border-neutral-200'
                   }`}
                 />
               ))}
@@ -120,9 +120,9 @@ export function InquiryThread({ reservation }: { reservation: Reservation }) {
         </div>
       )}
       {reply && (
-        <div className="max-w-[85%] self-end rounded-xl rounded-tr-sm bg-brand/10 px-3 py-2 text-[13px] leading-relaxed text-[#a33566]">
+        <div className="max-w-[85%] self-end rounded-xl rounded-tr-sm bg-secondary/10 px-3 py-2 text-[13px] leading-relaxed text-[#a33566]">
           {reply}
-          <div className="mt-1 text-right text-[10.5px] text-brand/70">사장님 답변</div>
+          <div className="mt-1 text-right text-[10.5px] text-secondary/70">사장님 답변</div>
         </div>
       )}
     </div>

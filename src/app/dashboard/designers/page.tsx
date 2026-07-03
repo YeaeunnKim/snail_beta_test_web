@@ -110,7 +110,7 @@ export default function DesignersPage() {
                 onClick={() => setSelectedId(d.id)}
                 className={`rounded-full border px-4 py-1.5 text-sm ${
                   selectedId === d.id
-                    ? 'border-brand bg-brand text-white'
+                    ? 'border-secondary bg-secondary text-white'
                     : 'border-neutral-300 text-neutral-600'
                 }`}
               >
@@ -154,12 +154,12 @@ function QuickAddDesigner({ onAdded }: { onAdded: () => void }) {
         value={name}
         onChange={(e) => setName(e.target.value)}
         placeholder="디자이너 이름 추가"
-        className="w-48 rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-brand"
+        className="w-48 rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-secondary"
       />
       <button
         onClick={() => name.trim() && mutation.mutate(name.trim())}
         disabled={mutation.isPending || !name.trim()}
-        className="rounded-md border border-brand px-3 py-2 text-sm font-medium text-brand disabled:opacity-50"
+        className="rounded-md border border-secondary px-3 py-2 text-sm font-medium text-secondary disabled:opacity-50"
       >
         추가
       </button>
@@ -269,7 +269,7 @@ function ScheduleEditor({
       <button
         type="submit"
         disabled={isSubmitting}
-        className="rounded-md bg-brand px-5 py-2 text-sm font-semibold text-white disabled:opacity-50"
+        className="rounded-md bg-secondary px-5 py-2 text-sm font-semibold text-white disabled:opacity-50"
       >
         {isSubmitting ? '저장 중…' : '스케줄 저장'}
       </button>
@@ -337,7 +337,7 @@ function DayBlocks({ entry }: { entry: ScheduleForm['entries'][number] }) {
   return (
     <>
       <div
-        className="absolute inset-x-0.5 rounded bg-brand/70"
+        className="absolute inset-x-0.5 rounded bg-secondary/70"
         style={{ top: `${workTop}%`, height: `${workH}%` }}
       />
       {hasBreak && (
@@ -420,7 +420,7 @@ function ActiveNumber({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-brand"
+        className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-secondary"
       />
     </div>
   );
@@ -441,4 +441,4 @@ function Disabled({ label, placeholder }: { label: string; placeholder: string }
 }
 
 const timeCls =
-  'rounded-md border border-neutral-300 px-2 py-1 text-sm outline-none focus:border-brand disabled:bg-neutral-100';
+  'rounded-md border border-neutral-300 px-2 py-1 text-sm outline-none focus:border-secondary disabled:bg-neutral-100';

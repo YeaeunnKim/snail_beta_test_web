@@ -69,12 +69,12 @@ export default function DashboardHome() {
 
       {/* 승인됐지만 아직 샵이 없으면 온보딩으로 유도 */}
       {isApproved && !shopLoading && shop === null && (
-        <div className="rounded-lg border border-brand/40 bg-brand/5 p-4 text-sm">
+        <div className="rounded-lg border border-secondary/40 bg-secondary/5 p-4 text-sm">
           <p className="font-semibold text-neutral-800">아직 등록된 샵이 없습니다.</p>
           <p className="mt-1 text-neutral-600">샵 정보를 등록하면 예약을 받을 수 있어요.</p>
           <Link
             href="/onboarding"
-            className="mt-3 inline-block rounded-lg bg-brand px-4 py-2 text-xs font-semibold text-white"
+            className="mt-3 inline-block rounded-lg bg-secondary px-4 py-2 text-xs font-semibold text-white"
           >
             샵 등록 시작하기
           </Link>
@@ -141,7 +141,7 @@ export default function DashboardHome() {
           </section>
 
           {/* 처리 대기 요청 */}
-          <section className="rounded-xl border border-line bg-white p-5">
+          <section className="rounded-xl border border-primary-10 bg-white p-5">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-base font-bold">처리 대기 요청</h2>
               <Link
@@ -154,7 +154,7 @@ export default function DashboardHome() {
             {summaryLoading ? (
               <p className="text-sm text-neutral-400">불러오는 중…</p>
             ) : summary && summary.pendingItems.length > 0 ? (
-              <ul className="divide-y divide-line">
+              <ul className="divide-y divide-primary-10">
                 {summary.pendingItems.slice(0, 6).map((r) => (
                   <PendingRow key={r.id} r={r} />
                 ))}
@@ -166,7 +166,7 @@ export default function DashboardHome() {
 
           {/* 정산 요약 */}
           {summary && (
-            <div className="flex flex-wrap gap-x-10 gap-y-4 rounded-xl border border-line bg-white p-5">
+            <div className="flex flex-wrap gap-x-10 gap-y-4 rounded-xl border border-primary-10 bg-white p-5">
               <Settle k="정산 대기" v={won(summary.payWaitSum)} color={DOT.rose} />
               <Settle k="이번 달 정산 완료" v={won(summary.monthSettledSum)} color={DOT.sage} />
               <Settle
@@ -207,7 +207,7 @@ function PendingRow({ r }: { r: Reservation }) {
             {date} {formatTime(r.start_at)} · {r.design?.title ?? '시술'} · {won(r.total_price)}
           </div>
           {r.user_request && (
-            <div className="mt-1.5 inline-block max-w-full rounded-lg bg-brand-soft/40 px-2 py-1 text-xs text-[#a86a6a]">
+            <div className="mt-1.5 inline-block max-w-full rounded-lg bg-secondary-50/40 px-2 py-1 text-xs text-[#a86a6a]">
               “{r.user_request}”
             </div>
           )}
@@ -243,7 +243,7 @@ function StatCard({
   loading?: boolean;
 }) {
   const inner = (
-    <div className="h-full rounded-xl border border-line bg-white p-4 transition group-hover:border-brand group-hover:-translate-y-0.5">
+    <div className="h-full rounded-xl border border-primary-10 bg-white p-4 transition group-hover:border-secondary group-hover:-translate-y-0.5">
       <div className="flex items-center gap-1.5 text-xs text-neutral-500">
         <span className="h-2 w-2 rounded-full" style={{ background: dot }} />
         {label}

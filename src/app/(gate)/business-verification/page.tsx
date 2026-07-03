@@ -163,7 +163,7 @@ export default function BusinessVerificationPage() {
             type="file"
             accept="image/*,application/pdf"
             onChange={(e) => onUpload(e.target.files?.[0])}
-            className="block w-full text-sm text-neutral-600 file:mr-3 file:rounded-md file:border-0 file:bg-brand file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-white"
+            className="block w-full text-sm text-neutral-600 file:mr-3 file:rounded-md file:border-0 file:bg-secondary file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-white"
           />
           {doc && (
             <p className="mt-1 text-xs">
@@ -181,7 +181,7 @@ export default function BusinessVerificationPage() {
         <button
           type="submit"
           disabled={isSubmitting || doc?.status === 'uploading'}
-          className="w-full rounded-md bg-brand py-2 text-sm font-semibold text-white disabled:opacity-50"
+          className="w-full rounded-md bg-secondary py-2 text-sm font-semibold text-white disabled:opacity-50"
         >
           {isSubmitting ? '제출 중…' : status === 'rejected' ? '재제출' : '인증 제출'}
         </button>
@@ -191,4 +191,4 @@ export default function BusinessVerificationPage() {
 }
 
 const inputCls =
-  'w-full rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-brand';
+  'w-full rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-secondary';

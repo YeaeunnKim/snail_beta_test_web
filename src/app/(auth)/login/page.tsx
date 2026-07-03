@@ -81,7 +81,7 @@ function LoginForm() {
           id="email"
           type="email"
           autoComplete="email"
-          className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-brand"
+          className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-secondary"
           {...register('email')}
         />
         {errors.email && <p className="mt-1 text-xs text-red-600">{errors.email.message}</p>}
@@ -95,7 +95,7 @@ function LoginForm() {
           id="password"
           type="password"
           autoComplete="current-password"
-          className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-brand"
+          className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-secondary"
           {...register('password')}
         />
         {errors.password && <p className="mt-1 text-xs text-red-600">{errors.password.message}</p>}
@@ -108,7 +108,7 @@ function LoginForm() {
       <button
         type="submit"
         disabled={isSubmitting}
-        className="w-full rounded-md bg-brand py-2 text-sm font-semibold text-white disabled:opacity-50"
+        className="w-full rounded-md bg-secondary py-2 text-sm font-semibold text-white disabled:opacity-50"
       >
         {isSubmitting ? '로그인 중…' : '로그인'}
       </button>

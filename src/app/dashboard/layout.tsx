@@ -49,7 +49,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="flex min-h-screen">
-      <aside className="w-56 shrink-0 border-r border-line bg-surface p-4">
+      <aside className="w-56 shrink-0 border-r border-primary-10 bg-surface p-4">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/snail-logo.png" alt={config.appName} className="mb-6 h-7 w-auto" />
         <nav className="space-y-1">
@@ -63,7 +63,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 key={item.href}
                 href={item.href}
                 className={`block rounded-md px-3 py-2 text-sm ${
-                  active ? 'bg-brand text-white' : 'text-neutral-700 hover:bg-neutral-200'
+                  active ? 'bg-secondary text-white' : 'text-neutral-700 hover:bg-neutral-200'
                 }`}
               >
                 {item.label}
@@ -74,7 +74,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </aside>
 
       <div className="flex flex-1 flex-col">
-        <header className="flex items-center justify-between border-b border-line px-6 py-3">
+        <header className="flex items-center justify-between border-b border-primary-10 px-6 py-3">
           <span className="text-sm text-neutral-600">{owner?.representative_name ?? owner?.email}</span>
           <button
             onClick={() => {

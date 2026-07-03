@@ -137,8 +137,8 @@ function ReviewCard({ review: r }: { review: Review }) {
 
       {/* 답글 영역 */}
       {r.reply ? (
-        <div className="mt-3 rounded-lg bg-brand/5 px-3 py-2.5">
-          <div className="text-xs font-bold text-brand">사장님 답글</div>
+        <div className="mt-3 rounded-lg bg-secondary/5 px-3 py-2.5">
+          <div className="text-xs font-bold text-secondary">사장님 답글</div>
           <p className="mt-1 whitespace-pre-wrap text-[13px] leading-relaxed text-neutral-700">
             {r.reply.body}
           </p>
@@ -150,14 +150,14 @@ function ReviewCard({ review: r }: { review: Review }) {
             value={body}
             onChange={(e) => setBody(e.target.value)}
             placeholder="고객 리뷰에 답글을 남겨보세요."
-            className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-brand"
+            className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-secondary"
           />
           <div className="mt-2 flex items-center justify-between">
             {error ? <span className="text-xs text-red-600">{error}</span> : <span />}
             <button
               disabled={replyM.isPending || !body.trim()}
               onClick={() => replyM.mutate()}
-              className="rounded-lg bg-brand px-4 py-1.5 text-xs font-bold text-white disabled:opacity-50"
+              className="rounded-lg bg-secondary px-4 py-1.5 text-xs font-bold text-white disabled:opacity-50"
             >
               답글 등록
             </button>
@@ -193,7 +193,7 @@ function FilterChip({
     <button
       onClick={onClick}
       className={`rounded-full border px-3 py-1.5 text-sm ${
-        active ? 'border-brand bg-brand text-white' : 'border-neutral-300 text-neutral-600'
+        active ? 'border-secondary bg-secondary text-white' : 'border-neutral-300 text-neutral-600'
       }`}
     >
       {children}

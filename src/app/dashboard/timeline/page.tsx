@@ -116,7 +116,7 @@ export default function TimelinePage() {
       {/* 상단 바 */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <div className="text-xl font-bold leading-tight text-brand">{shop?.name ?? '내 샵'}</div>
+          <div className="text-xl font-bold leading-tight text-secondary">{shop?.name ?? '내 샵'}</div>
           <div className="text-[11px] font-medium text-neutral-400">디자이너 스케줄</div>
         </div>
 
@@ -228,10 +228,10 @@ function Filters({
       <button
         onClick={onAll}
         className={`inline-flex items-center gap-1.5 rounded-full border border-dashed px-3 py-1.5 text-[12.5px] font-semibold ${
-          allOn ? 'border-brand text-neutral-800' : 'border-neutral-300 bg-neutral-50 text-neutral-400'
+          allOn ? 'border-secondary text-neutral-800' : 'border-neutral-300 bg-neutral-50 text-neutral-400'
         }`}
       >
-        <span className="h-2.5 w-2.5 rounded-full" style={{ background: allOn ? 'var(--color-brand, #c97f7f)' : '#ccc' }} />
+        <span className="h-2.5 w-2.5 rounded-full" style={{ background: allOn ? 'var(--color-secondary, #8b7565)' : '#ccc' }} />
         전체
       </button>
       {designers.map((d) => {
@@ -447,7 +447,7 @@ function MonthView({
                   }`}
                 >
                   {isToday ? (
-                    <span className="inline-grid h-[22px] min-w-[22px] place-items-center rounded-full bg-brand px-1.5 text-[12px] font-bold text-white">
+                    <span className="inline-grid h-[22px] min-w-[22px] place-items-center rounded-full bg-secondary px-1.5 text-[12px] font-bold text-white">
                       {dayOfMonth(cell.date)}
                     </span>
                   ) : (
@@ -600,7 +600,7 @@ function DetailSheet({
                   value={reply}
                   onChange={(e) => setReply(e.target.value)}
                   placeholder="요청에 대한 답변을 적어주세요."
-                  className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-brand"
+                  className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-secondary"
                 />
               </div>
             )}
@@ -612,7 +612,7 @@ function DetailSheet({
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
                   placeholder={r.status === 'pending' ? '거절 사유를 입력해주세요.' : '취소 사유를 입력해주세요.'}
-                  className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-brand"
+                  className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-secondary"
                 />
                 <div className="flex gap-2">
                   <button
@@ -640,7 +640,7 @@ function DetailSheet({
                     <button
                       disabled={busy}
                       onClick={doConfirm}
-                      className="flex-1 rounded-xl bg-brand py-2.5 text-[13.5px] font-bold text-white disabled:opacity-50"
+                      className="flex-1 rounded-xl bg-secondary py-2.5 text-[13.5px] font-bold text-white disabled:opacity-50"
                     >
                       {r.status === 'pending' && reply.trim() ? '답변과 함께 확정' : '예약 확정'}
                     </button>

@@ -99,7 +99,7 @@ export default function DesignsPage() {
         </div>
         <button
           onClick={() => setShowCreate((v) => !v)}
-          className="rounded-md bg-brand px-4 py-2 text-sm font-semibold text-white"
+          className="rounded-md bg-secondary px-4 py-2 text-sm font-semibold text-white"
         >
           {showCreate ? '닫기' : '+ 새 디자인'}
         </button>
@@ -176,7 +176,7 @@ function FolderCard({
   return (
     <button
       onClick={onClick}
-      className="flex flex-col rounded-xl border border-neutral-200 bg-white p-4 text-left transition hover:border-brand hover:shadow-sm"
+      className="flex flex-col rounded-xl border border-neutral-200 bg-white p-4 text-left transition hover:border-secondary hover:shadow-sm"
     >
       <span className="text-2xl">{muted ? '🗂️' : '📁'}</span>
       <span className="mt-2 truncate font-semibold">{name}</span>
@@ -206,7 +206,7 @@ function NewFolderCard() {
     return (
       <button
         onClick={() => setEditing(true)}
-        className="flex min-h-[104px] flex-col items-center justify-center rounded-xl border border-dashed border-neutral-300 text-sm font-medium text-neutral-400 hover:border-brand hover:text-brand"
+        className="flex min-h-[104px] flex-col items-center justify-center rounded-xl border border-dashed border-neutral-300 text-sm font-medium text-neutral-400 hover:border-secondary hover:text-secondary"
       >
         <span className="text-xl leading-none">+</span>
         <span className="mt-1">새 폴더</span>
@@ -214,7 +214,7 @@ function NewFolderCard() {
     );
   }
   return (
-    <div className="flex flex-col justify-center rounded-xl border border-brand/40 bg-white p-3">
+    <div className="flex flex-col justify-center rounded-xl border border-secondary/40 bg-white p-3">
       <input
         autoFocus
         value={name}
@@ -225,13 +225,13 @@ function NewFolderCard() {
         }}
         placeholder="폴더 이름"
         maxLength={60}
-        className="w-full rounded-md border border-neutral-300 px-2.5 py-1.5 text-sm outline-none focus:border-brand"
+        className="w-full rounded-md border border-neutral-300 px-2.5 py-1.5 text-sm outline-none focus:border-secondary"
       />
       <div className="mt-2 flex gap-1.5">
         <button
           onClick={() => name.trim() && create.mutate(name.trim())}
           disabled={create.isPending || !name.trim()}
-          className="flex-1 rounded-md bg-brand py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+          className="flex-1 rounded-md bg-secondary py-1.5 text-xs font-semibold text-white disabled:opacity-50"
         >
           만들기
         </button>
@@ -492,7 +492,7 @@ function CreateForm({ designers, onCreated }: { designers: Designer[]; onCreated
         {designers.length === 0 ? (
           <p className="text-xs text-neutral-500">
             등록된 디자이너가 없습니다.{' '}
-            <Link href="/dashboard/designers" className="text-brand underline">
+            <Link href="/dashboard/designers" className="text-secondary underline">
               디자이너
             </Link>{' '}
             탭에서 먼저 추가하세요.
@@ -505,7 +505,7 @@ function CreateForm({ designers, onCreated }: { designers: Designer[]; onCreated
                 <div
                   key={d.id}
                   className={`flex flex-wrap items-center gap-3 rounded-md border p-2 ${
-                    checked ? 'border-brand/40 bg-brand/5' : 'border-neutral-200'
+                    checked ? 'border-secondary/40 bg-secondary/5' : 'border-neutral-200'
                   }`}
                 >
                   <label className="flex items-center gap-2 text-sm font-medium">
@@ -521,7 +521,7 @@ function CreateForm({ designers, onCreated }: { designers: Designer[]; onCreated
                         suffix="분"
                       />
                       {picked[d.id] !== baseDuration && (
-                        <span className="text-[11px] text-brand">조정됨</span>
+                        <span className="text-[11px] text-secondary">조정됨</span>
                       )}
                     </div>
                   )}
@@ -545,7 +545,7 @@ function CreateForm({ designers, onCreated }: { designers: Designer[]; onCreated
       <button
         type="submit"
         disabled={isSubmitting || uploading}
-        className="rounded-md bg-brand px-5 py-2 text-sm font-semibold text-white disabled:opacity-50"
+        className="rounded-md bg-secondary px-5 py-2 text-sm font-semibold text-white disabled:opacity-50"
       >
         {isSubmitting ? '등록 중…' : uploading ? '사진 업로드 중…' : '디자인 등록'}
       </button>
@@ -598,7 +598,7 @@ function FolderField({ value, onChange }: { value: string; onChange: (v: string)
             type="button"
             onClick={() => name.trim() && create.mutate(name.trim())}
             disabled={create.isPending || !name.trim()}
-            className="shrink-0 rounded-md border border-brand px-3 py-2 text-sm font-medium text-brand disabled:opacity-50"
+            className="shrink-0 rounded-md border border-secondary px-3 py-2 text-sm font-medium text-secondary disabled:opacity-50"
           >
             만들기
           </button>
@@ -661,19 +661,19 @@ function TagInput({ tags, onChange }: { tags: string[]; onChange: (next: string[
   const remove = (t: string) => onChange(tags.filter((x) => x !== t));
 
   return (
-    <div className="rounded-md border border-neutral-300 p-2 focus-within:border-brand">
+    <div className="rounded-md border border-neutral-300 p-2 focus-within:border-secondary">
       <div className="flex flex-wrap items-center gap-1.5">
         {tags.map((t) => (
           <span
             key={t}
-            className="inline-flex items-center gap-1 rounded-full bg-brand/10 py-1 pl-2.5 pr-1 text-xs font-medium text-brand"
+            className="inline-flex items-center gap-1 rounded-full bg-secondary/10 py-1 pl-2.5 pr-1 text-xs font-medium text-secondary"
           >
             #{t}
             <button
               type="button"
               onClick={() => remove(t)}
               aria-label={`${t} 삭제`}
-              className="grid h-4 w-4 place-items-center rounded-full text-brand/70 hover:bg-brand/20"
+              className="grid h-4 w-4 place-items-center rounded-full text-secondary/70 hover:bg-secondary/20"
             >
               ×
             </button>
@@ -775,7 +775,7 @@ function PhotoTile({ photo: p, onRemove, badge }: { photo: PhotoItem; onRemove: 
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={p.previewUrl} alt={p.name} className="h-full w-full object-cover" />
       {badge && (
-        <span className="absolute left-0 top-0 bg-brand px-1.5 py-0.5 text-[10px] font-semibold text-white">
+        <span className="absolute left-0 top-0 bg-secondary px-1.5 py-0.5 text-[10px] font-semibold text-white">
           {badge}
         </span>
       )}
@@ -811,7 +811,7 @@ function UploadTile({
   onFiles: (files: FileList | null) => void;
 }) {
   return (
-    <label className="flex h-24 w-24 cursor-pointer flex-col items-center justify-center rounded-md border border-dashed border-neutral-300 text-neutral-400 hover:border-brand">
+    <label className="flex h-24 w-24 cursor-pointer flex-col items-center justify-center rounded-md border border-dashed border-neutral-300 text-neutral-400 hover:border-secondary">
       <span className="text-2xl leading-none">+</span>
       <span className="mt-1 text-[11px]">{label}</span>
       <input
@@ -934,7 +934,7 @@ function DesignCard({ design }: { design: Design }) {
                   src={img.original_url}
                   alt=""
                   className={`h-20 w-20 rounded-xl border object-cover ${
-                    img.is_thumbnail ? 'border-brand' : 'border-neutral-200'
+                    img.is_thumbnail ? 'border-secondary' : 'border-neutral-200'
                   }`}
                 />
               ))}
@@ -946,7 +946,7 @@ function DesignCard({ design }: { design: Design }) {
       {(d.owner_tags.length > 0 || d.ai_tags.length > 0) && (
         <div className="mt-2 flex flex-wrap gap-1">
           {d.owner_tags.map((t) => (
-            <span key={`o-${t}`} className="rounded bg-brand/10 px-2 py-0.5 text-[11px] text-brand">
+            <span key={`o-${t}`} className="rounded bg-secondary/10 px-2 py-0.5 text-[11px] text-secondary">
               #{t}
             </span>
           ))}
@@ -971,7 +971,7 @@ function DesignCard({ design }: { design: Design }) {
             <button
               onClick={() => reanalyze.mutate()}
               disabled={reanalyze.isPending}
-              className="rounded-md bg-brand px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+              className="rounded-md bg-secondary px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
             >
               {reanalyze.isPending ? '요청 중…' : '재분석'}
             </button>
@@ -1050,11 +1050,11 @@ function DesignEditForm({ design: d, onClose }: { design: Design; onClose: () =>
   });
 
   const inputCls =
-    'w-full rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-brand';
+    'w-full rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-secondary';
   const labelCls = 'mb-1 block text-xs font-semibold text-neutral-500';
 
   return (
-    <div className="mt-3 space-y-3 rounded-lg border border-brand/30 bg-brand/5 p-3">
+    <div className="mt-3 space-y-3 rounded-lg border border-secondary/30 bg-secondary/5 p-3">
       <div>
         <label className={labelCls}>제목 (관리용 · 고객 미노출)</label>
         <input value={title} onChange={(e) => setTitle(e.target.value)} className={inputCls} />
@@ -1097,7 +1097,7 @@ function DesignEditForm({ design: d, onClose }: { design: Design; onClose: () =>
         <button
           disabled={!title.trim() || save.isPending}
           onClick={() => save.mutate()}
-          className="rounded-md bg-brand px-4 py-2 text-xs font-bold text-white disabled:opacity-50"
+          className="rounded-md bg-secondary px-4 py-2 text-xs font-bold text-white disabled:opacity-50"
         >
           {save.isPending ? '저장 중…' : '저장'}
         </button>
@@ -1113,7 +1113,7 @@ function DesignEditForm({ design: d, onClose }: { design: Design; onClose: () =>
 }
 
 const inputCls =
-  'w-full rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-brand';
+  'w-full rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-secondary';
 
 function Field({
   label,

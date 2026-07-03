@@ -238,7 +238,7 @@ export default function OnboardingPage() {
   return (
     <main className="min-h-screen bg-neutral-50 px-4 py-10">
       <div className="mx-auto w-full max-w-xl">
-        <h1 className="text-center text-xl font-bold text-brand">샵 등록</h1>
+        <h1 className="text-center text-xl font-bold text-secondary">샵 등록</h1>
         <p className="mt-1 text-center text-sm text-neutral-500">
           {step + 1} / {STEP_FIELDS.length} · {STEP_TITLES[step]}
         </p>
@@ -248,7 +248,7 @@ export default function OnboardingPage() {
           {STEP_TITLES.map((t, i) => (
             <div
               key={t}
-              className={`h-1.5 flex-1 rounded-full ${i <= step ? 'bg-brand' : 'bg-neutral-200'}`}
+              className={`h-1.5 flex-1 rounded-full ${i <= step ? 'bg-secondary' : 'bg-neutral-200'}`}
             />
           ))}
         </div>
@@ -331,7 +331,7 @@ export default function OnboardingPage() {
                     <button
                       type="button"
                       onClick={() => designerArray.append({ name: '' })}
-                      className="text-sm font-medium text-brand"
+                      className="text-sm font-medium text-secondary"
                     >
                       + 디자이너 추가
                     </button>
@@ -444,7 +444,7 @@ export default function OnboardingPage() {
               <button
                 type="button"
                 onClick={next}
-                className="rounded-md bg-brand px-5 py-2 text-sm font-semibold text-white"
+                className="rounded-md bg-secondary px-5 py-2 text-sm font-semibold text-white"
               >
                 다음
               </button>
@@ -452,7 +452,7 @@ export default function OnboardingPage() {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="rounded-md bg-brand px-5 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                className="rounded-md bg-secondary px-5 py-2 text-sm font-semibold text-white disabled:opacity-50"
               >
                 {isSubmitting ? '저장 중…' : '샵 등록 완료'}
               </button>
@@ -465,7 +465,7 @@ export default function OnboardingPage() {
 }
 
 const inputCls =
-  'w-full rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-brand';
+  'w-full rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-secondary';
 
 function Field({
   label,
@@ -504,7 +504,7 @@ function Toggle({
       type="button"
       onClick={onClick}
       className={`flex-1 rounded-md border px-4 py-2 text-sm font-medium ${
-        active ? 'border-brand bg-brand text-white' : 'border-neutral-300 text-neutral-600'
+        active ? 'border-secondary bg-secondary text-white' : 'border-neutral-300 text-neutral-600'
       }`}
     >
       {children}

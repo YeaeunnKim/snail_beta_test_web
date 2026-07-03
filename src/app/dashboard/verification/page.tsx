@@ -70,14 +70,14 @@ export default function VerificationStatusPage() {
         {canSubmit && (
           <Link
             href="/business-verification"
-            className="mt-4 inline-block rounded-lg bg-brand px-4 py-2 text-sm font-bold text-white"
+            className="mt-4 inline-block rounded-lg bg-secondary px-4 py-2 text-sm font-bold text-white"
           >
             {status === 'rejected' ? '다시 제출하기' : '인증 제출하기'}
           </Link>
         )}
       </div>
 
-      <div className="rounded-xl border border-line bg-white p-5 text-sm text-neutral-600">
+      <div className="rounded-xl border border-primary-10 bg-white p-5 text-sm text-neutral-600">
         <h3 className="mb-2 text-sm font-bold text-neutral-800">안내</h3>
         <ul className="list-disc space-y-1 pl-5">
           <li>사업자등록증과 사업자등록번호로 인증합니다.</li>

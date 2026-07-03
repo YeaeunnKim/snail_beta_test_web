@@ -13,19 +13,6 @@
   --color-primary-10: #dddddd;
   --color-secondary: #8b7565; /* earth tone — 로고 taupe 브라운과 동기화 */
   --color-secondary-50: #bbafa8;
-  --color-text: #6f6f6f; /* 본문/라벨 기본 텍스트 */
-  --color-line: #e7e2dd; /* 구분선/입력 보더 (warm hairline) */
-  --color-disabled: #d9d9d9; /* 비활성 배경/플레이스홀더 */
-  --color-danger: #ff6b6b; /* 에러/하트 */
-
-  /*
-   * 브랜드 팔레트 (사장님 지정).
-   *   sage #929289 · mist #d0d1d3 · rose #e4a5a5 · white #fff · taupe #a89a8f · brown #8b7565
-   * brand = 로고 톤에 맞춘 dusty rose. 밝은 #e4a5a5는 흰 글씨 대비가 약해
-   * 버튼용으로는 한 톤 진한 값을 쓰고, 연한 강조는 brand/10 등 투명도로 표현한다.
-   */
-  --color-brand: #c97f7f; /* dusty rose (was #ff5a8a) */
-  --color-brand-soft: #e4a5a5; /* 팔레트 rose — 연한 강조/칩 배경용 */
   --color-surface: #f6f3f1; /* 따뜻한 오프화이트 배경 */
 }
 

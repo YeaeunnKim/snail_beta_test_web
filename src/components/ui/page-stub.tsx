@@ -15,7 +15,7 @@ export function PageStub({
 }) {
   return (
     <section className="rounded-lg border border-dashed border-neutral-300 bg-white p-6">
-      <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-brand">
+      <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-secondary">
         구현 예정 (프론트/디자인팀)
       </p>
       <h2 className="text-lg font-bold text-neutral-900">{title}</h2>

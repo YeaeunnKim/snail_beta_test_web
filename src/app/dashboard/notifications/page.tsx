@@ -132,7 +132,7 @@ export default function NotificationsPage() {
         <p className="mt-1 text-sm text-neutral-500">
           예약 요청 · 문의 · 리뷰가 들어오면 여기에 쌓여요.
           {unreadCount > 0 && (
-            <span className="ml-1 font-semibold text-brand">처리할 항목 {unreadCount}개</span>
+            <span className="ml-1 font-semibold text-secondary">처리할 항목 {unreadCount}개</span>
           )}
         </p>
       </div>
@@ -144,7 +144,7 @@ export default function NotificationsPage() {
             onClick={() => setFilter(f.key)}
             className={`rounded-full border px-3 py-1.5 text-sm ${
               filter === f.key
-                ? 'border-brand bg-brand text-white'
+                ? 'border-secondary bg-secondary text-white'
                 : 'border-neutral-300 text-neutral-600'
             }`}
           >
@@ -171,8 +171,8 @@ export default function NotificationsPage() {
               <li key={it.id}>
                 <Link
                   href={it.href}
-                  className={`flex items-start gap-3 rounded-xl border p-4 transition hover:border-brand ${
-                    it.unread ? 'border-line bg-brand-soft/10' : 'border-line bg-white'
+                  className={`flex items-start gap-3 rounded-xl border p-4 transition hover:border-secondary ${
+                    it.unread ? 'border-primary-10 bg-secondary-50/10' : 'border-primary-10 bg-white'
                   }`}
                 >
                   <span
@@ -190,7 +190,7 @@ export default function NotificationsPage() {
                         {meta.label}
                       </span>
                       <b className="truncate text-sm">{it.title}</b>
-                      {it.unread && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-brand" />}
+                      {it.unread && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-secondary" />}
                     </div>
                     <p className="mt-1 truncate text-xs text-neutral-500">{it.desc}</p>
                   </div>

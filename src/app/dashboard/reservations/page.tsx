@@ -141,13 +141,13 @@ function ReservationsConsole() {
                 setExpandedId(null);
               }}
               className={`flex items-center gap-1.5 whitespace-nowrap border-b-2 px-3.5 pb-3 pt-2.5 text-sm font-semibold ${
-                on ? 'border-brand text-neutral-900' : 'border-transparent text-neutral-400'
+                on ? 'border-secondary text-neutral-900' : 'border-transparent text-neutral-400'
               }`}
             >
               {t.label}
               <span
                 className={`rounded-full px-1.5 py-0.5 text-[11px] font-bold ${
-                  on ? 'bg-brand/15 text-brand' : need ? 'bg-brand/15 text-brand' : 'bg-neutral-100 text-neutral-500'
+                  on ? 'bg-secondary/15 text-secondary' : need ? 'bg-secondary/15 text-secondary' : 'bg-neutral-100 text-neutral-500'
                 }`}
               >
                 {counts[t.key]}
@@ -162,7 +162,7 @@ function ReservationsConsole() {
         <button
           onClick={() => setDay(todayLocalDate())}
           className={`rounded-full border px-3 py-1.5 text-sm font-semibold ${
-            day ? 'border-brand bg-brand text-white' : 'border-neutral-200 bg-white text-neutral-600'
+            day ? 'border-secondary bg-secondary text-white' : 'border-neutral-200 bg-white text-neutral-600'
           }`}
         >
           오늘
@@ -170,7 +170,7 @@ function ReservationsConsole() {
         <button
           onClick={() => setDay(null)}
           className={`rounded-full border px-3 py-1.5 text-sm font-semibold ${
-            day ? 'border-neutral-200 bg-white text-neutral-600' : 'border-brand bg-brand text-white'
+            day ? 'border-neutral-200 bg-white text-neutral-600' : 'border-secondary bg-secondary text-white'
           }`}
         >
           전체 기간
@@ -200,7 +200,7 @@ function ReservationsConsole() {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="고객명 검색"
-          className="h-9 min-w-[160px] flex-1 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:border-brand sm:flex-none"
+          className="h-9 min-w-[160px] flex-1 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:border-secondary sm:flex-none"
         />
       </div>
 
@@ -300,7 +300,7 @@ function Row({
         </div>
         <div className="min-w-0">
           <div className="truncate text-[13px] font-medium">{r.user?.nickname ?? '고객'}</div>
-          {r.user_request && <span className="text-[10px] font-bold text-brand">요청사항</span>}
+          {r.user_request && <span className="text-[10px] font-bold text-secondary">요청사항</span>}
         </div>
         <div className="flex items-center gap-1.5 text-[13px] font-medium">
           <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: color.border }} />
@@ -323,7 +323,7 @@ function Row({
               disabled={busy}
               onClick={() => run(a.fn)}
               className={`rounded-lg px-2.5 py-1.5 text-xs font-bold disabled:opacity-50 ${
-                a.cls === 'primary' ? 'bg-brand text-white' : 'bg-neutral-100 text-neutral-600'
+                a.cls === 'primary' ? 'bg-secondary text-white' : 'bg-neutral-100 text-neutral-600'
               }`}
             >
               {a.label}

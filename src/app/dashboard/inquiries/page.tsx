@@ -95,7 +95,7 @@ function InquiryCard({ inquiry: i }: { inquiry: ShopInquiry }) {
       <div className="flex items-center justify-between gap-2">
         <span
           className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-            answered ? 'bg-neutral-100 text-neutral-500' : 'bg-brand/10 text-brand'
+            answered ? 'bg-neutral-100 text-neutral-500' : 'bg-secondary/10 text-secondary'
           }`}
         >
           {answered ? '답변 완료' : '미답변'}
@@ -113,8 +113,8 @@ function InquiryCard({ inquiry: i }: { inquiry: ShopInquiry }) {
 
       {/* 답변 영역 */}
       {answered ? (
-        <div className="mt-2 rounded-xl rounded-tr-sm bg-brand/5 px-3 py-2.5">
-          <div className="text-xs font-bold text-brand">사장님 답변</div>
+        <div className="mt-2 rounded-xl rounded-tr-sm bg-secondary/5 px-3 py-2.5">
+          <div className="text-xs font-bold text-secondary">사장님 답변</div>
           <p className="mt-1 whitespace-pre-wrap text-[13px] leading-relaxed text-neutral-700">
             {i.owner_reply}
           </p>
@@ -126,14 +126,14 @@ function InquiryCard({ inquiry: i }: { inquiry: ShopInquiry }) {
             value={body}
             onChange={(e) => setBody(e.target.value)}
             placeholder="문의에 대한 답변을 적어주세요."
-            className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-brand"
+            className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-secondary"
           />
           <div className="mt-2 flex items-center justify-between">
             {error ? <span className="text-xs text-red-600">{error}</span> : <span />}
             <button
               disabled={replyM.isPending || !body.trim()}
               onClick={() => replyM.mutate()}
-              className="rounded-lg bg-brand px-4 py-1.5 text-xs font-bold text-white disabled:opacity-50"
+              className="rounded-lg bg-secondary px-4 py-1.5 text-xs font-bold text-white disabled:opacity-50"
             >
               답변 등록
             </button>
@@ -182,7 +182,7 @@ function FilterChip({
     <button
       onClick={onClick}
       className={`rounded-full border px-3 py-1.5 text-sm ${
-        active ? 'border-brand bg-brand text-white' : 'border-neutral-300 text-neutral-600'
+        active ? 'border-secondary bg-secondary text-white' : 'border-neutral-300 text-neutral-600'
       }`}
     >
       {children}

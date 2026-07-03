@@ -96,7 +96,7 @@ export default function PendingPage() {
       <button
         onClick={onCheck}
         disabled={checking}
-        className="w-full rounded-md bg-brand py-2 text-sm font-semibold text-white disabled:opacity-50"
+        className="w-full rounded-md bg-secondary py-2 text-sm font-semibold text-white disabled:opacity-50"
       >
         {checking ? '확인 중…' : '심사 상태 확인'}
       </button>

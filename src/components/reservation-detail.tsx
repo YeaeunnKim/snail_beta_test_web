@@ -88,7 +88,7 @@ export function ReservationDetail({
               <button
                 disabled={busy}
                 onClick={() => run(() => reservationsApi.confirmPayment(r.id))}
-                className="rounded-lg bg-brand px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50"
+                className="rounded-lg bg-secondary px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50"
               >
                 입금 완료 처리
               </button>
@@ -111,7 +111,7 @@ export function ReservationDetail({
             value={reply}
             onChange={(e) => setReply(e.target.value)}
             placeholder="요청에 대한 답변을 적어주세요."
-            className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-brand"
+            className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-secondary"
           />
         </div>
       )}
@@ -124,7 +124,7 @@ export function ReservationDetail({
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             placeholder={reasonMode === 'reject' ? '거절 사유를 입력해주세요.' : '취소 사유를 입력해주세요.'}
-            className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-brand"
+            className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-secondary"
           />
           <div className="flex gap-2">
             <button
@@ -225,7 +225,7 @@ function ActBtn({
 }) {
   const cls =
     kind === 'primary'
-      ? 'bg-brand text-white'
+      ? 'bg-secondary text-white'
       : kind === 'danger'
         ? 'bg-[#fdeaea] text-[#cf3b3b]'
         : 'bg-neutral-100 text-neutral-600';
