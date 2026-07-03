@@ -163,7 +163,7 @@ export default function BusinessVerificationPage() {
             type="file"
             accept="image/*,application/pdf"
             onChange={(e) => onUpload(e.target.files?.[0])}
-            className="block w-full text-body-sm text-neutral-600 file:mr-3 file:rounded-md file:border-0 file:bg-secondary file:px-3 file:py-1.5 file:text-body-sm file:font-medium file:text-white"
+            className="block w-full text-body-sm text-neutral-600 file:mr-3 file:rounded-md file:border-0 file:bg-secondary file:px-3 file:py-1.5 file:text-body-sm file:font-semibold file:text-white"
           />
           {doc && (
             <p className="mt-1 text-caption">

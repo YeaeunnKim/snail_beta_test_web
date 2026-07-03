@@ -22,7 +22,7 @@ export function PageStub({
       {description && <p className="mt-2 text-body-sm text-neutral-600">{description}</p>}
       {apis && apis.length > 0 && (
         <div className="mt-4">
-          <p className="text-caption font-medium text-neutral-500">연결할 서비스 (src/services)</p>
+          <p className="text-caption text-neutral-500">연결할 서비스 (src/services)</p>
           <ul className="mt-1 list-inside list-disc text-body-sm text-neutral-700">
             {apis.map((api) => (
               <li key={api}>

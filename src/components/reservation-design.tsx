@@ -50,7 +50,7 @@ export function ReservationDesignBlock({ reservation }: { reservation: Reservati
           ) : (
             <span className="block h-full w-full bg-neutral-100" />
           )}
-          <span className="absolute inset-x-0 bottom-0 bg-black/40 py-0.5 text-center text-caption font-medium text-white">
+          <span className="absolute inset-x-0 bottom-0 bg-black/40 py-0.5 text-center text-caption font-semibold text-white">
             {open ? '접기' : '사진'}
           </span>
         </button>
@@ -67,7 +67,7 @@ export function ReservationDesignBlock({ reservation }: { reservation: Reservati
                 return (
                   <span
                     key={o.id}
-                    className="rounded-md px-1.5 py-0.5 text-caption font-bold"
+                    className="rounded-md px-1.5 py-0.5 text-caption font-semibold"
                     style={{ background: meta.bg, color: meta.tx }}
                     title={o.name}
                   >

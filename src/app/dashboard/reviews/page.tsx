@@ -138,7 +138,7 @@ function ReviewCard({ review: r }: { review: Review }) {
       {/* 답글 영역 */}
       {r.reply ? (
         <div className="mt-3 rounded-lg bg-secondary/5 px-3 py-2.5">
-          <div className="text-caption font-bold text-secondary">사장님 답글</div>
+          <div className="text-caption font-semibold text-secondary">사장님 답글</div>
           <p className="mt-1 whitespace-pre-wrap text-body-sm leading-relaxed text-neutral-700">
             {r.reply.body}
           </p>
@@ -157,7 +157,7 @@ function ReviewCard({ review: r }: { review: Review }) {
             <button
               disabled={replyM.isPending || !body.trim()}
               onClick={() => replyM.mutate()}
-              className="rounded-lg bg-secondary px-4 py-1.5 text-caption font-bold text-white disabled:opacity-50"
+              className="rounded-lg bg-secondary px-4 py-1.5 text-caption font-semibold text-white disabled:opacity-50"
             >
               답글 등록
             </button>
@@ -192,7 +192,7 @@ function FilterChip({
   return (
     <button
       onClick={onClick}
-      className={`rounded-full border px-3 py-1.5 text-body-sm ${
+      className={`rounded-full border px-3 py-1.5 text-body-sm font-semibold ${
         active ? 'border-secondary bg-secondary text-white' : 'border-neutral-300 text-neutral-600'
       }`}
     >

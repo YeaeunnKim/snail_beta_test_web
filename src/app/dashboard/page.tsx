@@ -198,7 +198,7 @@ function PendingRow({ r }: { r: Reservation }) {
       >
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
-            <b className="text-body-sm">{r.user?.nickname ?? '고객'}</b>
+            <b className="text-body-sm font-semibold">{r.user?.nickname ?? '고객'}</b>
             {r.designer?.name && (
               <span className="text-caption text-neutral-400">· {r.designer.name}</span>
             )}
@@ -250,7 +250,7 @@ function StatCard({
       </div>
       <div className="mt-2 text-3xl font-extrabold leading-none">
         {loading ? '…' : value}
-        <span className="ml-1 align-baseline text-body-sm font-semibold text-neutral-400">건</span>
+        <span className="ml-1 align-baseline text-body-sm text-neutral-400">건</span>
       </div>
       {sub && <div className="mt-2 text-caption text-neutral-400">{sub}</div>}
     </div>

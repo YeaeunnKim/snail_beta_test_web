@@ -101,7 +101,7 @@ export default function PendingPage() {
         {checking ? '확인 중…' : '심사 상태 확인'}
       </button>
 
-      <button onClick={logout} className="text-caption text-neutral-500 underline">
+      <button onClick={logout} className="text-caption font-semibold text-neutral-500 underline">
         로그아웃
       </button>
     </div>

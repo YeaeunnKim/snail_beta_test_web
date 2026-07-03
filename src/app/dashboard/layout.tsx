@@ -62,7 +62,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <Link
                 key={item.href}
                 href={item.href}
-                className={`block rounded-md px-3 py-2 text-body-sm ${
+                className={`block rounded-md px-3 py-2 text-body-sm font-semibold ${
                   active ? 'bg-secondary text-white' : 'text-neutral-700 hover:bg-neutral-200'
                 }`}
               >
@@ -81,7 +81,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               logout();
               router.replace('/login');
             }}
-            className="text-caption text-neutral-500 underline"
+            className="text-caption font-semibold text-neutral-500 underline"
           >
             로그아웃
           </button>

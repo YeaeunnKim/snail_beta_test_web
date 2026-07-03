@@ -187,7 +187,7 @@ function DayBar({
       }}
       title={`${who} · ${svc} · ${formatTime(r.start_at)}~${formatTime(r.end_at)}`}
     >
-      <div className={`truncate text-caption font-bold ${cancelled ? 'line-through' : ''}`}>
+      <div className={`truncate text-caption font-semibold ${cancelled ? 'line-through' : ''}`}>
         {who}
         {requested && (
           <span className="ml-1 rounded px-1 text-caption font-bold" style={{ background: color.bg, color: color.text }}>

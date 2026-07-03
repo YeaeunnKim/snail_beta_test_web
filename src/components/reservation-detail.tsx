@@ -88,7 +88,7 @@ export function ReservationDetail({
               <button
                 disabled={busy}
                 onClick={() => run(() => reservationsApi.confirmPayment(r.id))}
-                className="rounded-lg bg-secondary px-3 py-1.5 text-caption font-bold text-white disabled:opacity-50"
+                className="rounded-lg bg-secondary px-3 py-1.5 text-caption font-semibold text-white disabled:opacity-50"
               >
                 입금 완료 처리
               </button>
@@ -136,7 +136,7 @@ export function ReservationDetail({
                     : reservationsApi.cancel(r.id, reason.trim()),
                 )
               }
-              className="rounded-xl bg-[#fdeaea] px-4 py-2 text-body-sm font-bold text-[#cf3b3b] disabled:opacity-50"
+              className="rounded-xl bg-[#fdeaea] px-4 py-2 text-body-sm font-semibold text-[#cf3b3b] disabled:opacity-50"
             >
               {reasonMode === 'reject' ? '거절 확정' : '취소 확정'}
             </button>
@@ -145,7 +145,7 @@ export function ReservationDetail({
                 setReasonMode(null);
                 setReason('');
               }}
-              className="rounded-xl bg-neutral-100 px-4 py-2 text-body-sm font-bold text-neutral-600"
+              className="rounded-xl bg-neutral-100 px-4 py-2 text-body-sm font-semibold text-neutral-600"
             >
               닫기
             </button>
@@ -209,7 +209,7 @@ function InfoLine({ k, v }: { k: string; v: string }) {
 }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
-  return <div className="mb-2 mt-4 text-caption font-bold text-neutral-400">{children}</div>;
+  return <div className="mb-2 mt-4 text-caption font-semibold text-neutral-400">{children}</div>;
 }
 
 function ActBtn({
@@ -230,7 +230,7 @@ function ActBtn({
         ? 'bg-[#fdeaea] text-[#cf3b3b]'
         : 'bg-neutral-100 text-neutral-600';
   return (
-    <button disabled={busy} onClick={onClick} className={`rounded-xl px-4 py-2 text-body-sm font-bold disabled:opacity-50 ${cls}`}>
+    <button disabled={busy} onClick={onClick} className={`rounded-xl px-4 py-2 text-body-sm font-semibold disabled:opacity-50 ${cls}`}>
       {children}
     </button>
   );

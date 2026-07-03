@@ -70,7 +70,7 @@ export default function VerificationStatusPage() {
         {canSubmit && (
           <Link
             href="/business-verification"
-            className="mt-4 inline-block rounded-lg bg-secondary px-4 py-2 text-body-sm font-bold text-white"
+            className="mt-4 inline-block rounded-lg bg-secondary px-4 py-2 text-body-sm font-semibold text-white"
           >
             {status === 'rejected' ? '다시 제출하기' : '인증 제출하기'}
           </Link>

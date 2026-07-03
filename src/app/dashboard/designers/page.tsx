@@ -108,7 +108,7 @@ export default function DesignersPage() {
               <button
                 key={d.id}
                 onClick={() => setSelectedId(d.id)}
-                className={`rounded-full border px-4 py-1.5 text-body-sm ${
+                className={`rounded-full border px-4 py-1.5 text-body-sm font-semibold ${
                   selectedId === d.id
                     ? 'border-secondary bg-secondary text-white'
                     : 'border-neutral-300 text-neutral-600'
@@ -159,7 +159,7 @@ function QuickAddDesigner({ onAdded }: { onAdded: () => void }) {
       <button
         onClick={() => name.trim() && mutation.mutate(name.trim())}
         disabled={mutation.isPending || !name.trim()}
-        className="rounded-md border border-secondary px-3 py-2 text-body-sm font-medium text-secondary disabled:opacity-50"
+        className="rounded-md border border-secondary px-3 py-2 text-body-sm font-semibold text-secondary disabled:opacity-50"
       >
         추가
       </button>
@@ -302,7 +302,7 @@ function WeeklyGrid({ entries }: { entries: ScheduleForm['entries'] }) {
           const e = entries?.[i];
           return (
             <div key={w.value} className="flex flex-col">
-              <span className="mb-1 text-center text-caption font-medium text-neutral-500">{w.label}</span>
+              <span className="mb-1 text-center text-caption text-neutral-500">{w.label}</span>
               <div className="relative flex-1 rounded bg-neutral-50" style={{ height: GRID_PX }}>
                 {e && <DayBlocks entry={e} />}
               </div>
@@ -317,7 +317,7 @@ function WeeklyGrid({ entries }: { entries: ScheduleForm['entries'] }) {
 function DayBlocks({ entry }: { entry: ScheduleForm['entries'][number] }) {
   if (entry.is_day_off) {
     return (
-      <div className="absolute inset-0 flex items-center justify-center rounded bg-neutral-200/60 text-caption text-neutral-500">
+      <div className="absolute inset-0 flex items-center justify-center rounded bg-neutral-200/60 text-caption font-bold text-neutral-500">
         휴무
       </div>
     );
@@ -367,7 +367,7 @@ function ExtraSettingsCard() {
       <div>
         <div className="mb-2 flex items-center gap-2">
           <h2 className="text-body-sm font-semibold text-neutral-700">운영 한도</h2>
-          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-caption text-amber-700">
+          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-caption font-semibold text-amber-700">
             저장 연동 예정
           </span>
         </div>
@@ -386,7 +386,7 @@ function ExtraSettingsCard() {
       <div>
         <div className="mb-2 flex items-center gap-2">
           <h2 className="text-body-sm font-semibold text-neutral-700">시술 소요시간 디폴트</h2>
-          <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-caption text-neutral-500">
+          <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-caption font-semibold text-neutral-500">
             스키마 확인 예정
           </span>
         </div>
@@ -413,7 +413,7 @@ function ActiveNumber({
 }) {
   return (
     <div>
-      <label className="mb-1 block text-caption font-medium text-neutral-600">{label}</label>
+      <label className="mb-1 block text-caption text-neutral-600">{label}</label>
       <input
         type="number"
         min={0}
@@ -429,7 +429,7 @@ function ActiveNumber({
 function Disabled({ label, placeholder }: { label: string; placeholder: string }) {
   return (
     <div>
-      <label className="mb-1 block text-caption font-medium text-neutral-500">{label}</label>
+      <label className="mb-1 block text-caption text-neutral-500">{label}</label>
       <input
         type="number"
         disabled

@@ -146,7 +146,7 @@ function ReservationsConsole() {
             >
               {t.label}
               <span
-                className={`rounded-full px-1.5 py-0.5 text-caption font-bold ${
+                className={`rounded-full px-1.5 py-0.5 text-caption font-semibold ${
                   on ? 'bg-secondary/15 text-secondary' : need ? 'bg-secondary/15 text-secondary' : 'bg-neutral-100 text-neutral-500'
                 }`}
               >
@@ -220,7 +220,7 @@ function ReservationsConsole() {
       ) : (
         <div className="overflow-x-auto rounded-2xl border border-neutral-200 bg-white">
           <div className="min-w-[880px]">
-            <div className="grid grid-cols-[84px_130px_140px_minmax(120px,1fr)_110px_minmax(150px,1.2fr)_90px_150px_20px] items-center gap-2.5 border-b border-neutral-200 bg-neutral-50 px-4 py-2.5 text-caption font-semibold text-neutral-400">
+            <div className="grid grid-cols-[84px_130px_140px_minmax(120px,1fr)_110px_minmax(150px,1.2fr)_90px_150px_20px] items-center gap-2.5 border-b border-neutral-200 bg-neutral-50 px-4 py-2.5 text-caption text-neutral-400">
               <div>상태</div>
               <div>요청 날짜</div>
               <div>방문 예정</div>
@@ -299,10 +299,10 @@ function Row({
           </div>
         </div>
         <div className="min-w-0">
-          <div className="truncate text-body-sm font-medium">{r.user?.nickname ?? '고객'}</div>
-          {r.user_request && <span className="text-caption font-bold text-secondary">요청사항</span>}
+          <div className="truncate text-body-sm font-semibold">{r.user?.nickname ?? '고객'}</div>
+          {r.user_request && <span className="text-caption font-semibold text-secondary">요청사항</span>}
         </div>
-        <div className="flex items-center gap-1.5 text-body-sm font-medium">
+        <div className="flex items-center gap-1.5 text-body-sm font-semibold">
           <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: color.border }} />
           <span className="truncate">{r.designer?.name ?? '-'}</span>
         </div>
@@ -322,7 +322,7 @@ function Row({
               key={a.label}
               disabled={busy}
               onClick={() => run(a.fn)}
-              className={`rounded-lg px-2.5 py-1.5 text-caption font-bold disabled:opacity-50 ${
+              className={`rounded-lg px-2.5 py-1.5 text-caption font-semibold disabled:opacity-50 ${
                 a.cls === 'primary' ? 'bg-secondary text-white' : 'bg-neutral-100 text-neutral-600'
               }`}
             >

@@ -94,7 +94,7 @@ function InquiryCard({ inquiry: i }: { inquiry: ShopInquiry }) {
     <li className="rounded-xl border border-neutral-200 bg-white p-4">
       <div className="flex items-center justify-between gap-2">
         <span
-          className={`rounded-full px-2 py-0.5 text-caption font-semibold ${
+          className={`rounded-full px-2 py-0.5 text-caption font-bold ${
             answered ? 'bg-neutral-100 text-neutral-500' : 'bg-secondary/10 text-secondary'
           }`}
         >
@@ -133,7 +133,7 @@ function InquiryCard({ inquiry: i }: { inquiry: ShopInquiry }) {
             <button
               disabled={replyM.isPending || !body.trim()}
               onClick={() => replyM.mutate()}
-              className="rounded-lg bg-secondary px-4 py-1.5 text-caption font-bold text-white disabled:opacity-50"
+              className="rounded-lg bg-secondary px-4 py-1.5 text-caption font-semibold text-white disabled:opacity-50"
             >
               답변 등록
             </button>
@@ -181,7 +181,7 @@ function FilterChip({
   return (
     <button
       onClick={onClick}
-      className={`rounded-full border px-3 py-1.5 text-body-sm ${
+      className={`rounded-full border px-3 py-1.5 text-body-sm font-semibold ${
         active ? 'border-secondary bg-secondary text-white' : 'border-neutral-300 text-neutral-600'
       }`}
     >

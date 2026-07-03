@@ -321,7 +321,7 @@ export default function OnboardingPage() {
                           <button
                             type="button"
                             onClick={() => designerArray.remove(i)}
-                            className="shrink-0 rounded-md border border-neutral-300 px-3 text-body-sm text-neutral-500"
+                            className="shrink-0 rounded-md border border-neutral-300 px-3 text-body-sm font-semibold text-neutral-500"
                           >
                             삭제
                           </button>
@@ -331,7 +331,7 @@ export default function OnboardingPage() {
                     <button
                       type="button"
                       onClick={() => designerArray.append({ name: '' })}
-                      className="text-body-sm font-medium text-secondary"
+                      className="text-body-sm font-semibold text-secondary"
                     >
                       + 디자이너 추가
                     </button>
@@ -397,7 +397,7 @@ export default function OnboardingPage() {
                   const closed = hours?.[i]?.is_closed;
                   return (
                     <div key={w.value} className="flex items-center gap-2">
-                      <span className="w-6 text-body-sm font-medium">{w.label}</span>
+                      <span className="w-6 text-body-sm">{w.label}</span>
                       <label className="flex items-center gap-1 text-caption text-neutral-500">
                         <input type="checkbox" {...register(`hours.${i}.is_closed` as const)} />
                         휴무
@@ -436,7 +436,7 @@ export default function OnboardingPage() {
               type="button"
               onClick={prev}
               disabled={step === 0}
-              className="rounded-md px-4 py-2 text-body-sm text-neutral-500 disabled:opacity-0"
+              className="rounded-md px-4 py-2 text-body-sm font-semibold text-neutral-500 disabled:opacity-0"
             >
               이전
             </button>
@@ -503,7 +503,7 @@ function Toggle({
     <button
       type="button"
       onClick={onClick}
-      className={`flex-1 rounded-md border px-4 py-2 text-body-sm font-medium ${
+      className={`flex-1 rounded-md border px-4 py-2 text-body-sm font-semibold ${
         active ? 'border-secondary bg-secondary text-white' : 'border-neutral-300 text-neutral-600'
       }`}
     >

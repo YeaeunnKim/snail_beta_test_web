@@ -249,7 +249,7 @@ export default function ShopPage() {
         </Field>
 
         <Field label="" error={errors.auto_accept?.message}>
-          <label className="flex items-center gap-2 text-body-sm">
+          <label className="flex items-center gap-2 text-body-sm font-semibold">
             <input type="checkbox" {...register('auto_accept')} />
             예약 자동 수락 (현장 결제에서만 가능)
           </label>

@@ -142,7 +142,7 @@ export default function NotificationsPage() {
           <button
             key={f.key}
             onClick={() => setFilter(f.key)}
-            className={`rounded-full border px-3 py-1.5 text-body-sm ${
+            className={`rounded-full border px-3 py-1.5 text-body-sm font-semibold ${
               filter === f.key
                 ? 'border-secondary bg-secondary text-white'
                 : 'border-neutral-300 text-neutral-600'
@@ -184,12 +184,12 @@ export default function NotificationsPage() {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <span
-                        className="rounded px-1.5 py-0.5 text-caption font-bold"
+                        className="rounded px-1.5 py-0.5 text-caption font-semibold"
                         style={{ background: `${meta.color}22`, color: meta.color }}
                       >
                         {meta.label}
                       </span>
-                      <b className="truncate text-body-sm">{it.title}</b>
+                      <b className="truncate text-body-sm font-semibold">{it.title}</b>
                       {it.unread && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-secondary" />}
                     </div>
                     <p className="mt-1 truncate text-caption text-neutral-500">{it.desc}</p>
