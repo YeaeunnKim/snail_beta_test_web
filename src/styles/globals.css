@@ -7,6 +7,9 @@
  * 변경 시 iOS tokens.ts와 동기화할 것.
  */
 @theme {
+  /* 폰트 — 셀프 호스팅 프리텐다드 (src/lib/fonts.ts, layout.tsx 참고) */
+  --font-sans: var(--font-pretendard), -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
   /* 폰트 사이즈 스케일 (9~20px 파편화 정리, 2px 격자). text-2xl/text-3xl은 기본값 유지 */
   --text-caption: 12px;
   --text-caption--line-height: 16px;

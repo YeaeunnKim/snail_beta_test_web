@@ -3,6 +3,7 @@ import '@/styles/globals.css';
 import { AuthBootstrap } from '@/components/auth-bootstrap';
 import { QueryProvider } from '@/components/query-provider';
 import { config } from '@/lib/config';
+import { pretendard } from '@/lib/fonts';
 
 export const metadata: Metadata = {
   title: config.appName,
@@ -11,7 +12,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ko">
+    <html lang="ko" className={pretendard.variable}>
       <body>
         <QueryProvider>
           <AuthBootstrap>{children}</AuthBootstrap>
