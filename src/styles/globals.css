@@ -7,6 +7,18 @@
  * 변경 시 iOS tokens.ts와 동기화할 것.
  */
 @theme {
+  /* 폰트 사이즈 스케일 (9~20px 파편화 정리, 2px 격자). text-2xl/text-3xl은 기본값 유지 */
+  --text-caption: 12px;
+  --text-caption--line-height: 16px;
+  --text-body-sm: 14px;
+  --text-body-sm--line-height: 20px;
+  --text-body-md: 16px;
+  --text-body-md--line-height: 24px;
+  --text-heading-md: 18px;
+  --text-heading-md--line-height: 26px;
+  --text-heading-lg: 20px;
+  --text-heading-lg--line-height: 28px;
+
   /* iOS colors.* 동기화 */
   --color-primary: #070705; /* 본문 강조/주요 텍스트 (near-black) */
   --color-primary-50: #7e7e7d;
