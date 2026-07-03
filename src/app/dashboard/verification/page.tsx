@@ -52,33 +52,33 @@ export default function VerificationStatusPage() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-xl font-bold">사업자 인증</h1>
-        <p className="mt-1 text-sm text-neutral-500">사업자 인증 상태를 확인하고 관리합니다.</p>
+        <h1 className="text-heading-lg font-bold">사업자 인증</h1>
+        <p className="mt-1 text-body-sm text-neutral-500">사업자 인증 상태를 확인하고 관리합니다.</p>
       </div>
 
       <div className={`rounded-xl border p-6 ${meta.cls}`}>
-        <span className="inline-block rounded-full bg-white/70 px-3 py-1 text-xs font-bold">
+        <span className="inline-block rounded-full bg-white/70 px-3 py-1 text-caption font-bold">
           {meta.badge}
         </span>
-        <h2 className="mt-3 text-lg font-bold">{meta.title}</h2>
-        <p className="mt-1 text-sm opacity-90">{meta.desc}</p>
+        <h2 className="mt-3 text-heading-md font-bold">{meta.title}</h2>
+        <p className="mt-1 text-body-sm opacity-90">{meta.desc}</p>
 
         {status === 'rejected' && rejectedReason && (
-          <p className="mt-3 rounded-lg bg-white/60 px-3 py-2 text-sm">반려 사유: {rejectedReason}</p>
+          <p className="mt-3 rounded-lg bg-white/60 px-3 py-2 text-body-sm">반려 사유: {rejectedReason}</p>
         )}
 
         {canSubmit && (
           <Link
             href="/business-verification"
-            className="mt-4 inline-block rounded-lg bg-secondary px-4 py-2 text-sm font-bold text-white"
+            className="mt-4 inline-block rounded-lg bg-secondary px-4 py-2 text-body-sm font-bold text-white"
           >
             {status === 'rejected' ? '다시 제출하기' : '인증 제출하기'}
           </Link>
         )}
       </div>
 
-      <div className="rounded-xl border border-primary-10 bg-white p-5 text-sm text-neutral-600">
-        <h3 className="mb-2 text-sm font-bold text-neutral-800">안내</h3>
+      <div className="rounded-xl border border-primary-10 bg-white p-5 text-body-sm text-neutral-600">
+        <h3 className="mb-2 text-body-sm font-bold text-neutral-800">안내</h3>
         <ul className="list-disc space-y-1 pl-5">
           <li>사업자등록증과 사업자등록번호로 인증합니다.</li>
           <li>승인 후 샵 정보 등록 · 디자인 공개 · 예약 접수가 가능합니다.</li>

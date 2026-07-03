@@ -50,13 +50,13 @@ export function ReservationDesignBlock({ reservation }: { reservation: Reservati
           ) : (
             <span className="block h-full w-full bg-neutral-100" />
           )}
-          <span className="absolute inset-x-0 bottom-0 bg-black/40 py-0.5 text-center text-[9px] font-medium text-white">
+          <span className="absolute inset-x-0 bottom-0 bg-black/40 py-0.5 text-center text-caption font-medium text-white">
             {open ? '접기' : '사진'}
           </span>
         </button>
-        <div className="min-w-0 text-sm">
+        <div className="min-w-0 text-body-sm">
           <div className="font-semibold">{title}</div>
-          <div className="text-xs text-neutral-400">
+          <div className="text-caption text-neutral-400">
             {duration != null && `약 ${duration}분 · `}
             {won(reservation.total_price)}
           </div>
@@ -67,7 +67,7 @@ export function ReservationDesignBlock({ reservation }: { reservation: Reservati
                 return (
                   <span
                     key={o.id}
-                    className="rounded-md px-1.5 py-0.5 text-[10px] font-bold"
+                    className="rounded-md px-1.5 py-0.5 text-caption font-bold"
                     style={{ background: meta.bg, color: meta.tx }}
                     title={o.name}
                   >
@@ -83,9 +83,9 @@ export function ReservationDesignBlock({ reservation }: { reservation: Reservati
       {open && (
         <div className="mt-3">
           {q.isLoading ? (
-            <p className="text-xs text-neutral-400">사진 불러오는 중…</p>
+            <p className="text-caption text-neutral-400">사진 불러오는 중…</p>
           ) : images.length === 0 ? (
-            <p className="text-xs text-neutral-400">등록된 사진이 없어요.</p>
+            <p className="text-caption text-neutral-400">등록된 사진이 없어요.</p>
           ) : (
             <div className="flex flex-wrap gap-2">
               {images.map((img) => (
@@ -110,19 +110,19 @@ export function ReservationDesignBlock({ reservation }: { reservation: Reservati
 export function InquiryThread({ reservation }: { reservation: Reservation }) {
   const req = reservation.user_request;
   const reply = reservation.owner_reply;
-  if (!req && !reply) return <p className="text-[13px] text-neutral-400">남긴 요청사항이 없어요.</p>;
+  if (!req && !reply) return <p className="text-body-sm text-neutral-400">남긴 요청사항이 없어요.</p>;
   return (
     <div className="flex flex-col gap-2">
       {req && (
-        <div className="max-w-[85%] self-start rounded-xl rounded-tl-sm border border-neutral-200 bg-white px-3 py-2 text-[13px] leading-relaxed">
+        <div className="max-w-[85%] self-start rounded-xl rounded-tl-sm border border-neutral-200 bg-white px-3 py-2 text-body-sm leading-relaxed">
           {req}
-          <div className="mt-1 text-[10.5px] text-neutral-400">고객 · {reservation.user?.nickname ?? ''}</div>
+          <div className="mt-1 text-caption text-neutral-400">고객 · {reservation.user?.nickname ?? ''}</div>
         </div>
       )}
       {reply && (
-        <div className="max-w-[85%] self-end rounded-xl rounded-tr-sm bg-secondary/10 px-3 py-2 text-[13px] leading-relaxed text-[#a33566]">
+        <div className="max-w-[85%] self-end rounded-xl rounded-tr-sm bg-secondary/10 px-3 py-2 text-body-sm leading-relaxed text-[#a33566]">
           {reply}
-          <div className="mt-1 text-right text-[10.5px] text-secondary/70">사장님 답변</div>
+          <div className="mt-1 text-right text-caption text-secondary/70">사장님 답변</div>
         </div>
       )}
     </div>

@@ -229,7 +229,7 @@ export default function OnboardingPage() {
 
   if (gate === 'checking') {
     return (
-      <main className="flex min-h-screen items-center justify-center text-sm text-neutral-500">
+      <main className="flex min-h-screen items-center justify-center text-body-sm text-neutral-500">
         불러오는 중…
       </main>
     );
@@ -238,8 +238,8 @@ export default function OnboardingPage() {
   return (
     <main className="min-h-screen bg-neutral-50 px-4 py-10">
       <div className="mx-auto w-full max-w-xl">
-        <h1 className="text-center text-xl font-bold text-secondary">샵 등록</h1>
-        <p className="mt-1 text-center text-sm text-neutral-500">
+        <h1 className="text-center text-heading-lg font-bold text-secondary">샵 등록</h1>
+        <p className="mt-1 text-center text-body-sm text-neutral-500">
           {step + 1} / {STEP_FIELDS.length} · {STEP_TITLES[step]}
         </p>
 
@@ -299,7 +299,7 @@ export default function OnboardingPage() {
               </Field>
 
               <div>
-                <label className="mb-1 block text-sm font-medium">
+                <label className="mb-1 block text-body-sm font-medium">
                   디자이너 이름 <span className="text-neutral-400">(앱에 노출됩니다)</span>
                 </label>
                 {!isMulti ? (
@@ -321,7 +321,7 @@ export default function OnboardingPage() {
                           <button
                             type="button"
                             onClick={() => designerArray.remove(i)}
-                            className="shrink-0 rounded-md border border-neutral-300 px-3 text-sm text-neutral-500"
+                            className="shrink-0 rounded-md border border-neutral-300 px-3 text-body-sm text-neutral-500"
                           >
                             삭제
                           </button>
@@ -331,14 +331,14 @@ export default function OnboardingPage() {
                     <button
                       type="button"
                       onClick={() => designerArray.append({ name: '' })}
-                      className="text-sm font-medium text-secondary"
+                      className="text-body-sm font-medium text-secondary"
                     >
                       + 디자이너 추가
                     </button>
                   </div>
                 )}
                 {errors.designers?.message && (
-                  <p className="mt-1 text-xs text-red-600">{errors.designers.message}</p>
+                  <p className="mt-1 text-caption text-red-600">{errors.designers.message}</p>
                 )}
               </div>
             </>
@@ -388,7 +388,7 @@ export default function OnboardingPage() {
           {/* STEP 4 — 운영 시간 */}
           {step === 3 && (
             <>
-              <p className="text-xs text-neutral-500">
+              <p className="text-caption text-neutral-500">
                 요일별 영업시간과 휴무를 설정하세요. 점심·쉬는시간은 디자이너별 시간표에서
                 설정합니다.
               </p>
@@ -397,8 +397,8 @@ export default function OnboardingPage() {
                   const closed = hours?.[i]?.is_closed;
                   return (
                     <div key={w.value} className="flex items-center gap-2">
-                      <span className="w-6 text-sm font-medium">{w.label}</span>
-                      <label className="flex items-center gap-1 text-xs text-neutral-500">
+                      <span className="w-6 text-body-sm font-medium">{w.label}</span>
+                      <label className="flex items-center gap-1 text-caption text-neutral-500">
                         <input type="checkbox" {...register(`hours.${i}.is_closed` as const)} />
                         휴무
                       </label>
@@ -421,13 +421,13 @@ export default function OnboardingPage() {
               </div>
               {Array.isArray(errors.hours) &&
                 errors.hours.some(Boolean) && (
-                  <p className="text-xs text-red-600">영업일의 시작/종료 시간을 확인해주세요.</p>
+                  <p className="text-caption text-red-600">영업일의 시작/종료 시간을 확인해주세요.</p>
                 )}
             </>
           )}
 
           {submitError && (
-            <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{submitError}</p>
+            <p className="rounded-md bg-red-50 px-3 py-2 text-body-sm text-red-700">{submitError}</p>
           )}
 
           {/* 네비게이션 */}
@@ -436,7 +436,7 @@ export default function OnboardingPage() {
               type="button"
               onClick={prev}
               disabled={step === 0}
-              className="rounded-md px-4 py-2 text-sm text-neutral-500 disabled:opacity-0"
+              className="rounded-md px-4 py-2 text-body-sm text-neutral-500 disabled:opacity-0"
             >
               이전
             </button>
@@ -444,7 +444,7 @@ export default function OnboardingPage() {
               <button
                 type="button"
                 onClick={next}
-                className="rounded-md bg-secondary px-5 py-2 text-sm font-semibold text-white"
+                className="rounded-md bg-secondary px-5 py-2 text-body-sm font-semibold text-white"
               >
                 다음
               </button>
@@ -452,7 +452,7 @@ export default function OnboardingPage() {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="rounded-md bg-secondary px-5 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                className="rounded-md bg-secondary px-5 py-2 text-body-sm font-semibold text-white disabled:opacity-50"
               >
                 {isSubmitting ? '저장 중…' : '샵 등록 완료'}
               </button>
@@ -465,7 +465,7 @@ export default function OnboardingPage() {
 }
 
 const inputCls =
-  'w-full rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-secondary';
+  'w-full rounded-md border border-neutral-300 px-3 py-2 text-body-sm outline-none focus:border-secondary';
 
 function Field({
   label,
@@ -480,12 +480,12 @@ function Field({
 }) {
   return (
     <div>
-      <label className="mb-1 block text-sm font-medium">
+      <label className="mb-1 block text-body-sm font-medium">
         {label}
         {required && <span className="ml-0.5 text-red-500">*</span>}
       </label>
       {children}
-      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+      {error && <p className="mt-1 text-caption text-red-600">{error}</p>}
     </div>
   );
 }
@@ -503,7 +503,7 @@ function Toggle({
     <button
       type="button"
       onClick={onClick}
-      className={`flex-1 rounded-md border px-4 py-2 text-sm font-medium ${
+      className={`flex-1 rounded-md border px-4 py-2 text-body-sm font-medium ${
         active ? 'border-secondary bg-secondary text-white' : 'border-neutral-300 text-neutral-600'
       }`}
     >

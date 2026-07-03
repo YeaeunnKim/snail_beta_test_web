@@ -15,18 +15,18 @@ export function PageStub({
 }) {
   return (
     <section className="rounded-lg border border-dashed border-neutral-300 bg-white p-6">
-      <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-secondary">
+      <p className="mb-1 text-caption font-semibold uppercase tracking-wide text-secondary">
         구현 예정 (프론트/디자인팀)
       </p>
-      <h2 className="text-lg font-bold text-neutral-900">{title}</h2>
-      {description && <p className="mt-2 text-sm text-neutral-600">{description}</p>}
+      <h2 className="text-heading-md font-bold text-neutral-900">{title}</h2>
+      {description && <p className="mt-2 text-body-sm text-neutral-600">{description}</p>}
       {apis && apis.length > 0 && (
         <div className="mt-4">
-          <p className="text-xs font-medium text-neutral-500">연결할 서비스 (src/services)</p>
-          <ul className="mt-1 list-inside list-disc text-sm text-neutral-700">
+          <p className="text-caption font-medium text-neutral-500">연결할 서비스 (src/services)</p>
+          <ul className="mt-1 list-inside list-disc text-body-sm text-neutral-700">
             {apis.map((api) => (
               <li key={api}>
-                <code className="text-xs">{api}</code>
+                <code className="text-caption">{api}</code>
               </li>
             ))}
           </ul>

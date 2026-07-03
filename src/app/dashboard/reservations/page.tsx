@@ -40,7 +40,7 @@ function tabOf(status: ReservationStatus): TabKey | null {
 
 export default function ReservationsPage() {
   return (
-    <Suspense fallback={<p className="text-sm text-neutral-500">불러오는 중…</p>}>
+    <Suspense fallback={<p className="text-body-sm text-neutral-500">불러오는 중…</p>}>
       <ReservationsConsole />
     </Suspense>
   );
@@ -125,7 +125,7 @@ function ReservationsConsole() {
     <div className="space-y-5">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">예약 관리</h1>
-        <p className="mt-1 text-sm text-neutral-500">들어온 예약을 상태에 따라 확인하고 처리합니다.</p>
+        <p className="mt-1 text-body-sm text-neutral-500">들어온 예약을 상태에 따라 확인하고 처리합니다.</p>
       </div>
 
       {/* 탭 */}
@@ -140,13 +140,13 @@ function ReservationsConsole() {
                 setTab(t.key);
                 setExpandedId(null);
               }}
-              className={`flex items-center gap-1.5 whitespace-nowrap border-b-2 px-3.5 pb-3 pt-2.5 text-sm font-semibold ${
+              className={`flex items-center gap-1.5 whitespace-nowrap border-b-2 px-3.5 pb-3 pt-2.5 text-body-sm font-semibold ${
                 on ? 'border-secondary text-neutral-900' : 'border-transparent text-neutral-400'
               }`}
             >
               {t.label}
               <span
-                className={`rounded-full px-1.5 py-0.5 text-[11px] font-bold ${
+                className={`rounded-full px-1.5 py-0.5 text-caption font-bold ${
                   on ? 'bg-secondary/15 text-secondary' : need ? 'bg-secondary/15 text-secondary' : 'bg-neutral-100 text-neutral-500'
                 }`}
               >
@@ -161,7 +161,7 @@ function ReservationsConsole() {
       <div className="flex flex-wrap items-center gap-2">
         <button
           onClick={() => setDay(todayLocalDate())}
-          className={`rounded-full border px-3 py-1.5 text-sm font-semibold ${
+          className={`rounded-full border px-3 py-1.5 text-body-sm font-semibold ${
             day ? 'border-secondary bg-secondary text-white' : 'border-neutral-200 bg-white text-neutral-600'
           }`}
         >
@@ -169,7 +169,7 @@ function ReservationsConsole() {
         </button>
         <button
           onClick={() => setDay(null)}
-          className={`rounded-full border px-3 py-1.5 text-sm font-semibold ${
+          className={`rounded-full border px-3 py-1.5 text-body-sm font-semibold ${
             day ? 'border-neutral-200 bg-white text-neutral-600' : 'border-secondary bg-secondary text-white'
           }`}
         >
@@ -178,7 +178,7 @@ function ReservationsConsole() {
         <select
           value={designerId}
           onChange={(e) => setDesignerId(e.target.value)}
-          className="h-9 rounded-lg border border-neutral-200 bg-white px-2.5 text-sm"
+          className="h-9 rounded-lg border border-neutral-200 bg-white px-2.5 text-body-sm"
         >
           <option value="all">디자이너 전체</option>
           {designers.map((d) => (
@@ -190,7 +190,7 @@ function ReservationsConsole() {
         <select
           value={pay}
           onChange={(e) => setPay(e.target.value as 'all' | 'WAIT' | 'DONE')}
-          className="h-9 rounded-lg border border-neutral-200 bg-white px-2.5 text-sm"
+          className="h-9 rounded-lg border border-neutral-200 bg-white px-2.5 text-body-sm"
         >
           <option value="all">입금 전체</option>
           <option value="WAIT">입금 대기</option>
@@ -200,27 +200,27 @@ function ReservationsConsole() {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="고객명 검색"
-          className="h-9 min-w-[160px] flex-1 rounded-lg border border-neutral-200 bg-white px-3 text-sm outline-none focus:border-secondary sm:flex-none"
+          className="h-9 min-w-[160px] flex-1 rounded-lg border border-neutral-200 bg-white px-3 text-body-sm outline-none focus:border-secondary sm:flex-none"
         />
       </div>
 
       {action.isError && (
-        <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{toUserMessage(action.error)}</p>
+        <p className="rounded-md bg-red-50 px-3 py-2 text-body-sm text-red-700">{toUserMessage(action.error)}</p>
       )}
 
       {/* 목록 */}
       {loading ? (
-        <p className="py-10 text-center text-sm text-neutral-400">불러오는 중…</p>
+        <p className="py-10 text-center text-body-sm text-neutral-400">불러오는 중…</p>
       ) : reservationsQuery.isError ? (
-        <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{toUserMessage(reservationsQuery.error)}</p>
+        <p className="rounded-md bg-red-50 px-3 py-2 text-body-sm text-red-700">{toUserMessage(reservationsQuery.error)}</p>
       ) : list.length === 0 ? (
-        <div className="rounded-2xl border border-neutral-200 bg-white p-14 text-center text-sm text-neutral-400">
+        <div className="rounded-2xl border border-neutral-200 bg-white p-14 text-center text-body-sm text-neutral-400">
           해당하는 예약이 없어요.
         </div>
       ) : (
         <div className="overflow-x-auto rounded-2xl border border-neutral-200 bg-white">
           <div className="min-w-[880px]">
-            <div className="grid grid-cols-[84px_130px_140px_minmax(120px,1fr)_110px_minmax(150px,1.2fr)_90px_150px_20px] items-center gap-2.5 border-b border-neutral-200 bg-neutral-50 px-4 py-2.5 text-xs font-semibold text-neutral-400">
+            <div className="grid grid-cols-[84px_130px_140px_minmax(120px,1fr)_110px_minmax(150px,1.2fr)_90px_150px_20px] items-center gap-2.5 border-b border-neutral-200 bg-neutral-50 px-4 py-2.5 text-caption font-semibold text-neutral-400">
               <div>상태</div>
               <div>요청 날짜</div>
               <div>방문 예정</div>
@@ -283,30 +283,30 @@ function Row({
         className="grid cursor-pointer grid-cols-[84px_130px_140px_minmax(120px,1fr)_110px_minmax(150px,1.2fr)_90px_150px_20px] items-center gap-2.5 px-4 py-3 hover:bg-neutral-50"
       >
         <div className="flex flex-col items-start gap-1">
-          <span className="rounded-full px-2.5 py-1 text-xs font-bold" style={{ background: badge.bg, color: badge.tx }}>
+          <span className="rounded-full px-2.5 py-1 text-caption font-bold" style={{ background: badge.bg, color: badge.tx }}>
             {badge.label}
           </span>
           {ps && <PayPill state={ps} />}
         </div>
-        <div className="text-[13px]">
+        <div className="text-body-sm">
           <div className="font-medium">{dateTimeLabel(r.created_at).split(' ')[0]}</div>
-          <div className="text-[11px] text-neutral-400">{dateTimeLabel(r.created_at).split(' ')[1]}</div>
+          <div className="text-caption text-neutral-400">{dateTimeLabel(r.created_at).split(' ')[1]}</div>
         </div>
-        <div className="text-[13px]">
+        <div className="text-body-sm">
           <div className="font-medium">{dayLabel(r.start_at)}</div>
-          <div className="text-[11px] text-neutral-400">
+          <div className="text-caption text-neutral-400">
             {formatTime(r.start_at)}~{formatTime(r.end_at)}
           </div>
         </div>
         <div className="min-w-0">
-          <div className="truncate text-[13px] font-medium">{r.user?.nickname ?? '고객'}</div>
-          {r.user_request && <span className="text-[10px] font-bold text-secondary">요청사항</span>}
+          <div className="truncate text-body-sm font-medium">{r.user?.nickname ?? '고객'}</div>
+          {r.user_request && <span className="text-caption font-bold text-secondary">요청사항</span>}
         </div>
-        <div className="flex items-center gap-1.5 text-[13px] font-medium">
+        <div className="flex items-center gap-1.5 text-body-sm font-medium">
           <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: color.border }} />
           <span className="truncate">{r.designer?.name ?? '-'}</span>
         </div>
-        <div className="flex min-w-0 items-center gap-2 text-[13px]">
+        <div className="flex min-w-0 items-center gap-2 text-body-sm">
           {r.design?.thumbnail_url ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={r.design.thumbnail_url} alt="" className="h-6 w-6 shrink-0 rounded-md border border-neutral-200 object-cover" />
@@ -315,14 +315,14 @@ function Row({
           )}
           <span className="truncate">{r.design?.title ?? '시술'}</span>
         </div>
-        <div className="text-right text-[13px] font-bold">{won(r.total_price)}</div>
+        <div className="text-right text-body-sm font-bold">{won(r.total_price)}</div>
         <div className="flex justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
           {inline.map((a) => (
             <button
               key={a.label}
               disabled={busy}
               onClick={() => run(a.fn)}
-              className={`rounded-lg px-2.5 py-1.5 text-xs font-bold disabled:opacity-50 ${
+              className={`rounded-lg px-2.5 py-1.5 text-caption font-bold disabled:opacity-50 ${
                 a.cls === 'primary' ? 'bg-secondary text-white' : 'bg-neutral-100 text-neutral-600'
               }`}
             >
@@ -330,7 +330,7 @@ function Row({
             </button>
           ))}
         </div>
-        <div className={`text-center text-xs text-neutral-300 transition-transform ${open ? 'rotate-180' : ''}`}>⌄</div>
+        <div className={`text-center text-caption text-neutral-300 transition-transform ${open ? 'rotate-180' : ''}`}>⌄</div>
       </div>
 
       {open && <ReservationDetail reservation={r} />}

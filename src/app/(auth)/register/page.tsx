@@ -112,15 +112,15 @@ export default function RegisterPage() {
       </Field>
 
       <div className="space-y-2 rounded-md border border-neutral-200 p-3">
-        <label className="flex items-start gap-2 text-sm">
+        <label className="flex items-start gap-2 text-body-sm">
           <input type="checkbox" className="mt-0.5" {...register('agree_terms')} />
           <span>
             [필수] 이용약관에 동의합니다.{' '}
             <span className="text-neutral-400">(v{TERMS_VERSION})</span>
           </span>
         </label>
-        {errors.agree_terms && <p className="text-xs text-red-600">{errors.agree_terms.message}</p>}
-        <label className="flex items-start gap-2 text-sm">
+        {errors.agree_terms && <p className="text-caption text-red-600">{errors.agree_terms.message}</p>}
+        <label className="flex items-start gap-2 text-body-sm">
           <input type="checkbox" className="mt-0.5" {...register('agree_privacy')} />
           <span>
             [필수] 개인정보 처리방침에 동의합니다.{' '}
@@ -128,23 +128,23 @@ export default function RegisterPage() {
           </span>
         </label>
         {errors.agree_privacy && (
-          <p className="text-xs text-red-600">{errors.agree_privacy.message}</p>
+          <p className="text-caption text-red-600">{errors.agree_privacy.message}</p>
         )}
       </div>
 
       {formError && (
-        <p className="rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">{formError}</p>
+        <p className="rounded-md bg-red-50 px-3 py-2 text-caption text-red-700">{formError}</p>
       )}
 
       <button
         type="submit"
         disabled={isSubmitting}
-        className="w-full rounded-md bg-secondary py-2 text-sm font-semibold text-white disabled:opacity-50"
+        className="w-full rounded-md bg-secondary py-2 text-body-sm font-semibold text-white disabled:opacity-50"
       >
         {isSubmitting ? '가입 중…' : '회원가입'}
       </button>
 
-      <p className="text-center text-xs text-neutral-500">
+      <p className="text-center text-caption text-neutral-500">
         이미 계정이 있으신가요?{' '}
         <a href="/login" className="underline">
           로그인
@@ -155,7 +155,7 @@ export default function RegisterPage() {
 }
 
 const inputCls =
-  'w-full rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-secondary';
+  'w-full rounded-md border border-neutral-300 px-3 py-2 text-body-sm outline-none focus:border-secondary';
 
 function Field({
   label,
@@ -170,12 +170,12 @@ function Field({
 }) {
   return (
     <div>
-      <label className="mb-1 block text-sm font-medium">
+      <label className="mb-1 block text-body-sm font-medium">
         {label}
         {required && <span className="ml-0.5 text-red-500">*</span>}
       </label>
       {children}
-      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+      {error && <p className="mt-1 text-caption text-red-600">{error}</p>}
     </div>
   );
 }

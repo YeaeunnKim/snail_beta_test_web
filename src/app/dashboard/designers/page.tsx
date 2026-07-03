@@ -88,16 +88,16 @@ export default function DesignersPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-bold">시간표 관리</h1>
-        <p className="mt-1 text-sm text-neutral-500">디자이너별 주간 영업시간·점심·휴무를 설정합니다.</p>
+        <h1 className="text-heading-lg font-bold">시간표 관리</h1>
+        <p className="mt-1 text-body-sm text-neutral-500">디자이너별 주간 영업시간·점심·휴무를 설정합니다.</p>
       </div>
 
       <QuickAddDesigner onAdded={() => designersQuery.refetch()} />
 
       {designersQuery.isLoading ? (
-        <p className="text-sm text-neutral-400">불러오는 중…</p>
+        <p className="text-body-sm text-neutral-400">불러오는 중…</p>
       ) : designers.length === 0 ? (
-        <p className="rounded-md border border-dashed border-neutral-300 p-6 text-center text-sm text-neutral-500">
+        <p className="rounded-md border border-dashed border-neutral-300 p-6 text-center text-body-sm text-neutral-500">
           등록된 디자이너가 없습니다. 위에서 디자이너를 추가해주세요.
         </p>
       ) : (
@@ -108,7 +108,7 @@ export default function DesignersPage() {
               <button
                 key={d.id}
                 onClick={() => setSelectedId(d.id)}
-                className={`rounded-full border px-4 py-1.5 text-sm ${
+                className={`rounded-full border px-4 py-1.5 text-body-sm ${
                   selectedId === d.id
                     ? 'border-secondary bg-secondary text-white'
                     : 'border-neutral-300 text-neutral-600'
@@ -154,16 +154,16 @@ function QuickAddDesigner({ onAdded }: { onAdded: () => void }) {
         value={name}
         onChange={(e) => setName(e.target.value)}
         placeholder="디자이너 이름 추가"
-        className="w-48 rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-secondary"
+        className="w-48 rounded-md border border-neutral-300 px-3 py-2 text-body-sm outline-none focus:border-secondary"
       />
       <button
         onClick={() => name.trim() && mutation.mutate(name.trim())}
         disabled={mutation.isPending || !name.trim()}
-        className="rounded-md border border-secondary px-3 py-2 text-sm font-medium text-secondary disabled:opacity-50"
+        className="rounded-md border border-secondary px-3 py-2 text-body-sm font-medium text-secondary disabled:opacity-50"
       >
         추가
       </button>
-      {error && <span className="text-xs text-red-600">{error}</span>}
+      {error && <span className="text-caption text-red-600">{error}</span>}
     </div>
   );
 }
@@ -220,7 +220,7 @@ function ScheduleEditor({
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
-      <p className="rounded-md border border-dashed border-neutral-300 bg-neutral-50 p-3 text-xs text-neutral-500">
+      <p className="rounded-md border border-dashed border-neutral-300 bg-neutral-50 p-3 text-caption text-neutral-500">
         현재 저장된 스케줄은 불러올 수 없어 <strong>샵 영업시간 기준 기본값</strong>을 표시합니다. 저장하면 이 값으로
         덮어씁니다.
       </p>
@@ -235,23 +235,23 @@ function ScheduleEditor({
           const err = errors.entries?.[i];
           return (
             <div key={w.value} className="rounded-md border border-neutral-200 p-2">
-              <div className="flex flex-wrap items-center gap-2 text-sm">
+              <div className="flex flex-wrap items-center gap-2 text-body-sm">
                 <span className="w-6 font-medium">{w.label}</span>
-                <label className="flex items-center gap-1 text-xs text-neutral-500">
+                <label className="flex items-center gap-1 text-caption text-neutral-500">
                   <input type="checkbox" {...register(`entries.${i}.is_day_off` as const)} />
                   휴무
                 </label>
-                <span className="text-xs text-neutral-400">영업</span>
+                <span className="text-caption text-neutral-400">영업</span>
                 <input type="time" disabled={off} className={timeCls} {...register(`entries.${i}.start_time` as const)} />
                 <span className="text-neutral-400">~</span>
                 <input type="time" disabled={off} className={timeCls} {...register(`entries.${i}.end_time` as const)} />
-                <span className="ml-2 text-xs text-neutral-400">점심</span>
+                <span className="ml-2 text-caption text-neutral-400">점심</span>
                 <input type="time" disabled={off} className={timeCls} {...register(`entries.${i}.break_start_time` as const)} />
                 <span className="text-neutral-400">~</span>
                 <input type="time" disabled={off} className={timeCls} {...register(`entries.${i}.break_end_time` as const)} />
               </div>
               {err && (
-                <p className="mt-1 text-xs text-red-600">
+                <p className="mt-1 text-caption text-red-600">
                   {err.start_time?.message ||
                     err.end_time?.message ||
                     err.break_start_time?.message ||
@@ -263,13 +263,13 @@ function ScheduleEditor({
         })}
       </div>
 
-      {submitError && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{submitError}</p>}
-      {savedAt && <p className="rounded-md bg-green-50 px-3 py-2 text-sm text-green-700">저장되었습니다. ({savedAt})</p>}
+      {submitError && <p className="rounded-md bg-red-50 px-3 py-2 text-body-sm text-red-700">{submitError}</p>}
+      {savedAt && <p className="rounded-md bg-green-50 px-3 py-2 text-body-sm text-green-700">저장되었습니다. ({savedAt})</p>}
 
       <button
         type="submit"
         disabled={isSubmitting}
-        className="rounded-md bg-secondary px-5 py-2 text-sm font-semibold text-white disabled:opacity-50"
+        className="rounded-md bg-secondary px-5 py-2 text-body-sm font-semibold text-white disabled:opacity-50"
       >
         {isSubmitting ? '저장 중…' : '스케줄 저장'}
       </button>
@@ -289,7 +289,7 @@ function WeeklyGrid({ entries }: { entries: ScheduleForm['entries'] }) {
         {hourMarks.map((h) => (
           <span
             key={h}
-            className="absolute right-1 -translate-y-1/2 text-[10px] text-neutral-400"
+            className="absolute right-1 -translate-y-1/2 text-caption text-neutral-400"
             style={{ top: `${((h * 60 - GRID_START) / GRID_SPAN) * 100}%` }}
           >
             {h}시
@@ -302,7 +302,7 @@ function WeeklyGrid({ entries }: { entries: ScheduleForm['entries'] }) {
           const e = entries?.[i];
           return (
             <div key={w.value} className="flex flex-col">
-              <span className="mb-1 text-center text-xs font-medium text-neutral-500">{w.label}</span>
+              <span className="mb-1 text-center text-caption font-medium text-neutral-500">{w.label}</span>
               <div className="relative flex-1 rounded bg-neutral-50" style={{ height: GRID_PX }}>
                 {e && <DayBlocks entry={e} />}
               </div>
@@ -317,7 +317,7 @@ function WeeklyGrid({ entries }: { entries: ScheduleForm['entries'] }) {
 function DayBlocks({ entry }: { entry: ScheduleForm['entries'][number] }) {
   if (entry.is_day_off) {
     return (
-      <div className="absolute inset-0 flex items-center justify-center rounded bg-neutral-200/60 text-[10px] text-neutral-500">
+      <div className="absolute inset-0 flex items-center justify-center rounded bg-neutral-200/60 text-caption text-neutral-500">
         휴무
       </div>
     );
@@ -366,8 +366,8 @@ function ExtraSettingsCard() {
       {/* 운영 한도 — 입력 활성, 저장은 TODO */}
       <div>
         <div className="mb-2 flex items-center gap-2">
-          <h2 className="text-sm font-semibold text-neutral-700">운영 한도</h2>
-          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] text-amber-700">
+          <h2 className="text-body-sm font-semibold text-neutral-700">운영 한도</h2>
+          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-caption text-amber-700">
             저장 연동 예정
           </span>
         </div>
@@ -385,8 +385,8 @@ function ExtraSettingsCard() {
       {/* 시술 소요시간 디폴트 — UI만 유지 */}
       <div>
         <div className="mb-2 flex items-center gap-2">
-          <h2 className="text-sm font-semibold text-neutral-700">시술 소요시간 디폴트</h2>
-          <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[11px] text-neutral-500">
+          <h2 className="text-body-sm font-semibold text-neutral-700">시술 소요시간 디폴트</h2>
+          <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-caption text-neutral-500">
             스키마 확인 예정
           </span>
         </div>
@@ -413,14 +413,14 @@ function ActiveNumber({
 }) {
   return (
     <div>
-      <label className="mb-1 block text-xs font-medium text-neutral-600">{label}</label>
+      <label className="mb-1 block text-caption font-medium text-neutral-600">{label}</label>
       <input
         type="number"
         min={0}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-secondary"
+        className="w-full rounded-md border border-neutral-300 px-3 py-2 text-body-sm outline-none focus:border-secondary"
       />
     </div>
   );
@@ -429,16 +429,16 @@ function ActiveNumber({
 function Disabled({ label, placeholder }: { label: string; placeholder: string }) {
   return (
     <div>
-      <label className="mb-1 block text-xs font-medium text-neutral-500">{label}</label>
+      <label className="mb-1 block text-caption font-medium text-neutral-500">{label}</label>
       <input
         type="number"
         disabled
         placeholder={placeholder}
-        className="w-full cursor-not-allowed rounded-md border border-neutral-200 bg-neutral-100 px-3 py-2 text-sm text-neutral-400"
+        className="w-full cursor-not-allowed rounded-md border border-neutral-200 bg-neutral-100 px-3 py-2 text-body-sm text-neutral-400"
       />
     </div>
   );
 }
 
 const timeCls =
-  'rounded-md border border-neutral-300 px-2 py-1 text-sm outline-none focus:border-secondary disabled:bg-neutral-100';
+  'rounded-md border border-neutral-300 px-2 py-1 text-body-sm outline-none focus:border-secondary disabled:bg-neutral-100';

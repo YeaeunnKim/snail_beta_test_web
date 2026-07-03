@@ -128,8 +128,8 @@ export default function NotificationsPage() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-xl font-bold">알림</h1>
-        <p className="mt-1 text-sm text-neutral-500">
+        <h1 className="text-heading-lg font-bold">알림</h1>
+        <p className="mt-1 text-body-sm text-neutral-500">
           예약 요청 · 문의 · 리뷰가 들어오면 여기에 쌓여요.
           {unreadCount > 0 && (
             <span className="ml-1 font-semibold text-secondary">처리할 항목 {unreadCount}개</span>
@@ -142,7 +142,7 @@ export default function NotificationsPage() {
           <button
             key={f.key}
             onClick={() => setFilter(f.key)}
-            className={`rounded-full border px-3 py-1.5 text-sm ${
+            className={`rounded-full border px-3 py-1.5 text-body-sm ${
               filter === f.key
                 ? 'border-secondary bg-secondary text-white'
                 : 'border-neutral-300 text-neutral-600'
@@ -154,13 +154,13 @@ export default function NotificationsPage() {
       </div>
 
       {shopQ.isLoading || feedQ.isLoading ? (
-        <p className="text-sm text-neutral-400">불러오는 중…</p>
+        <p className="text-body-sm text-neutral-400">불러오는 중…</p>
       ) : feedQ.isError ? (
-        <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+        <p className="rounded-md bg-red-50 px-3 py-2 text-body-sm text-red-700">
           {toUserMessage(feedQ.error)}
         </p>
       ) : shown.length === 0 ? (
-        <p className="rounded-md border border-dashed border-neutral-300 p-8 text-center text-sm text-neutral-500">
+        <p className="rounded-md border border-dashed border-neutral-300 p-8 text-center text-body-sm text-neutral-500">
           아직 새 알림이 없어요.
         </p>
       ) : (
@@ -176,7 +176,7 @@ export default function NotificationsPage() {
                   }`}
                 >
                   <span
-                    className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm"
+                    className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-body-sm"
                     style={{ background: `${meta.color}22` }}
                   >
                     {meta.icon}
@@ -184,17 +184,17 @@ export default function NotificationsPage() {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <span
-                        className="rounded px-1.5 py-0.5 text-[10px] font-bold"
+                        className="rounded px-1.5 py-0.5 text-caption font-bold"
                         style={{ background: `${meta.color}22`, color: meta.color }}
                       >
                         {meta.label}
                       </span>
-                      <b className="truncate text-sm">{it.title}</b>
+                      <b className="truncate text-body-sm">{it.title}</b>
                       {it.unread && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-secondary" />}
                     </div>
-                    <p className="mt-1 truncate text-xs text-neutral-500">{it.desc}</p>
+                    <p className="mt-1 truncate text-caption text-neutral-500">{it.desc}</p>
                   </div>
-                  <span className="shrink-0 text-[11px] text-neutral-400">{relTime(it.at)}</span>
+                  <span className="shrink-0 text-caption text-neutral-400">{relTime(it.at)}</span>
                 </Link>
               </li>
             );

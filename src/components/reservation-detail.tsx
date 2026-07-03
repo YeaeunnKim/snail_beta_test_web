@@ -22,7 +22,7 @@ export function PayPill({ state }: { state: 'WAIT' | 'DONE' }) {
       ? { label: '입금 대기', bg: '#fff0d6', tx: '#aa7510' }
       : { label: '입금 완료', bg: '#e7f6ee', tx: '#1c8a5b' };
   return (
-    <span className="rounded-full px-2 py-0.5 text-[11px] font-bold" style={{ background: meta.bg, color: meta.tx }}>
+    <span className="rounded-full px-2 py-0.5 text-caption font-bold" style={{ background: meta.bg, color: meta.tx }}>
       {meta.label}
     </span>
   );
@@ -74,7 +74,7 @@ export function ReservationDetail({
       <DesignerDayTimeline reservation={r} />
 
       <SectionTitle>디자인</SectionTitle>
-      {r.design ? <ReservationDesignBlock reservation={r} /> : <p className="text-[13px] text-neutral-400">디자인 정보가 없어요.</p>}
+      {r.design ? <ReservationDesignBlock reservation={r} /> : <p className="text-body-sm text-neutral-400">디자인 정보가 없어요.</p>}
 
       {ps && (
         <>
@@ -82,13 +82,13 @@ export function ReservationDetail({
           <div className="flex flex-wrap items-center gap-2.5">
             <PayPill state={ps} />
             {r.deposit_amount_snapshot != null && (
-              <span className="text-xs text-neutral-500">예약금 {won(r.deposit_amount_snapshot)}</span>
+              <span className="text-caption text-neutral-500">예약금 {won(r.deposit_amount_snapshot)}</span>
             )}
             {r.status === 'payment_pending' && (
               <button
                 disabled={busy}
                 onClick={() => run(() => reservationsApi.confirmPayment(r.id))}
-                className="rounded-lg bg-secondary px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50"
+                className="rounded-lg bg-secondary px-3 py-1.5 text-caption font-bold text-white disabled:opacity-50"
               >
                 입금 완료 처리
               </button>
@@ -103,7 +103,7 @@ export function ReservationDetail({
       {/* 예약 확정 시 요청 답변(선택) — 아직 승인 전 & 답변 없음 */}
       {r.status === 'pending' && !r.owner_reply && !reasonMode && (
         <div className="mt-3">
-          <label className="mb-1 block text-xs font-semibold text-neutral-500">
+          <label className="mb-1 block text-caption font-semibold text-neutral-500">
             답변 (선택) — 예약 확정 시 함께 전달돼요
           </label>
           <textarea
@@ -111,7 +111,7 @@ export function ReservationDetail({
             value={reply}
             onChange={(e) => setReply(e.target.value)}
             placeholder="요청에 대한 답변을 적어주세요."
-            className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-secondary"
+            className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-body-sm outline-none focus:border-secondary"
           />
         </div>
       )}
@@ -124,7 +124,7 @@ export function ReservationDetail({
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             placeholder={reasonMode === 'reject' ? '거절 사유를 입력해주세요.' : '취소 사유를 입력해주세요.'}
-            className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-secondary"
+            className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-body-sm outline-none focus:border-secondary"
           />
           <div className="flex gap-2">
             <button
@@ -136,7 +136,7 @@ export function ReservationDetail({
                     : reservationsApi.cancel(r.id, reason.trim()),
                 )
               }
-              className="rounded-xl bg-[#fdeaea] px-4 py-2 text-[13px] font-bold text-[#cf3b3b] disabled:opacity-50"
+              className="rounded-xl bg-[#fdeaea] px-4 py-2 text-body-sm font-bold text-[#cf3b3b] disabled:opacity-50"
             >
               {reasonMode === 'reject' ? '거절 확정' : '취소 확정'}
             </button>
@@ -145,7 +145,7 @@ export function ReservationDetail({
                 setReasonMode(null);
                 setReason('');
               }}
-              className="rounded-xl bg-neutral-100 px-4 py-2 text-[13px] font-bold text-neutral-600"
+              className="rounded-xl bg-neutral-100 px-4 py-2 text-body-sm font-bold text-neutral-600"
             >
               닫기
             </button>
@@ -184,12 +184,12 @@ export function ReservationDetail({
         </div>
       )}
 
-      {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
+      {error && <p className="mt-2 text-caption text-red-600">{error}</p>}
 
       <SectionTitle>변경 이력</SectionTitle>
       <ul className="space-y-1.5">
         {timeline.map((t) => (
-          <li key={t.label} className="flex gap-2.5 text-xs text-neutral-500">
+          <li key={t.label} className="flex gap-2.5 text-caption text-neutral-500">
             <span className="min-w-[88px] shrink-0 text-neutral-300">{dateTimeLabel(t.at)}</span>
             <span>{t.label}</span>
           </li>
@@ -201,7 +201,7 @@ export function ReservationDetail({
 
 function InfoLine({ k, v }: { k: string; v: string }) {
   return (
-    <div className="flex gap-2.5 border-b border-neutral-100 py-2.5 text-[13px]">
+    <div className="flex gap-2.5 border-b border-neutral-100 py-2.5 text-body-sm">
       <span className="w-16 shrink-0 text-neutral-400">{k}</span>
       <span className="font-semibold">{v}</span>
     </div>
@@ -209,7 +209,7 @@ function InfoLine({ k, v }: { k: string; v: string }) {
 }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
-  return <div className="mb-2 mt-4 text-xs font-bold text-neutral-400">{children}</div>;
+  return <div className="mb-2 mt-4 text-caption font-bold text-neutral-400">{children}</div>;
 }
 
 function ActBtn({
@@ -230,7 +230,7 @@ function ActBtn({
         ? 'bg-[#fdeaea] text-[#cf3b3b]'
         : 'bg-neutral-100 text-neutral-600';
   return (
-    <button disabled={busy} onClick={onClick} className={`rounded-xl px-4 py-2 text-[13px] font-bold disabled:opacity-50 ${cls}`}>
+    <button disabled={busy} onClick={onClick} className={`rounded-xl px-4 py-2 text-body-sm font-bold disabled:opacity-50 ${cls}`}>
       {children}
     </button>
   );

@@ -35,8 +35,8 @@ export default function ReviewsPage() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-xl font-bold">리뷰 관리</h1>
-        <p className="mt-1 text-sm text-neutral-500">
+        <h1 className="text-heading-lg font-bold">리뷰 관리</h1>
+        <p className="mt-1 text-body-sm text-neutral-500">
           앱에서 고객이 남긴 리뷰를 확인하고 답글을 남길 수 있어요.
         </p>
       </div>
@@ -53,7 +53,7 @@ export default function ReviewsPage() {
       {shopQ.isError ? (
         <ErrorBox msg={toUserMessage(shopQ.error)} />
       ) : reviewsQ.isLoading || shopQ.isLoading ? (
-        <p className="text-sm text-neutral-400">불러오는 중…</p>
+        <p className="text-body-sm text-neutral-400">불러오는 중…</p>
       ) : reviewsQ.isError ? (
         <ErrorBox msg={toUserMessage(reviewsQ.error)} />
       ) : reviews.length === 0 ? (
@@ -95,7 +95,7 @@ function ReviewCard({ review: r }: { review: Review }) {
       {/* 헤더: 작성자 + 별점 */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-neutral-100 text-sm font-bold text-neutral-500">
+          <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-neutral-100 text-body-sm font-bold text-neutral-500">
             {r.author.profile_image_url ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={r.author.profile_image_url} alt="" className="h-full w-full object-cover" />
@@ -104,8 +104,8 @@ function ReviewCard({ review: r }: { review: Review }) {
             )}
           </div>
           <div>
-            <div className="text-sm font-semibold">{r.author.nickname}</div>
-            <div className="text-xs text-neutral-400">{date}</div>
+            <div className="text-body-sm font-semibold">{r.author.nickname}</div>
+            <div className="text-caption text-neutral-400">{date}</div>
           </div>
         </div>
         <Stars rating={r.rating} />
@@ -113,7 +113,7 @@ function ReviewCard({ review: r }: { review: Review }) {
 
       {/* 본문 */}
       {r.body && (
-        <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-neutral-700">{r.body}</p>
+        <p className="mt-3 whitespace-pre-wrap text-body-sm leading-relaxed text-neutral-700">{r.body}</p>
       )}
 
       {/* 사진 */}
@@ -132,14 +132,14 @@ function ReviewCard({ review: r }: { review: Review }) {
       )}
 
       {r.like_count > 0 && (
-        <div className="mt-2 text-xs text-neutral-400">♥ 좋아요 {r.like_count}</div>
+        <div className="mt-2 text-caption text-neutral-400">♥ 좋아요 {r.like_count}</div>
       )}
 
       {/* 답글 영역 */}
       {r.reply ? (
         <div className="mt-3 rounded-lg bg-secondary/5 px-3 py-2.5">
-          <div className="text-xs font-bold text-secondary">사장님 답글</div>
-          <p className="mt-1 whitespace-pre-wrap text-[13px] leading-relaxed text-neutral-700">
+          <div className="text-caption font-bold text-secondary">사장님 답글</div>
+          <p className="mt-1 whitespace-pre-wrap text-body-sm leading-relaxed text-neutral-700">
             {r.reply.body}
           </p>
         </div>
@@ -150,14 +150,14 @@ function ReviewCard({ review: r }: { review: Review }) {
             value={body}
             onChange={(e) => setBody(e.target.value)}
             placeholder="고객 리뷰에 답글을 남겨보세요."
-            className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-secondary"
+            className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-body-sm outline-none focus:border-secondary"
           />
           <div className="mt-2 flex items-center justify-between">
-            {error ? <span className="text-xs text-red-600">{error}</span> : <span />}
+            {error ? <span className="text-caption text-red-600">{error}</span> : <span />}
             <button
               disabled={replyM.isPending || !body.trim()}
               onClick={() => replyM.mutate()}
-              className="rounded-lg bg-secondary px-4 py-1.5 text-xs font-bold text-white disabled:opacity-50"
+              className="rounded-lg bg-secondary px-4 py-1.5 text-caption font-bold text-white disabled:opacity-50"
             >
               답글 등록
             </button>
@@ -170,7 +170,7 @@ function ReviewCard({ review: r }: { review: Review }) {
 
 function Stars({ rating }: { rating: number }) {
   return (
-    <div className="flex shrink-0 items-center gap-0.5 text-sm" title={`${rating}점`}>
+    <div className="flex shrink-0 items-center gap-0.5 text-body-sm" title={`${rating}점`}>
       {[1, 2, 3, 4, 5].map((n) => (
         <span key={n} className={n <= rating ? 'text-amber-400' : 'text-neutral-200'}>
           ★
@@ -192,7 +192,7 @@ function FilterChip({
   return (
     <button
       onClick={onClick}
-      className={`rounded-full border px-3 py-1.5 text-sm ${
+      className={`rounded-full border px-3 py-1.5 text-body-sm ${
         active ? 'border-secondary bg-secondary text-white' : 'border-neutral-300 text-neutral-600'
       }`}
     >
@@ -202,11 +202,11 @@ function FilterChip({
 }
 
 function ErrorBox({ msg }: { msg: string }) {
-  return <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{msg}</p>;
+  return <p className="rounded-md bg-red-50 px-3 py-2 text-body-sm text-red-700">{msg}</p>;
 }
 function EmptyBox({ msg }: { msg: string }) {
   return (
-    <p className="rounded-md border border-dashed border-neutral-300 p-8 text-center text-sm text-neutral-500">
+    <p className="rounded-md border border-dashed border-neutral-300 p-8 text-center text-body-sm text-neutral-500">
       {msg}
     </p>
   );
