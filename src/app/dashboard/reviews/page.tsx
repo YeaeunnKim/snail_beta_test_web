@@ -153,7 +153,7 @@ function ReviewCard({ review: r }: { review: Review }) {
             className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-body-sm outline-none focus:border-secondary"
           />
           <div className="mt-2 flex items-center justify-between">
-            {error ? <span className="text-caption text-red-600">{error}</span> : <span />}
+            {error ? <span className="text-caption text-danger">{error}</span> : <span />}
             <button
               disabled={replyM.isPending || !body.trim()}
               onClick={() => replyM.mutate()}
@@ -202,7 +202,7 @@ function FilterChip({
 }
 
 function ErrorBox({ msg }: { msg: string }) {
-  return <p className="rounded-md bg-red-50 px-3 py-2 text-body-sm text-red-700">{msg}</p>;
+  return <p className="rounded-md bg-danger-bg px-3 py-2 text-body-sm text-danger">{msg}</p>;
 }
 function EmptyBox({ msg }: { msg: string }) {
   return (

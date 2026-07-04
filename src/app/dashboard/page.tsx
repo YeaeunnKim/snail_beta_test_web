@@ -56,7 +56,7 @@ export default function DashboardHome() {
 
       {/* 인증 상태 배너 */}
       {needsVerification && (
-        <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-body-sm text-amber-800">
+        <div className="rounded-lg border border-warning-border bg-warning-bg p-4 text-body-sm text-warning">
           사업자 인증이 필요합니다 ({VERIFICATION_LABEL[verificationStatus ?? ''] ?? verificationStatus}).{' '}
           <Link href="/dashboard/verification" className="font-semibold underline">
             인증 화면으로 이동
@@ -84,7 +84,7 @@ export default function DashboardHome() {
       {shop && (
         <>
           {summaryError && (
-            <p className="rounded-lg bg-red-50 px-3 py-2 text-body-sm text-red-700">
+            <p className="rounded-lg bg-danger-bg px-3 py-2 text-body-sm text-danger">
               요약 정보를 불러오지 못했습니다.
             </p>
           )}
@@ -190,7 +190,7 @@ function PendingRow({ r }: { r: Reservation }) {
   });
 
   return (
-    <li className={open ? 'rounded-lg bg-[#fdf4f7]' : ''}>
+    <li className={open ? 'rounded-lg bg-rose-hover' : ''}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}

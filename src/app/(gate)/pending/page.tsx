@@ -75,7 +75,7 @@ export default function PendingPage() {
 
   return (
     <div className="space-y-5 rounded-lg border border-neutral-200 bg-white p-6 text-center shadow-sm">
-      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-100 text-2xl">
+      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-warning-bg text-2xl">
         ⏳
       </div>
       <div>
@@ -91,7 +91,7 @@ export default function PendingPage() {
         )}
       </div>
 
-      {error && <p className="rounded-md bg-red-50 px-3 py-2 text-caption text-red-700">{error}</p>}
+      {error && <p className="rounded-md bg-danger-bg px-3 py-2 text-caption text-danger">{error}</p>}
 
       <button
         onClick={onCheck}

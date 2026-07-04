@@ -121,16 +121,16 @@ export default function BusinessVerificationPage() {
 
       {/* 반려 안내 */}
       {status === 'rejected' && (
-        <div className="rounded-md border border-red-300 bg-red-50 p-4 text-body-sm text-red-800">
+        <div className="rounded-md border border-danger-border bg-danger-bg p-4 text-body-sm text-danger">
           <p className="font-semibold">이전 제출이 반려되었습니다.</p>
           {rejectedReason && <p className="mt-1">사유: {rejectedReason}</p>}
-          <p className="mt-1 text-red-700">정보를 수정해 다시 제출해주세요.</p>
+          <p className="mt-1 text-danger">정보를 수정해 다시 제출해주세요.</p>
         </div>
       )}
 
       {/* 이미 심사 중인 경우 안내 */}
       {status === 'pending' && latest && (
-        <div className="rounded-md border border-amber-300 bg-amber-50 p-4 text-body-sm text-amber-800">
+        <div className="rounded-md border border-warning-border bg-warning-bg p-4 text-body-sm text-warning">
           이미 제출된 인증이 심사 중입니다.{' '}
           <a href="/pending" className="font-semibold underline">
             대기 화면으로 이동
@@ -141,7 +141,7 @@ export default function BusinessVerificationPage() {
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
         <div>
           <label className="mb-1 block text-body-sm font-medium">
-            사업자등록번호<span className="ml-0.5 text-red-500">*</span>
+            사업자등록번호<span className="ml-0.5 text-danger">*</span>
           </label>
           <input
             className={inputCls}
@@ -149,7 +149,7 @@ export default function BusinessVerificationPage() {
             {...register('business_registration_number')}
           />
           {errors.business_registration_number && (
-            <p className="mt-1 text-caption text-red-600">
+            <p className="mt-1 text-caption text-danger">
               {errors.business_registration_number.message}
             </p>
           )}
@@ -157,7 +157,7 @@ export default function BusinessVerificationPage() {
 
         <div>
           <label className="mb-1 block text-body-sm font-medium">
-            사업자등록증<span className="ml-0.5 text-red-500">*</span>
+            사업자등록증<span className="ml-0.5 text-danger">*</span>
           </label>
           <input
             type="file"
@@ -168,14 +168,14 @@ export default function BusinessVerificationPage() {
           {doc && (
             <p className="mt-1 text-caption">
               {doc.status === 'uploading' && <span className="text-primary-50">업로드 중… ({doc.name})</span>}
-              {doc.status === 'done' && <span className="text-green-600">업로드 완료: {doc.name}</span>}
-              {doc.status === 'error' && <span className="text-red-600">{doc.error}</span>}
+              {doc.status === 'done' && <span className="text-success">업로드 완료: {doc.name}</span>}
+              {doc.status === 'error' && <span className="text-danger">{doc.error}</span>}
             </p>
           )}
         </div>
 
         {formError && (
-          <p className="rounded-md bg-red-50 px-3 py-2 text-caption text-red-700">{formError}</p>
+          <p className="rounded-md bg-danger-bg px-3 py-2 text-caption text-danger">{formError}</p>
         )}
 
         <button

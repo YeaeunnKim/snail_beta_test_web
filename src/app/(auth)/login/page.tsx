@@ -84,7 +84,7 @@ function LoginForm() {
           className="w-full rounded-md border border-neutral-300 px-3 py-2 text-body-sm outline-none focus:border-secondary"
           {...register('email')}
         />
-        {errors.email && <p className="mt-1 text-caption text-red-600">{errors.email.message}</p>}
+        {errors.email && <p className="mt-1 text-caption text-danger">{errors.email.message}</p>}
       </div>
 
       <div>
@@ -98,11 +98,11 @@ function LoginForm() {
           className="w-full rounded-md border border-neutral-300 px-3 py-2 text-body-sm outline-none focus:border-secondary"
           {...register('password')}
         />
-        {errors.password && <p className="mt-1 text-caption text-red-600">{errors.password.message}</p>}
+        {errors.password && <p className="mt-1 text-caption text-danger">{errors.password.message}</p>}
       </div>
 
       {formError && (
-        <p className="rounded-md bg-red-50 px-3 py-2 text-caption text-red-700">{formError}</p>
+        <p className="rounded-md bg-danger-bg px-3 py-2 text-caption text-danger">{formError}</p>
       )}
 
       <button

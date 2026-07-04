@@ -338,7 +338,7 @@ export default function OnboardingPage() {
                   </div>
                 )}
                 {errors.designers?.message && (
-                  <p className="mt-1 text-caption text-red-600">{errors.designers.message}</p>
+                  <p className="mt-1 text-caption text-danger">{errors.designers.message}</p>
                 )}
               </div>
             </>
@@ -421,13 +421,13 @@ export default function OnboardingPage() {
               </div>
               {Array.isArray(errors.hours) &&
                 errors.hours.some(Boolean) && (
-                  <p className="text-caption text-red-600">영업일의 시작/종료 시간을 확인해주세요.</p>
+                  <p className="text-caption text-danger">영업일의 시작/종료 시간을 확인해주세요.</p>
                 )}
             </>
           )}
 
           {submitError && (
-            <p className="rounded-md bg-red-50 px-3 py-2 text-body-sm text-red-700">{submitError}</p>
+            <p className="rounded-md bg-danger-bg px-3 py-2 text-body-sm text-danger">{submitError}</p>
           )}
 
           {/* 네비게이션 */}
@@ -482,10 +482,10 @@ function Field({
     <div>
       <label className="mb-1 block text-body-sm font-medium">
         {label}
-        {required && <span className="ml-0.5 text-red-500">*</span>}
+        {required && <span className="ml-0.5 text-danger">*</span>}
       </label>
       {children}
-      {error && <p className="mt-1 text-caption text-red-600">{error}</p>}
+      {error && <p className="mt-1 text-caption text-danger">{error}</p>}
     </div>
   );
 }

@@ -205,14 +205,14 @@ function ReservationsConsole() {
       </div>
 
       {action.isError && (
-        <p className="rounded-md bg-red-50 px-3 py-2 text-body-sm text-red-700">{toUserMessage(action.error)}</p>
+        <p className="rounded-md bg-danger-bg px-3 py-2 text-body-sm text-danger">{toUserMessage(action.error)}</p>
       )}
 
       {/* 목록 */}
       {loading ? (
         <p className="py-10 text-center text-body-sm text-primary-50">불러오는 중…</p>
       ) : reservationsQuery.isError ? (
-        <p className="rounded-md bg-red-50 px-3 py-2 text-body-sm text-red-700">{toUserMessage(reservationsQuery.error)}</p>
+        <p className="rounded-md bg-danger-bg px-3 py-2 text-body-sm text-danger">{toUserMessage(reservationsQuery.error)}</p>
       ) : list.length === 0 ? (
         <div className="rounded-2xl border border-neutral-200 bg-white p-14 text-center text-body-sm text-primary-50">
           해당하는 예약이 없어요.
@@ -277,7 +277,7 @@ function Row({
   }
 
   return (
-    <div className={`border-b border-neutral-100 last:border-b-0 ${open ? 'bg-[#fdf4f7]' : ''}`}>
+    <div className={`border-b border-neutral-100 last:border-b-0 ${open ? 'bg-rose-hover' : ''}`}>
       <div
         onClick={onToggle}
         className="grid cursor-pointer grid-cols-[84px_130px_140px_minmax(120px,1fr)_110px_minmax(150px,1.2fr)_90px_150px_20px] items-center gap-2.5 px-4 py-3 hover:bg-neutral-50"

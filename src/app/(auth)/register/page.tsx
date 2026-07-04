@@ -119,7 +119,7 @@ export default function RegisterPage() {
             <span className="text-primary-50">(v{TERMS_VERSION})</span>
           </span>
         </label>
-        {errors.agree_terms && <p className="text-caption text-red-600">{errors.agree_terms.message}</p>}
+        {errors.agree_terms && <p className="text-caption text-danger">{errors.agree_terms.message}</p>}
         <label className="flex items-start gap-2 text-body-sm">
           <input type="checkbox" className="mt-0.5" {...register('agree_privacy')} />
           <span>
@@ -128,12 +128,12 @@ export default function RegisterPage() {
           </span>
         </label>
         {errors.agree_privacy && (
-          <p className="text-caption text-red-600">{errors.agree_privacy.message}</p>
+          <p className="text-caption text-danger">{errors.agree_privacy.message}</p>
         )}
       </div>
 
       {formError && (
-        <p className="rounded-md bg-red-50 px-3 py-2 text-caption text-red-700">{formError}</p>
+        <p className="rounded-md bg-danger-bg px-3 py-2 text-caption text-danger">{formError}</p>
       )}
 
       <button
@@ -172,10 +172,10 @@ function Field({
     <div>
       <label className="mb-1 block text-body-sm font-medium">
         {label}
-        {required && <span className="ml-0.5 text-red-500">*</span>}
+        {required && <span className="ml-0.5 text-danger">*</span>}
       </label>
       {children}
-      {error && <p className="mt-1 text-caption text-red-600">{error}</p>}
+      {error && <p className="mt-1 text-caption text-danger">{error}</p>}
     </div>
   );
 }

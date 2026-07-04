@@ -16,19 +16,19 @@ type Status = 'approved' | 'pending' | 'rejected' | 'none';
 const META: Record<Status, { badge: string; cls: string; title: string; desc: string }> = {
   approved: {
     badge: '승인 완료',
-    cls: 'border-[#cfe0c4] bg-[#eef4e8] text-[#4f6b3d]',
+    cls: 'border-success-border bg-success-bg text-success',
     title: '사업자 인증이 완료되었어요.',
     desc: '샵 등록·운영과 예약 접수가 모두 가능한 상태입니다.',
   },
   pending: {
     badge: '심사 대기 중',
-    cls: 'border-amber-300 bg-amber-50 text-amber-800',
+    cls: 'border-warning-border bg-warning-bg text-warning',
     title: '제출한 인증을 심사하고 있어요.',
     desc: '심사가 끝나면 알림으로 안내해 드릴게요. 보통 1~2 영업일이 걸립니다.',
   },
   rejected: {
     badge: '반려됨',
-    cls: 'border-red-300 bg-red-50 text-red-800',
+    cls: 'border-danger-border bg-danger-bg text-danger',
     title: '이전 제출이 반려되었어요.',
     desc: '반려 사유를 확인하고 정보를 수정해 다시 제출해주세요.',
   },

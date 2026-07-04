@@ -178,7 +178,7 @@ export default function ShopPage() {
       </div>
 
       {!isApproved && !isEdit && (
-        <div className="rounded-md border border-amber-300 bg-amber-50 p-4 text-body-sm text-amber-800">
+        <div className="rounded-md border border-warning-border bg-warning-bg p-4 text-body-sm text-warning">
           사업자 인증이 승인되어야 샵을 등록할 수 있습니다. (현재 상태가 approved가 아니면 저장이 거부됩니다.)
         </div>
       )}
@@ -256,10 +256,10 @@ export default function ShopPage() {
         </Field>
 
         {formError && (
-          <p className="rounded-md bg-red-50 px-3 py-2 text-body-sm text-red-700">{formError}</p>
+          <p className="rounded-md bg-danger-bg px-3 py-2 text-body-sm text-danger">{formError}</p>
         )}
         {savedAt && (
-          <p className="rounded-md bg-green-50 px-3 py-2 text-body-sm text-green-700">
+          <p className="rounded-md bg-success-bg px-3 py-2 text-body-sm text-success">
             저장되었습니다. ({savedAt})
           </p>
         )}
@@ -297,12 +297,12 @@ function Field({
       {label && (
         <label className="mb-1 block text-body-sm font-medium">
           {label}
-          {required && <span className="ml-0.5 text-red-500">*</span>}
+          {required && <span className="ml-0.5 text-danger">*</span>}
         </label>
       )}
       {children}
       {hint && !error && <p className="mt-1 text-caption text-primary-50">{hint}</p>}
-      {error && <p className="mt-1 text-caption text-red-600">{error}</p>}
+      {error && <p className="mt-1 text-caption text-danger">{error}</p>}
     </div>
   );
 }

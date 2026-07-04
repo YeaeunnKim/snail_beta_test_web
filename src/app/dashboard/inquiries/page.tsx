@@ -51,7 +51,7 @@ export default function InquiriesPage() {
       {q.isLoading ? (
         <p className="text-body-sm text-primary-50">불러오는 중…</p>
       ) : q.isError ? (
-        <p className="rounded-md bg-red-50 px-3 py-2 text-body-sm text-red-700">{toUserMessage(q.error)}</p>
+        <p className="rounded-md bg-danger-bg px-3 py-2 text-body-sm text-danger">{toUserMessage(q.error)}</p>
       ) : list.length === 0 ? (
         <p className="rounded-md border border-dashed border-neutral-300 p-8 text-center text-body-sm text-primary-50">
           {onlyPending ? '미답변 문의가 없어요.' : '아직 들어온 문의가 없어요.'}
@@ -129,7 +129,7 @@ function InquiryCard({ inquiry: i }: { inquiry: ShopInquiry }) {
             className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-body-sm outline-none focus:border-secondary"
           />
           <div className="mt-2 flex items-center justify-between">
-            {error ? <span className="text-caption text-red-600">{error}</span> : <span />}
+            {error ? <span className="text-caption text-danger">{error}</span> : <span />}
             <button
               disabled={replyM.isPending || !body.trim()}
               onClick={() => replyM.mutate()}

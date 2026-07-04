@@ -163,7 +163,7 @@ function QuickAddDesigner({ onAdded }: { onAdded: () => void }) {
       >
         추가
       </button>
-      {error && <span className="text-caption text-red-600">{error}</span>}
+      {error && <span className="text-caption text-danger">{error}</span>}
     </div>
   );
 }
@@ -251,7 +251,7 @@ function ScheduleEditor({
                 <input type="time" disabled={off} className={timeCls} {...register(`entries.${i}.break_end_time` as const)} />
               </div>
               {err && (
-                <p className="mt-1 text-caption text-red-600">
+                <p className="mt-1 text-caption text-danger">
                   {err.start_time?.message ||
                     err.end_time?.message ||
                     err.break_start_time?.message ||
@@ -263,8 +263,8 @@ function ScheduleEditor({
         })}
       </div>
 
-      {submitError && <p className="rounded-md bg-red-50 px-3 py-2 text-body-sm text-red-700">{submitError}</p>}
-      {savedAt && <p className="rounded-md bg-green-50 px-3 py-2 text-body-sm text-green-700">저장되었습니다. ({savedAt})</p>}
+      {submitError && <p className="rounded-md bg-danger-bg px-3 py-2 text-body-sm text-danger">{submitError}</p>}
+      {savedAt && <p className="rounded-md bg-success-bg px-3 py-2 text-body-sm text-success">저장되었습니다. ({savedAt})</p>}
 
       <button
         type="submit"
@@ -367,7 +367,7 @@ function ExtraSettingsCard() {
       <div>
         <div className="mb-2 flex items-center gap-2">
           <h2 className="text-body-sm font-semibold text-primary">운영 한도</h2>
-          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-caption font-semibold text-amber-700">
+          <span className="rounded-full bg-warning-bg px-2 py-0.5 text-caption font-semibold text-warning">
             저장 연동 예정
           </span>
         </div>

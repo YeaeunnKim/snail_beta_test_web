@@ -64,7 +64,7 @@ export function ReservationDetail({
   if (r.no_show_at) timeline.push({ label: '노쇼 처리', at: r.no_show_at });
 
   return (
-    <div className="border-t border-neutral-100 bg-[#fdf8fa] px-5 pb-6 pt-1">
+    <div className="border-t border-neutral-100 bg-rose-hover px-5 pb-6 pt-1">
       <InfoLine k="요청일" v={dateTimeLabel(r.created_at)} />
       <InfoLine k="방문일" v={`${dayLabel(r.start_at)} ${formatTime(r.start_at)}~${formatTime(r.end_at)}`} />
       <InfoLine k="담당자" v={r.designer?.name ?? '-'} />
@@ -136,7 +136,7 @@ export function ReservationDetail({
                     : reservationsApi.cancel(r.id, reason.trim()),
                 )
               }
-              className="rounded-xl bg-[#fdeaea] px-4 py-2 text-body-sm font-semibold text-[#cf3b3b] disabled:opacity-50"
+              className="rounded-xl bg-danger-bg px-4 py-2 text-body-sm font-semibold text-danger disabled:opacity-50"
             >
               {reasonMode === 'reject' ? '거절 확정' : '취소 확정'}
             </button>
@@ -184,7 +184,7 @@ export function ReservationDetail({
         </div>
       )}
 
-      {error && <p className="mt-2 text-caption text-red-600">{error}</p>}
+      {error && <p className="mt-2 text-caption text-danger">{error}</p>}
 
       <SectionTitle>변경 이력</SectionTitle>
       <ul className="space-y-1.5">
@@ -227,7 +227,7 @@ function ActBtn({
     kind === 'primary'
       ? 'bg-secondary text-white'
       : kind === 'danger'
-        ? 'bg-[#fdeaea] text-[#cf3b3b]'
+        ? 'bg-danger-bg text-danger'
         : 'bg-neutral-100 text-primary';
   return (
     <button disabled={busy} onClick={onClick} className={`rounded-xl px-4 py-2 text-body-sm font-semibold disabled:opacity-50 ${cls}`}>

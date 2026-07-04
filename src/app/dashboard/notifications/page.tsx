@@ -156,7 +156,7 @@ export default function NotificationsPage() {
       {shopQ.isLoading || feedQ.isLoading ? (
         <p className="text-body-sm text-primary-50">불러오는 중…</p>
       ) : feedQ.isError ? (
-        <p className="rounded-md bg-red-50 px-3 py-2 text-body-sm text-red-700">
+        <p className="rounded-md bg-danger-bg px-3 py-2 text-body-sm text-danger">
           {toUserMessage(feedQ.error)}
         </p>
       ) : shown.length === 0 ? (
