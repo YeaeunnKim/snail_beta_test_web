@@ -36,7 +36,7 @@ export default function ReviewsPage() {
     <div className="space-y-5">
       <div>
         <h1 className="text-heading-lg font-bold">리뷰 관리</h1>
-        <p className="mt-1 text-body-sm text-neutral-500">
+        <p className="mt-1 text-body-sm text-primary-50">
           앱에서 고객이 남긴 리뷰를 확인하고 답글을 남길 수 있어요.
         </p>
       </div>
@@ -53,7 +53,7 @@ export default function ReviewsPage() {
       {shopQ.isError ? (
         <ErrorBox msg={toUserMessage(shopQ.error)} />
       ) : reviewsQ.isLoading || shopQ.isLoading ? (
-        <p className="text-body-sm text-neutral-400">불러오는 중…</p>
+        <p className="text-body-sm text-primary-50">불러오는 중…</p>
       ) : reviewsQ.isError ? (
         <ErrorBox msg={toUserMessage(reviewsQ.error)} />
       ) : reviews.length === 0 ? (
@@ -95,7 +95,7 @@ function ReviewCard({ review: r }: { review: Review }) {
       {/* 헤더: 작성자 + 별점 */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-neutral-100 text-body-sm font-bold text-neutral-500">
+          <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-neutral-100 text-body-sm font-bold text-primary-50">
             {r.author.profile_image_url ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={r.author.profile_image_url} alt="" className="h-full w-full object-cover" />
@@ -105,7 +105,7 @@ function ReviewCard({ review: r }: { review: Review }) {
           </div>
           <div>
             <div className="text-body-sm font-semibold">{r.author.nickname}</div>
-            <div className="text-caption text-neutral-400">{date}</div>
+            <div className="text-caption text-primary-50">{date}</div>
           </div>
         </div>
         <Stars rating={r.rating} />
@@ -113,7 +113,7 @@ function ReviewCard({ review: r }: { review: Review }) {
 
       {/* 본문 */}
       {r.body && (
-        <p className="mt-3 whitespace-pre-wrap text-body-sm leading-relaxed text-neutral-700">{r.body}</p>
+        <p className="mt-3 whitespace-pre-wrap text-body-sm leading-relaxed text-primary">{r.body}</p>
       )}
 
       {/* 사진 */}
@@ -132,14 +132,14 @@ function ReviewCard({ review: r }: { review: Review }) {
       )}
 
       {r.like_count > 0 && (
-        <div className="mt-2 text-caption text-neutral-400">♥ 좋아요 {r.like_count}</div>
+        <div className="mt-2 text-caption text-primary-50">♥ 좋아요 {r.like_count}</div>
       )}
 
       {/* 답글 영역 */}
       {r.reply ? (
         <div className="mt-3 rounded-lg bg-secondary/5 px-3 py-2.5">
           <div className="text-caption font-semibold text-secondary">사장님 답글</div>
-          <p className="mt-1 whitespace-pre-wrap text-body-sm leading-relaxed text-neutral-700">
+          <p className="mt-1 whitespace-pre-wrap text-body-sm leading-relaxed text-primary">
             {r.reply.body}
           </p>
         </div>
@@ -193,7 +193,7 @@ function FilterChip({
     <button
       onClick={onClick}
       className={`rounded-full border px-3 py-1.5 text-body-sm font-semibold ${
-        active ? 'border-secondary bg-secondary text-white' : 'border-neutral-300 text-neutral-600'
+        active ? 'border-secondary bg-secondary text-white' : 'border-neutral-300 text-primary'
       }`}
     >
       {children}
@@ -206,7 +206,7 @@ function ErrorBox({ msg }: { msg: string }) {
 }
 function EmptyBox({ msg }: { msg: string }) {
   return (
-    <p className="rounded-md border border-dashed border-neutral-300 p-8 text-center text-body-sm text-neutral-500">
+    <p className="rounded-md border border-dashed border-neutral-300 p-8 text-center text-body-sm text-primary-50">
       {msg}
     </p>
   );

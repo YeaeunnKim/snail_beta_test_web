@@ -40,7 +40,7 @@ function tabOf(status: ReservationStatus): TabKey | null {
 
 export default function ReservationsPage() {
   return (
-    <Suspense fallback={<p className="text-body-sm text-neutral-500">불러오는 중…</p>}>
+    <Suspense fallback={<p className="text-body-sm text-primary-50">불러오는 중…</p>}>
       <ReservationsConsole />
     </Suspense>
   );
@@ -125,7 +125,7 @@ function ReservationsConsole() {
     <div className="space-y-5">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">예약 관리</h1>
-        <p className="mt-1 text-body-sm text-neutral-500">들어온 예약을 상태에 따라 확인하고 처리합니다.</p>
+        <p className="mt-1 text-body-sm text-primary-50">들어온 예약을 상태에 따라 확인하고 처리합니다.</p>
       </div>
 
       {/* 탭 */}
@@ -141,13 +141,13 @@ function ReservationsConsole() {
                 setExpandedId(null);
               }}
               className={`flex items-center gap-1.5 whitespace-nowrap border-b-2 px-3.5 pb-3 pt-2.5 text-body-sm font-semibold ${
-                on ? 'border-secondary text-neutral-900' : 'border-transparent text-neutral-400'
+                on ? 'border-secondary text-primary' : 'border-transparent text-primary-50'
               }`}
             >
               {t.label}
               <span
                 className={`rounded-full px-1.5 py-0.5 text-caption font-semibold ${
-                  on ? 'bg-secondary/15 text-secondary' : need ? 'bg-secondary/15 text-secondary' : 'bg-neutral-100 text-neutral-500'
+                  on ? 'bg-secondary/15 text-secondary' : need ? 'bg-secondary/15 text-secondary' : 'bg-neutral-100 text-primary-50'
                 }`}
               >
                 {counts[t.key]}
@@ -162,7 +162,7 @@ function ReservationsConsole() {
         <button
           onClick={() => setDay(todayLocalDate())}
           className={`rounded-full border px-3 py-1.5 text-body-sm font-semibold ${
-            day ? 'border-secondary bg-secondary text-white' : 'border-neutral-200 bg-white text-neutral-600'
+            day ? 'border-secondary bg-secondary text-white' : 'border-neutral-200 bg-white text-primary'
           }`}
         >
           오늘
@@ -170,7 +170,7 @@ function ReservationsConsole() {
         <button
           onClick={() => setDay(null)}
           className={`rounded-full border px-3 py-1.5 text-body-sm font-semibold ${
-            day ? 'border-neutral-200 bg-white text-neutral-600' : 'border-secondary bg-secondary text-white'
+            day ? 'border-neutral-200 bg-white text-primary' : 'border-secondary bg-secondary text-white'
           }`}
         >
           전체 기간
@@ -210,17 +210,17 @@ function ReservationsConsole() {
 
       {/* 목록 */}
       {loading ? (
-        <p className="py-10 text-center text-body-sm text-neutral-400">불러오는 중…</p>
+        <p className="py-10 text-center text-body-sm text-primary-50">불러오는 중…</p>
       ) : reservationsQuery.isError ? (
         <p className="rounded-md bg-red-50 px-3 py-2 text-body-sm text-red-700">{toUserMessage(reservationsQuery.error)}</p>
       ) : list.length === 0 ? (
-        <div className="rounded-2xl border border-neutral-200 bg-white p-14 text-center text-body-sm text-neutral-400">
+        <div className="rounded-2xl border border-neutral-200 bg-white p-14 text-center text-body-sm text-primary-50">
           해당하는 예약이 없어요.
         </div>
       ) : (
         <div className="overflow-x-auto rounded-2xl border border-neutral-200 bg-white">
           <div className="min-w-[880px]">
-            <div className="grid grid-cols-[84px_130px_140px_minmax(120px,1fr)_110px_minmax(150px,1.2fr)_90px_150px_20px] items-center gap-2.5 border-b border-neutral-200 bg-neutral-50 px-4 py-2.5 text-caption text-neutral-400">
+            <div className="grid grid-cols-[84px_130px_140px_minmax(120px,1fr)_110px_minmax(150px,1.2fr)_90px_150px_20px] items-center gap-2.5 border-b border-neutral-200 bg-neutral-50 px-4 py-2.5 text-caption text-primary-50">
               <div>상태</div>
               <div>요청 날짜</div>
               <div>방문 예정</div>
@@ -290,11 +290,11 @@ function Row({
         </div>
         <div className="text-body-sm">
           <div className="font-medium">{dateTimeLabel(r.created_at).split(' ')[0]}</div>
-          <div className="text-caption text-neutral-400">{dateTimeLabel(r.created_at).split(' ')[1]}</div>
+          <div className="text-caption text-primary-50">{dateTimeLabel(r.created_at).split(' ')[1]}</div>
         </div>
         <div className="text-body-sm">
           <div className="font-medium">{dayLabel(r.start_at)}</div>
-          <div className="text-caption text-neutral-400">
+          <div className="text-caption text-primary-50">
             {formatTime(r.start_at)}~{formatTime(r.end_at)}
           </div>
         </div>
@@ -323,14 +323,14 @@ function Row({
               disabled={busy}
               onClick={() => run(a.fn)}
               className={`rounded-lg px-2.5 py-1.5 text-caption font-semibold disabled:opacity-50 ${
-                a.cls === 'primary' ? 'bg-secondary text-white' : 'bg-neutral-100 text-neutral-600'
+                a.cls === 'primary' ? 'bg-secondary text-white' : 'bg-neutral-100 text-primary'
               }`}
             >
               {a.label}
             </button>
           ))}
         </div>
-        <div className={`text-center text-caption text-neutral-300 transition-transform ${open ? 'rotate-180' : ''}`}>⌄</div>
+        <div className={`text-center text-caption text-primary-10 transition-transform ${open ? 'rotate-180' : ''}`}>⌄</div>
       </div>
 
       {open && <ReservationDetail reservation={r} />}

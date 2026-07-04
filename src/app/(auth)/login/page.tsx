@@ -26,7 +26,7 @@ type LoginForm = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<p className="text-center text-body-sm text-neutral-500">불러오는 중…</p>}>
+    <Suspense fallback={<p className="text-center text-body-sm text-primary-50">불러오는 중…</p>}>
       <LoginForm />
     </Suspense>
   );
@@ -113,7 +113,7 @@ function LoginForm() {
         {isSubmitting ? '로그인 중…' : '로그인'}
       </button>
 
-      <p className="text-center text-caption text-neutral-500">
+      <p className="text-center text-caption text-primary-50">
         <a href="/register" className="underline">
           회원가입
         </a>{' '}

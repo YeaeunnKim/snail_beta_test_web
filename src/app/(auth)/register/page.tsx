@@ -116,7 +116,7 @@ export default function RegisterPage() {
           <input type="checkbox" className="mt-0.5" {...register('agree_terms')} />
           <span>
             [필수] 이용약관에 동의합니다.{' '}
-            <span className="text-neutral-400">(v{TERMS_VERSION})</span>
+            <span className="text-primary-50">(v{TERMS_VERSION})</span>
           </span>
         </label>
         {errors.agree_terms && <p className="text-caption text-red-600">{errors.agree_terms.message}</p>}
@@ -124,7 +124,7 @@ export default function RegisterPage() {
           <input type="checkbox" className="mt-0.5" {...register('agree_privacy')} />
           <span>
             [필수] 개인정보 처리방침에 동의합니다.{' '}
-            <span className="text-neutral-400">(v{PRIVACY_VERSION})</span>
+            <span className="text-primary-50">(v{PRIVACY_VERSION})</span>
           </span>
         </label>
         {errors.agree_privacy && (
@@ -144,7 +144,7 @@ export default function RegisterPage() {
         {isSubmitting ? '가입 중…' : '회원가입'}
       </button>
 
-      <p className="text-center text-caption text-neutral-500">
+      <p className="text-center text-caption text-primary-50">
         이미 계정이 있으신가요?{' '}
         <a href="/login" className="underline">
           로그인

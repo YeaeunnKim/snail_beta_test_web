@@ -129,7 +129,7 @@ export default function NotificationsPage() {
     <div className="space-y-5">
       <div>
         <h1 className="text-heading-lg font-bold">알림</h1>
-        <p className="mt-1 text-body-sm text-neutral-500">
+        <p className="mt-1 text-body-sm text-primary-50">
           예약 요청 · 문의 · 리뷰가 들어오면 여기에 쌓여요.
           {unreadCount > 0 && (
             <span className="ml-1 font-semibold text-secondary">처리할 항목 {unreadCount}개</span>
@@ -145,7 +145,7 @@ export default function NotificationsPage() {
             className={`rounded-full border px-3 py-1.5 text-body-sm font-semibold ${
               filter === f.key
                 ? 'border-secondary bg-secondary text-white'
-                : 'border-neutral-300 text-neutral-600'
+                : 'border-neutral-300 text-primary'
             }`}
           >
             {f.label}
@@ -154,13 +154,13 @@ export default function NotificationsPage() {
       </div>
 
       {shopQ.isLoading || feedQ.isLoading ? (
-        <p className="text-body-sm text-neutral-400">불러오는 중…</p>
+        <p className="text-body-sm text-primary-50">불러오는 중…</p>
       ) : feedQ.isError ? (
         <p className="rounded-md bg-red-50 px-3 py-2 text-body-sm text-red-700">
           {toUserMessage(feedQ.error)}
         </p>
       ) : shown.length === 0 ? (
-        <p className="rounded-md border border-dashed border-neutral-300 p-8 text-center text-body-sm text-neutral-500">
+        <p className="rounded-md border border-dashed border-neutral-300 p-8 text-center text-body-sm text-primary-50">
           아직 새 알림이 없어요.
         </p>
       ) : (
@@ -192,9 +192,9 @@ export default function NotificationsPage() {
                       <b className="truncate text-body-sm font-semibold">{it.title}</b>
                       {it.unread && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-secondary" />}
                     </div>
-                    <p className="mt-1 truncate text-caption text-neutral-500">{it.desc}</p>
+                    <p className="mt-1 truncate text-caption text-primary-50">{it.desc}</p>
                   </div>
-                  <span className="shrink-0 text-caption text-neutral-400">{relTime(it.at)}</span>
+                  <span className="shrink-0 text-caption text-primary-50">{relTime(it.at)}</span>
                 </Link>
               </li>
             );

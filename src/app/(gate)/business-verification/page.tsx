@@ -107,14 +107,14 @@ export default function BusinessVerificationPage() {
   };
 
   if (loading) {
-    return <p className="text-center text-body-sm text-neutral-500">불러오는 중…</p>;
+    return <p className="text-center text-body-sm text-primary-50">불러오는 중…</p>;
   }
 
   return (
     <div className="space-y-5 rounded-lg border border-neutral-200 bg-white p-6 shadow-sm">
       <div>
         <h2 className="text-heading-md font-bold">사업자 인증</h2>
-        <p className="mt-1 text-body-sm text-neutral-500">
+        <p className="mt-1 text-body-sm text-primary-50">
           승인 후 샵 등록·운영이 가능합니다. 사업자 정보를 제출해주세요.
         </p>
       </div>
@@ -163,11 +163,11 @@ export default function BusinessVerificationPage() {
             type="file"
             accept="image/*,application/pdf"
             onChange={(e) => onUpload(e.target.files?.[0])}
-            className="block w-full text-body-sm text-neutral-600 file:mr-3 file:rounded-md file:border-0 file:bg-secondary file:px-3 file:py-1.5 file:text-body-sm file:font-semibold file:text-white"
+            className="block w-full text-body-sm text-primary file:mr-3 file:rounded-md file:border-0 file:bg-secondary file:px-3 file:py-1.5 file:text-body-sm file:font-semibold file:text-white"
           />
           {doc && (
             <p className="mt-1 text-caption">
-              {doc.status === 'uploading' && <span className="text-neutral-500">업로드 중… ({doc.name})</span>}
+              {doc.status === 'uploading' && <span className="text-primary-50">업로드 중… ({doc.name})</span>}
               {doc.status === 'done' && <span className="text-green-600">업로드 완료: {doc.name}</span>}
               {doc.status === 'error' && <span className="text-red-600">{doc.error}</span>}
             </p>

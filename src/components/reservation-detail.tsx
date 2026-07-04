@@ -74,7 +74,7 @@ export function ReservationDetail({
       <DesignerDayTimeline reservation={r} />
 
       <SectionTitle>디자인</SectionTitle>
-      {r.design ? <ReservationDesignBlock reservation={r} /> : <p className="text-body-sm text-neutral-400">디자인 정보가 없어요.</p>}
+      {r.design ? <ReservationDesignBlock reservation={r} /> : <p className="text-body-sm text-primary-50">디자인 정보가 없어요.</p>}
 
       {ps && (
         <>
@@ -82,7 +82,7 @@ export function ReservationDetail({
           <div className="flex flex-wrap items-center gap-2.5">
             <PayPill state={ps} />
             {r.deposit_amount_snapshot != null && (
-              <span className="text-caption text-neutral-500">예약금 {won(r.deposit_amount_snapshot)}</span>
+              <span className="text-caption text-primary-50">예약금 {won(r.deposit_amount_snapshot)}</span>
             )}
             {r.status === 'payment_pending' && (
               <button
@@ -103,7 +103,7 @@ export function ReservationDetail({
       {/* 예약 확정 시 요청 답변(선택) — 아직 승인 전 & 답변 없음 */}
       {r.status === 'pending' && !r.owner_reply && !reasonMode && (
         <div className="mt-3">
-          <label className="mb-1 block text-caption font-semibold text-neutral-500">
+          <label className="mb-1 block text-caption font-semibold text-primary-50">
             답변 (선택) — 예약 확정 시 함께 전달돼요
           </label>
           <textarea
@@ -145,7 +145,7 @@ export function ReservationDetail({
                 setReasonMode(null);
                 setReason('');
               }}
-              className="rounded-xl bg-neutral-100 px-4 py-2 text-body-sm font-semibold text-neutral-600"
+              className="rounded-xl bg-neutral-100 px-4 py-2 text-body-sm font-semibold text-primary"
             >
               닫기
             </button>
@@ -189,8 +189,8 @@ export function ReservationDetail({
       <SectionTitle>변경 이력</SectionTitle>
       <ul className="space-y-1.5">
         {timeline.map((t) => (
-          <li key={t.label} className="flex gap-2.5 text-caption text-neutral-500">
-            <span className="min-w-[88px] shrink-0 text-neutral-300">{dateTimeLabel(t.at)}</span>
+          <li key={t.label} className="flex gap-2.5 text-caption text-primary-50">
+            <span className="min-w-[88px] shrink-0 text-primary-10">{dateTimeLabel(t.at)}</span>
             <span>{t.label}</span>
           </li>
         ))}
@@ -202,14 +202,14 @@ export function ReservationDetail({
 function InfoLine({ k, v }: { k: string; v: string }) {
   return (
     <div className="flex gap-2.5 border-b border-neutral-100 py-2.5 text-body-sm">
-      <span className="w-16 shrink-0 text-neutral-400">{k}</span>
+      <span className="w-16 shrink-0 text-primary-50">{k}</span>
       <span className="font-semibold">{v}</span>
     </div>
   );
 }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
-  return <div className="mb-2 mt-4 text-caption font-semibold text-neutral-400">{children}</div>;
+  return <div className="mb-2 mt-4 text-caption font-semibold text-primary-50">{children}</div>;
 }
 
 function ActBtn({
@@ -228,7 +228,7 @@ function ActBtn({
       ? 'bg-secondary text-white'
       : kind === 'danger'
         ? 'bg-[#fdeaea] text-[#cf3b3b]'
-        : 'bg-neutral-100 text-neutral-600';
+        : 'bg-neutral-100 text-primary';
   return (
     <button disabled={busy} onClick={onClick} className={`rounded-xl px-4 py-2 text-body-sm font-semibold disabled:opacity-50 ${cls}`}>
       {children}

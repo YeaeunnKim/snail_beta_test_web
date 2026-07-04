@@ -18,12 +18,12 @@ export function PageStub({
       <p className="mb-1 text-caption font-semibold uppercase tracking-wide text-secondary">
         구현 예정 (프론트/디자인팀)
       </p>
-      <h2 className="text-heading-md font-bold text-neutral-900">{title}</h2>
-      {description && <p className="mt-2 text-body-sm text-neutral-600">{description}</p>}
+      <h2 className="text-heading-md font-bold text-primary">{title}</h2>
+      {description && <p className="mt-2 text-body-sm text-primary">{description}</p>}
       {apis && apis.length > 0 && (
         <div className="mt-4">
-          <p className="text-caption text-neutral-500">연결할 서비스 (src/services)</p>
-          <ul className="mt-1 list-inside list-disc text-body-sm text-neutral-700">
+          <p className="text-caption text-primary-50">연결할 서비스 (src/services)</p>
+          <ul className="mt-1 list-inside list-disc text-body-sm text-primary">
             {apis.map((api) => (
               <li key={api}>
                 <code className="text-caption">{api}</code>

@@ -34,7 +34,7 @@ export default function InquiriesPage() {
     <div className="space-y-5">
       <div>
         <h1 className="text-heading-lg font-bold">문의 관리</h1>
-        <p className="mt-1 text-body-sm text-neutral-500">
+        <p className="mt-1 text-body-sm text-primary-50">
           앱에서 고객이 디자인·샵에 대해 남긴 문의를 확인하고 답변할 수 있어요.
         </p>
       </div>
@@ -49,11 +49,11 @@ export default function InquiriesPage() {
       </div>
 
       {q.isLoading ? (
-        <p className="text-body-sm text-neutral-400">불러오는 중…</p>
+        <p className="text-body-sm text-primary-50">불러오는 중…</p>
       ) : q.isError ? (
         <p className="rounded-md bg-red-50 px-3 py-2 text-body-sm text-red-700">{toUserMessage(q.error)}</p>
       ) : list.length === 0 ? (
-        <p className="rounded-md border border-dashed border-neutral-300 p-8 text-center text-body-sm text-neutral-500">
+        <p className="rounded-md border border-dashed border-neutral-300 p-8 text-center text-body-sm text-primary-50">
           {onlyPending ? '미답변 문의가 없어요.' : '아직 들어온 문의가 없어요.'}
         </p>
       ) : (
@@ -95,19 +95,19 @@ function InquiryCard({ inquiry: i }: { inquiry: ShopInquiry }) {
       <div className="flex items-center justify-between gap-2">
         <span
           className={`rounded-full px-2 py-0.5 text-caption font-bold ${
-            answered ? 'bg-neutral-100 text-neutral-500' : 'bg-secondary/10 text-secondary'
+            answered ? 'bg-neutral-100 text-primary-50' : 'bg-secondary/10 text-secondary'
           }`}
         >
           {answered ? '답변 완료' : '미답변'}
         </span>
-        <span className="text-caption text-neutral-400">{date}</span>
+        <span className="text-caption text-primary-50">{date}</span>
       </div>
 
       {/* 문의 대상 디자인 */}
       {i.design_id && <DesignChip designId={i.design_id} />}
 
       {/* 고객 문의 본문 */}
-      <div className="mt-3 rounded-xl rounded-tl-sm border border-neutral-200 bg-white px-3 py-2 text-body-sm leading-relaxed text-neutral-700">
+      <div className="mt-3 rounded-xl rounded-tl-sm border border-neutral-200 bg-white px-3 py-2 text-body-sm leading-relaxed text-primary">
         {i.body}
       </div>
 
@@ -115,7 +115,7 @@ function InquiryCard({ inquiry: i }: { inquiry: ShopInquiry }) {
       {answered ? (
         <div className="mt-2 rounded-xl rounded-tr-sm bg-secondary/5 px-3 py-2.5">
           <div className="text-caption font-bold text-secondary">사장님 답변</div>
-          <p className="mt-1 whitespace-pre-wrap text-body-sm leading-relaxed text-neutral-700">
+          <p className="mt-1 whitespace-pre-wrap text-body-sm leading-relaxed text-primary">
             {i.owner_reply}
           </p>
         </div>
@@ -160,8 +160,8 @@ function DesignChip({ designId }: { designId: string }) {
         )}
       </div>
       <div className="min-w-0 text-body-sm">
-        <div className="text-caption text-neutral-400">문의한 디자인</div>
-        <div className="truncate font-medium text-neutral-700">
+        <div className="text-caption text-primary-50">문의한 디자인</div>
+        <div className="truncate font-medium text-primary">
           {q.isLoading ? '불러오는 중…' : (d?.title ?? '삭제된 디자인')}
         </div>
       </div>
@@ -182,7 +182,7 @@ function FilterChip({
     <button
       onClick={onClick}
       className={`rounded-full border px-3 py-1.5 text-body-sm font-semibold ${
-        active ? 'border-secondary bg-secondary text-white' : 'border-neutral-300 text-neutral-600'
+        active ? 'border-secondary bg-secondary text-white' : 'border-neutral-300 text-primary'
       }`}
     >
       {children}

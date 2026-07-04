@@ -165,14 +165,14 @@ export default function ShopPage() {
   };
 
   if (loading) {
-    return <p className="text-body-sm text-neutral-500">샵 정보를 불러오는 중…</p>;
+    return <p className="text-body-sm text-primary-50">샵 정보를 불러오는 중…</p>;
   }
 
   return (
     <div className="max-w-2xl space-y-6">
       <div>
         <h1 className="text-heading-lg font-bold">샵 관리</h1>
-        <p className="mt-1 text-body-sm text-neutral-500">
+        <p className="mt-1 text-body-sm text-primary-50">
           {isEdit ? '샵 정보를 수정합니다.' : '아직 등록된 샵이 없습니다. 새 샵을 만들어주세요.'}
         </p>
       </div>
@@ -301,7 +301,7 @@ function Field({
         </label>
       )}
       {children}
-      {hint && !error && <p className="mt-1 text-caption text-neutral-400">{hint}</p>}
+      {hint && !error && <p className="mt-1 text-caption text-primary-50">{hint}</p>}
       {error && <p className="mt-1 text-caption text-red-600">{error}</p>}
     </div>
   );

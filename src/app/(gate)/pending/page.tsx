@@ -70,7 +70,7 @@ export default function PendingPage() {
   };
 
   if (loading) {
-    return <p className="text-center text-body-sm text-neutral-500">불러오는 중…</p>;
+    return <p className="text-center text-body-sm text-primary-50">불러오는 중…</p>;
   }
 
   return (
@@ -80,12 +80,12 @@ export default function PendingPage() {
       </div>
       <div>
         <h2 className="text-heading-md font-bold">사업자 인증 심사 중</h2>
-        <p className="mt-2 text-body-sm text-neutral-600">
+        <p className="mt-2 text-body-sm text-primary">
           제출하신 사업자 인증을 검토하고 있습니다. 승인이 완료되면 샵 등록과 운영을 시작할 수
           있어요.
         </p>
         {submission?.created_at && (
-          <p className="mt-2 text-caption text-neutral-400">
+          <p className="mt-2 text-caption text-primary-50">
             제출일: {new Date(submission.created_at).toLocaleString('ko-KR')}
           </p>
         )}
@@ -101,7 +101,7 @@ export default function PendingPage() {
         {checking ? '확인 중…' : '심사 상태 확인'}
       </button>
 
-      <button onClick={logout} className="text-caption font-semibold text-neutral-500 underline">
+      <button onClick={logout} className="text-caption font-semibold text-primary-50 underline">
         로그아웃
       </button>
     </div>

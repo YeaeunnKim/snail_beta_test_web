@@ -49,7 +49,7 @@ export default function DashboardHome() {
     <div className="space-y-5">
       <div>
         <h1 className="text-heading-lg font-bold">대시보드</h1>
-        <p className="mt-1 text-body-sm text-neutral-500">
+        <p className="mt-1 text-body-sm text-primary-50">
           {summary ? `${dateLabel(summary.today)} · 오늘 하루 현황이에요.` : shop?.name ?? ' '}
         </p>
       </div>
@@ -70,8 +70,8 @@ export default function DashboardHome() {
       {/* 승인됐지만 아직 샵이 없으면 온보딩으로 유도 */}
       {isApproved && !shopLoading && shop === null && (
         <div className="rounded-lg border border-secondary/40 bg-secondary/5 p-4 text-body-sm">
-          <p className="font-semibold text-neutral-800">아직 등록된 샵이 없습니다.</p>
-          <p className="mt-1 text-neutral-600">샵 정보를 등록하면 예약을 받을 수 있어요.</p>
+          <p className="font-semibold text-primary">아직 등록된 샵이 없습니다.</p>
+          <p className="mt-1 text-primary">샵 정보를 등록하면 예약을 받을 수 있어요.</p>
           <Link
             href="/onboarding"
             className="mt-3 inline-block rounded-lg bg-secondary px-4 py-2 text-caption font-semibold text-white"
@@ -152,7 +152,7 @@ export default function DashboardHome() {
               </Link>
             </div>
             {summaryLoading ? (
-              <p className="text-body-sm text-neutral-400">불러오는 중…</p>
+              <p className="text-body-sm text-primary-50">불러오는 중…</p>
             ) : summary && summary.pendingItems.length > 0 ? (
               <ul className="divide-y divide-primary-10">
                 {summary.pendingItems.slice(0, 6).map((r) => (
@@ -160,7 +160,7 @@ export default function DashboardHome() {
                 ))}
               </ul>
             ) : (
-              <p className="py-8 text-center text-body-sm text-neutral-400">새로 들어온 요청이 없어요.</p>
+              <p className="py-8 text-center text-body-sm text-primary-50">새로 들어온 요청이 없어요.</p>
             )}
           </section>
 
@@ -200,10 +200,10 @@ function PendingRow({ r }: { r: Reservation }) {
           <div className="flex items-center gap-1.5">
             <b className="text-body-sm font-semibold">{r.user?.nickname ?? '고객'}</b>
             {r.designer?.name && (
-              <span className="text-caption text-neutral-400">· {r.designer.name}</span>
+              <span className="text-caption text-primary-50">· {r.designer.name}</span>
             )}
           </div>
-          <div className="mt-0.5 text-caption text-neutral-500">
+          <div className="mt-0.5 text-caption text-primary-50">
             {date} {formatTime(r.start_at)} · {r.design?.title ?? '시술'} · {won(r.total_price)}
           </div>
           {r.user_request && (
@@ -213,7 +213,7 @@ function PendingRow({ r }: { r: Reservation }) {
           )}
         </div>
         <span
-          className={`shrink-0 self-center text-caption text-neutral-300 transition-transform ${open ? 'rotate-180' : ''}`}
+          className={`shrink-0 self-center text-caption text-primary-10 transition-transform ${open ? 'rotate-180' : ''}`}
         >
           ⌄
         </span>
@@ -244,15 +244,15 @@ function StatCard({
 }) {
   const inner = (
     <div className="h-full rounded-xl border border-primary-10 bg-white p-4 transition group-hover:border-secondary group-hover:-translate-y-0.5">
-      <div className="flex items-center gap-1.5 text-caption text-neutral-500">
+      <div className="flex items-center gap-1.5 text-caption text-primary-50">
         <span className="h-2 w-2 rounded-full" style={{ background: dot }} />
         {label}
       </div>
       <div className="mt-2 text-3xl font-extrabold leading-none">
         {loading ? '…' : value}
-        <span className="ml-1 align-baseline text-body-sm text-neutral-400">건</span>
+        <span className="ml-1 align-baseline text-body-sm text-primary-50">건</span>
       </div>
-      {sub && <div className="mt-2 text-caption text-neutral-400">{sub}</div>}
+      {sub && <div className="mt-2 text-caption text-primary-50">{sub}</div>}
     </div>
   );
   return href ? (
@@ -267,7 +267,7 @@ function StatCard({
 function Settle({ k, v, color }: { k: string; v: string; color?: string }) {
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-caption text-neutral-500">{k}</span>
+      <span className="text-caption text-primary-50">{k}</span>
       <span className="text-heading-lg font-extrabold" style={color ? { color } : undefined}>
         {v}
       </span>

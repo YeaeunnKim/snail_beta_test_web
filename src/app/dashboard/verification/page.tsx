@@ -34,7 +34,7 @@ const META: Record<Status, { badge: string; cls: string; title: string; desc: st
   },
   none: {
     badge: '미제출',
-    cls: 'border-neutral-300 bg-neutral-50 text-neutral-600',
+    cls: 'border-neutral-300 bg-neutral-50 text-primary',
     title: '아직 사업자 인증을 제출하지 않았어요.',
     desc: '사업자 정보를 제출하면 승인 후 샵을 운영할 수 있습니다.',
   },
@@ -53,7 +53,7 @@ export default function VerificationStatusPage() {
     <div className="space-y-5">
       <div>
         <h1 className="text-heading-lg font-bold">사업자 인증</h1>
-        <p className="mt-1 text-body-sm text-neutral-500">사업자 인증 상태를 확인하고 관리합니다.</p>
+        <p className="mt-1 text-body-sm text-primary-50">사업자 인증 상태를 확인하고 관리합니다.</p>
       </div>
 
       <div className={`rounded-xl border p-6 ${meta.cls}`}>
@@ -77,8 +77,8 @@ export default function VerificationStatusPage() {
         )}
       </div>
 
-      <div className="rounded-xl border border-primary-10 bg-white p-5 text-body-sm text-neutral-600">
-        <h3 className="mb-2 text-body-sm font-bold text-neutral-800">안내</h3>
+      <div className="rounded-xl border border-primary-10 bg-white p-5 text-body-sm text-primary">
+        <h3 className="mb-2 text-body-sm font-bold text-primary">안내</h3>
         <ul className="list-disc space-y-1 pl-5">
           <li>사업자등록증과 사업자등록번호로 인증합니다.</li>
           <li>승인 후 샵 정보 등록 · 디자인 공개 · 예약 접수가 가능합니다.</li>

@@ -56,7 +56,7 @@ export function ReservationDesignBlock({ reservation }: { reservation: Reservati
         </button>
         <div className="min-w-0 text-body-sm">
           <div className="font-semibold">{title}</div>
-          <div className="text-caption text-neutral-400">
+          <div className="text-caption text-primary-50">
             {duration != null && `약 ${duration}분 · `}
             {won(reservation.total_price)}
           </div>
@@ -83,9 +83,9 @@ export function ReservationDesignBlock({ reservation }: { reservation: Reservati
       {open && (
         <div className="mt-3">
           {q.isLoading ? (
-            <p className="text-caption text-neutral-400">사진 불러오는 중…</p>
+            <p className="text-caption text-primary-50">사진 불러오는 중…</p>
           ) : images.length === 0 ? (
-            <p className="text-caption text-neutral-400">등록된 사진이 없어요.</p>
+            <p className="text-caption text-primary-50">등록된 사진이 없어요.</p>
           ) : (
             <div className="flex flex-wrap gap-2">
               {images.map((img) => (
@@ -110,13 +110,13 @@ export function ReservationDesignBlock({ reservation }: { reservation: Reservati
 export function InquiryThread({ reservation }: { reservation: Reservation }) {
   const req = reservation.user_request;
   const reply = reservation.owner_reply;
-  if (!req && !reply) return <p className="text-body-sm text-neutral-400">남긴 요청사항이 없어요.</p>;
+  if (!req && !reply) return <p className="text-body-sm text-primary-50">남긴 요청사항이 없어요.</p>;
   return (
     <div className="flex flex-col gap-2">
       {req && (
         <div className="max-w-[85%] self-start rounded-xl rounded-tl-sm border border-neutral-200 bg-white px-3 py-2 text-body-sm leading-relaxed">
           {req}
-          <div className="mt-1 text-caption text-neutral-400">고객 · {reservation.user?.nickname ?? ''}</div>
+          <div className="mt-1 text-caption text-primary-50">고객 · {reservation.user?.nickname ?? ''}</div>
         </div>
       )}
       {reply && (

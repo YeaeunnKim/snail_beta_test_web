@@ -89,15 +89,15 @@ export default function DesignersPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-heading-lg font-bold">시간표 관리</h1>
-        <p className="mt-1 text-body-sm text-neutral-500">디자이너별 주간 영업시간·점심·휴무를 설정합니다.</p>
+        <p className="mt-1 text-body-sm text-primary-50">디자이너별 주간 영업시간·점심·휴무를 설정합니다.</p>
       </div>
 
       <QuickAddDesigner onAdded={() => designersQuery.refetch()} />
 
       {designersQuery.isLoading ? (
-        <p className="text-body-sm text-neutral-400">불러오는 중…</p>
+        <p className="text-body-sm text-primary-50">불러오는 중…</p>
       ) : designers.length === 0 ? (
-        <p className="rounded-md border border-dashed border-neutral-300 p-6 text-center text-body-sm text-neutral-500">
+        <p className="rounded-md border border-dashed border-neutral-300 p-6 text-center text-body-sm text-primary-50">
           등록된 디자이너가 없습니다. 위에서 디자이너를 추가해주세요.
         </p>
       ) : (
@@ -111,7 +111,7 @@ export default function DesignersPage() {
                 className={`rounded-full border px-4 py-1.5 text-body-sm font-semibold ${
                   selectedId === d.id
                     ? 'border-secondary bg-secondary text-white'
-                    : 'border-neutral-300 text-neutral-600'
+                    : 'border-neutral-300 text-primary'
                 }`}
               >
                 {d.name}
@@ -220,7 +220,7 @@ function ScheduleEditor({
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
-      <p className="rounded-md border border-dashed border-neutral-300 bg-neutral-50 p-3 text-caption text-neutral-500">
+      <p className="rounded-md border border-dashed border-neutral-300 bg-neutral-50 p-3 text-caption text-primary-50">
         현재 저장된 스케줄은 불러올 수 없어 <strong>샵 영업시간 기준 기본값</strong>을 표시합니다. 저장하면 이 값으로
         덮어씁니다.
       </p>
@@ -237,17 +237,17 @@ function ScheduleEditor({
             <div key={w.value} className="rounded-md border border-neutral-200 p-2">
               <div className="flex flex-wrap items-center gap-2 text-body-sm">
                 <span className="w-6 font-medium">{w.label}</span>
-                <label className="flex items-center gap-1 text-caption text-neutral-500">
+                <label className="flex items-center gap-1 text-caption text-primary-50">
                   <input type="checkbox" {...register(`entries.${i}.is_day_off` as const)} />
                   휴무
                 </label>
-                <span className="text-caption text-neutral-400">영업</span>
+                <span className="text-caption text-primary-50">영업</span>
                 <input type="time" disabled={off} className={timeCls} {...register(`entries.${i}.start_time` as const)} />
-                <span className="text-neutral-400">~</span>
+                <span className="text-primary-50">~</span>
                 <input type="time" disabled={off} className={timeCls} {...register(`entries.${i}.end_time` as const)} />
-                <span className="ml-2 text-caption text-neutral-400">점심</span>
+                <span className="ml-2 text-caption text-primary-50">점심</span>
                 <input type="time" disabled={off} className={timeCls} {...register(`entries.${i}.break_start_time` as const)} />
-                <span className="text-neutral-400">~</span>
+                <span className="text-primary-50">~</span>
                 <input type="time" disabled={off} className={timeCls} {...register(`entries.${i}.break_end_time` as const)} />
               </div>
               {err && (
@@ -289,7 +289,7 @@ function WeeklyGrid({ entries }: { entries: ScheduleForm['entries'] }) {
         {hourMarks.map((h) => (
           <span
             key={h}
-            className="absolute right-1 -translate-y-1/2 text-caption text-neutral-400"
+            className="absolute right-1 -translate-y-1/2 text-caption text-primary-50"
             style={{ top: `${((h * 60 - GRID_START) / GRID_SPAN) * 100}%` }}
           >
             {h}시
@@ -302,7 +302,7 @@ function WeeklyGrid({ entries }: { entries: ScheduleForm['entries'] }) {
           const e = entries?.[i];
           return (
             <div key={w.value} className="flex flex-col">
-              <span className="mb-1 text-center text-caption text-neutral-500">{w.label}</span>
+              <span className="mb-1 text-center text-caption text-primary-50">{w.label}</span>
               <div className="relative flex-1 rounded bg-neutral-50" style={{ height: GRID_PX }}>
                 {e && <DayBlocks entry={e} />}
               </div>
@@ -317,7 +317,7 @@ function WeeklyGrid({ entries }: { entries: ScheduleForm['entries'] }) {
 function DayBlocks({ entry }: { entry: ScheduleForm['entries'][number] }) {
   if (entry.is_day_off) {
     return (
-      <div className="absolute inset-0 flex items-center justify-center rounded bg-neutral-200/60 text-caption font-bold text-neutral-500">
+      <div className="absolute inset-0 flex items-center justify-center rounded bg-neutral-200/60 text-caption font-bold text-primary-50">
         휴무
       </div>
     );
@@ -366,7 +366,7 @@ function ExtraSettingsCard() {
       {/* 운영 한도 — 입력 활성, 저장은 TODO */}
       <div>
         <div className="mb-2 flex items-center gap-2">
-          <h2 className="text-body-sm font-semibold text-neutral-700">운영 한도</h2>
+          <h2 className="text-body-sm font-semibold text-primary">운영 한도</h2>
           <span className="rounded-full bg-amber-100 px-2 py-0.5 text-caption font-semibold text-amber-700">
             저장 연동 예정
           </span>
@@ -385,8 +385,8 @@ function ExtraSettingsCard() {
       {/* 시술 소요시간 디폴트 — UI만 유지 */}
       <div>
         <div className="mb-2 flex items-center gap-2">
-          <h2 className="text-body-sm font-semibold text-neutral-700">시술 소요시간 디폴트</h2>
-          <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-caption font-semibold text-neutral-500">
+          <h2 className="text-body-sm font-semibold text-primary">시술 소요시간 디폴트</h2>
+          <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-caption font-semibold text-primary-50">
             스키마 확인 예정
           </span>
         </div>
@@ -413,7 +413,7 @@ function ActiveNumber({
 }) {
   return (
     <div>
-      <label className="mb-1 block text-caption text-neutral-600">{label}</label>
+      <label className="mb-1 block text-caption text-primary">{label}</label>
       <input
         type="number"
         min={0}
@@ -429,7 +429,7 @@ function ActiveNumber({
 function Disabled({ label, placeholder }: { label: string; placeholder: string }) {
   return (
     <div>
-      <label className="mb-1 block text-caption text-neutral-500">{label}</label>
+      <label className="mb-1 block text-caption text-primary-50">{label}</label>
       <input
         type="number"
         disabled

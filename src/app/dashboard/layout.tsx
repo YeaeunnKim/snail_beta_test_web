@@ -39,7 +39,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   if (status === 'idle' || status === 'loading') {
     return (
-      <div className="flex min-h-screen items-center justify-center text-body-sm text-neutral-500">
+      <div className="flex min-h-screen items-center justify-center text-body-sm text-primary-50">
         불러오는 중…
       </div>
     );
@@ -63,7 +63,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 key={item.href}
                 href={item.href}
                 className={`block rounded-md px-3 py-2 text-body-sm font-semibold ${
-                  active ? 'bg-secondary text-white' : 'text-neutral-700 hover:bg-neutral-200'
+                  active ? 'bg-secondary text-white' : 'text-primary hover:bg-neutral-200'
                 }`}
               >
                 {item.label}
@@ -75,13 +75,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       <div className="flex flex-1 flex-col">
         <header className="flex items-center justify-between border-b border-primary-10 px-6 py-3">
-          <span className="text-body-sm text-neutral-600">{owner?.representative_name ?? owner?.email}</span>
+          <span className="text-body-sm text-primary">{owner?.representative_name ?? owner?.email}</span>
           <button
             onClick={() => {
               logout();
               router.replace('/login');
             }}
-            className="text-caption font-semibold text-neutral-500 underline"
+            className="text-caption font-semibold text-primary-50 underline"
           >
             로그아웃
           </button>

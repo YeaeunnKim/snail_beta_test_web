@@ -229,7 +229,7 @@ export default function OnboardingPage() {
 
   if (gate === 'checking') {
     return (
-      <main className="flex min-h-screen items-center justify-center text-body-sm text-neutral-500">
+      <main className="flex min-h-screen items-center justify-center text-body-sm text-primary-50">
         불러오는 중…
       </main>
     );
@@ -239,7 +239,7 @@ export default function OnboardingPage() {
     <main className="min-h-screen bg-neutral-50 px-4 py-10">
       <div className="mx-auto w-full max-w-xl">
         <h1 className="text-center text-heading-lg font-bold text-secondary">샵 등록</h1>
-        <p className="mt-1 text-center text-body-sm text-neutral-500">
+        <p className="mt-1 text-center text-body-sm text-primary-50">
           {step + 1} / {STEP_FIELDS.length} · {STEP_TITLES[step]}
         </p>
 
@@ -300,7 +300,7 @@ export default function OnboardingPage() {
 
               <div>
                 <label className="mb-1 block text-body-sm font-medium">
-                  디자이너 이름 <span className="text-neutral-400">(앱에 노출됩니다)</span>
+                  디자이너 이름 <span className="text-primary-50">(앱에 노출됩니다)</span>
                 </label>
                 {!isMulti ? (
                   <input
@@ -321,7 +321,7 @@ export default function OnboardingPage() {
                           <button
                             type="button"
                             onClick={() => designerArray.remove(i)}
-                            className="shrink-0 rounded-md border border-neutral-300 px-3 text-body-sm font-semibold text-neutral-500"
+                            className="shrink-0 rounded-md border border-neutral-300 px-3 text-body-sm font-semibold text-primary-50"
                           >
                             삭제
                           </button>
@@ -388,7 +388,7 @@ export default function OnboardingPage() {
           {/* STEP 4 — 운영 시간 */}
           {step === 3 && (
             <>
-              <p className="text-caption text-neutral-500">
+              <p className="text-caption text-primary-50">
                 요일별 영업시간과 휴무를 설정하세요. 점심·쉬는시간은 디자이너별 시간표에서
                 설정합니다.
               </p>
@@ -398,7 +398,7 @@ export default function OnboardingPage() {
                   return (
                     <div key={w.value} className="flex items-center gap-2">
                       <span className="w-6 text-body-sm">{w.label}</span>
-                      <label className="flex items-center gap-1 text-caption text-neutral-500">
+                      <label className="flex items-center gap-1 text-caption text-primary-50">
                         <input type="checkbox" {...register(`hours.${i}.is_closed` as const)} />
                         휴무
                       </label>
@@ -408,7 +408,7 @@ export default function OnboardingPage() {
                         className={`${inputCls} flex-1 disabled:bg-neutral-100`}
                         {...register(`hours.${i}.open_time` as const)}
                       />
-                      <span className="text-neutral-400">~</span>
+                      <span className="text-primary-50">~</span>
                       <input
                         type="time"
                         disabled={closed}
@@ -436,7 +436,7 @@ export default function OnboardingPage() {
               type="button"
               onClick={prev}
               disabled={step === 0}
-              className="rounded-md px-4 py-2 text-body-sm font-semibold text-neutral-500 disabled:opacity-0"
+              className="rounded-md px-4 py-2 text-body-sm font-semibold text-primary-50 disabled:opacity-0"
             >
               이전
             </button>
@@ -504,7 +504,7 @@ function Toggle({
       type="button"
       onClick={onClick}
       className={`flex-1 rounded-md border px-4 py-2 text-body-sm font-semibold ${
-        active ? 'border-secondary bg-secondary text-white' : 'border-neutral-300 text-neutral-600'
+        active ? 'border-secondary bg-secondary text-white' : 'border-neutral-300 text-primary'
       }`}
     >
       {children}
