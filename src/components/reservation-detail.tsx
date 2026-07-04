@@ -19,10 +19,10 @@ import { InquiryThread, ReservationDesignBlock } from '@/components/reservation-
 export function PayPill({ state }: { state: 'WAIT' | 'DONE' }) {
   const meta =
     state === 'WAIT'
-      ? { label: '입금 대기', bg: '#fff0d6', tx: '#aa7510' }
-      : { label: '입금 완료', bg: '#e7f6ee', tx: '#1c8a5b' };
+      ? { label: '입금 대기', cls: 'bg-warning-bg text-warning' }
+      : { label: '입금 완료', cls: 'bg-success-bg text-success' };
   return (
-    <span className="rounded-full px-2 py-0.5 text-caption font-bold" style={{ background: meta.bg, color: meta.tx }}>
+    <span className={`rounded-full px-2 py-0.5 text-caption font-bold ${meta.cls}`}>
       {meta.label}
     </span>
   );
