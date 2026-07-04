@@ -29,6 +29,24 @@
   --color-secondary: #8b7565; /* earth tone — 로고 taupe 브라운과 동기화 */
   --color-secondary-50: #bbafa8;
   --color-surface: #f6f3f1; /* 따뜻한 오프화이트 배경 */
+
+  /* 상태색 — 거절/대기/완료/정보 (조사에서 확정한 뮤트 hex 기준) */
+  --color-danger: #cf3b3b; /* 텍스트·아이콘 */
+  --color-danger-bg: #fdeaea; /* 연한 배경 */
+  --color-danger-border: #f5c2c2; /* 보더 (danger 계열 연한 값, 추후 튜닝) */
+
+  --color-warning: #aa7510; /* 텍스트 */
+  --color-warning-bg: #fff0d6; /* 연한 배경 */
+  --color-warning-border: #e8c98a; /* 보더 (warning 계열 연한 값, 추후 튜닝) */
+
+  --color-success: #1c8a5b; /* 텍스트 (舊 #4f6b3d도 이 값으로 통일 예정) */
+  --color-success-bg: #e7f6ee; /* 연한 배경 */
+  --color-success-border: #b6ddc6; /* 보더 (success 계열 연한 값, 추후 튜닝) */
+
+  --color-info: #2563b0; /* 텍스트 (기존 blue-700 계열 뮤트, 추후 튜닝) */
+  --color-info-bg: #dbeafe; /* 연한 배경 (기존 blue-100 계열) */
+
+  --color-rose-hover: #fdf4f7; /* 로즈 hover/선택 배경 대표값 */
 }
 
 :root {
