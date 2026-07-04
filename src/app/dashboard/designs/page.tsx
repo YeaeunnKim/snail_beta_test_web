@@ -45,7 +45,7 @@ const AI_LABEL: Record<string, string> = {
   failed: '분석 실패',
 };
 const AI_CLS: Record<string, string> = {
-  pending: 'bg-neutral-100 text-neutral-600',
+  pending: 'bg-neutral-100 text-primary',
   in_progress: 'bg-blue-100 text-blue-700',
   done: 'bg-green-100 text-green-700',
   failed: 'bg-red-100 text-red-700',
@@ -95,7 +95,7 @@ export default function DesignsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-heading-lg font-bold">디자인 관리</h1>
-          <p className="mt-1 text-body-sm text-neutral-500">폴더로 정리하고, 폴더를 열어 디자인을 관리합니다.</p>
+          <p className="mt-1 text-body-sm text-primary-50">폴더로 정리하고, 폴더를 열어 디자인을 관리합니다.</p>
         </div>
         <button
           onClick={() => setShowCreate((v) => !v)}
@@ -142,7 +142,7 @@ function FolderGrid({
   loading: boolean;
   onOpen: (v: FolderView) => void;
 }) {
-  if (loading) return <p className="text-body-sm text-neutral-400">불러오는 중…</p>;
+  if (loading) return <p className="text-body-sm text-primary-50">불러오는 중…</p>;
 
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
@@ -180,7 +180,7 @@ function FolderCard({
     >
       <span className="text-2xl">{muted ? '🗂️' : '📁'}</span>
       <span className="mt-2 truncate font-semibold">{name}</span>
-      <span className="mt-0.5 text-caption text-neutral-400">디자인 {count}개</span>
+      <span className="mt-0.5 text-caption text-primary-50">디자인 {count}개</span>
     </button>
   );
 }
@@ -206,7 +206,7 @@ function NewFolderCard() {
     return (
       <button
         onClick={() => setEditing(true)}
-        className="flex min-h-[104px] flex-col items-center justify-center rounded-xl border border-dashed border-neutral-300 text-body-sm font-semibold text-neutral-400 hover:border-secondary hover:text-secondary"
+        className="flex min-h-[104px] flex-col items-center justify-center rounded-xl border border-dashed border-neutral-300 text-body-sm font-semibold text-primary-50 hover:border-secondary hover:text-secondary"
       >
         <span className="text-heading-lg leading-none">+</span>
         <span className="mt-1">새 폴더</span>
@@ -241,7 +241,7 @@ function NewFolderCard() {
             setName('');
             setError(null);
           }}
-          className="rounded-md border border-neutral-300 px-2 py-1.5 text-caption font-semibold text-neutral-500"
+          className="rounded-md border border-neutral-300 px-2 py-1.5 text-caption font-semibold text-primary-50"
         >
           취소
         </button>
@@ -265,20 +265,20 @@ function FolderDesigns({ view, onBack }: { view: FolderView; onBack: () => void 
       <div className="flex items-center gap-2">
         <button
           onClick={onBack}
-          className="rounded-md border border-neutral-300 px-2.5 py-1.5 text-body-sm font-semibold text-neutral-600 hover:bg-neutral-50"
+          className="rounded-md border border-neutral-300 px-2.5 py-1.5 text-body-sm font-semibold text-primary hover:bg-neutral-50"
         >
           ← 폴더
         </button>
         <h2 className="text-heading-md font-bold">{view.label}</h2>
-        <span className="text-body-sm text-neutral-400">{designs.length}개</span>
+        <span className="text-body-sm text-primary-50">{designs.length}개</span>
       </div>
 
       {q.isLoading ? (
-        <p className="text-body-sm text-neutral-400">불러오는 중…</p>
+        <p className="text-body-sm text-primary-50">불러오는 중…</p>
       ) : q.isError ? (
         <p className="rounded-md bg-red-50 px-3 py-2 text-body-sm text-red-700">{toUserMessage(q.error)}</p>
       ) : designs.length === 0 ? (
-        <p className="rounded-md border border-dashed border-neutral-300 p-8 text-center text-body-sm text-neutral-500">
+        <p className="rounded-md border border-dashed border-neutral-300 p-8 text-center text-body-sm text-primary-50">
           이 폴더에 디자인이 없습니다.
         </p>
       ) : (
@@ -405,7 +405,7 @@ function CreateForm({ designers, onCreated }: { designers: Designer[]; onCreated
       className="space-y-5 rounded-lg border border-neutral-200 bg-white p-5"
       noValidate
     >
-      <h2 className="text-body-sm font-semibold text-neutral-700">새 디자인 등록</h2>
+      <h2 className="text-body-sm font-semibold text-primary">새 디자인 등록</h2>
 
       {/* 대표 사진 */}
       <div>
@@ -413,8 +413,8 @@ function CreateForm({ designers, onCreated }: { designers: Designer[]; onCreated
           <label className="text-body-sm font-medium">대표 스네일 사진</label>
           <span className="text-red-500">*</span>
         </div>
-        <p className="mb-2 text-caption text-neutral-400">
-          고객에게 <strong className="text-neutral-500">썸네일</strong>로 노출되는 사진입니다. 1장 필수.
+        <p className="mb-2 text-caption text-primary-50">
+          고객에게 <strong className="text-primary-50">썸네일</strong>로 노출되는 사진입니다. 1장 필수.
         </p>
         <div className="flex flex-wrap gap-2">
           {thumbnail ? (
@@ -429,9 +429,9 @@ function CreateForm({ designers, onCreated }: { designers: Designer[]; onCreated
       <div>
         <div className="mb-1 flex items-center gap-2">
           <label className="text-body-sm font-medium">상세 사진</label>
-          <span className="text-caption text-neutral-400">선택 · 최대 {MAX_DETAIL_PHOTOS}장</span>
+          <span className="text-caption text-primary-50">선택 · 최대 {MAX_DETAIL_PHOTOS}장</span>
         </div>
-        <p className="mb-2 text-caption text-neutral-400">손 후기 사진 등 자유롭게 추가할 수 있어요.</p>
+        <p className="mb-2 text-caption text-primary-50">손 후기 사진 등 자유롭게 추가할 수 있어요.</p>
         <div className="flex flex-wrap gap-2">
           {details.map((p) => (
             <PhotoTile key={p.id} photo={p} onRemove={() => removeDetail(p.id)} />
@@ -486,11 +486,11 @@ function CreateForm({ designers, onCreated }: { designers: Designer[]; onCreated
         <label className="mb-1 block text-body-sm font-medium">
           가능한 디자이너<span className="ml-0.5 text-red-500">*</span>
         </label>
-        <p className="mb-2 text-caption text-neutral-400">
+        <p className="mb-2 text-caption text-primary-50">
           선택하면 디자이너별 소요시간을 조정할 수 있어요. 미조정 시 기본 소요시간({baseDuration}분)을 사용합니다.
         </p>
         {designers.length === 0 ? (
-          <p className="text-caption text-neutral-500">
+          <p className="text-caption text-primary-50">
             등록된 디자이너가 없습니다.{' '}
             <Link href="/dashboard/designers" className="text-secondary underline">
               디자이너
@@ -514,7 +514,7 @@ function CreateForm({ designers, onCreated }: { designers: Designer[]; onCreated
                   </label>
                   {checked && (
                     <div className="ml-auto flex items-center gap-2">
-                      <span className="text-caption text-neutral-400">소요시간</span>
+                      <span className="text-caption text-primary-50">소요시간</span>
                       <Stepper
                         value={picked[d.id]}
                         onChange={(v) => setDesignerDuration(d.id, v)}
@@ -535,7 +535,7 @@ function CreateForm({ designers, onCreated }: { designers: Designer[]; onCreated
       {/* 사장님 태그 */}
       <div>
         <label className="mb-1 block text-body-sm font-medium">
-          사장님 태그 <span className="text-caption text-neutral-400">최대 {MAX_OWNER_TAGS}개</span>
+          사장님 태그 <span className="text-caption text-primary-50">최대 {MAX_OWNER_TAGS}개</span>
         </label>
         <TagInput tags={tags} onChange={setTags} />
       </div>
@@ -582,7 +582,7 @@ function FolderField({ value, onChange }: { value: string; onChange: (v: string)
   return (
     <div>
       <label className="mb-1 block text-body-sm font-medium">
-        폴더 <span className="text-caption text-neutral-400">선택</span>
+        폴더 <span className="text-caption text-primary-50">선택</span>
       </label>
       {creating ? (
         <div className="flex items-center gap-2">
@@ -609,7 +609,7 @@ function FolderField({ value, onChange }: { value: string; onChange: (v: string)
               setName('');
               setError(null);
             }}
-            className="shrink-0 rounded-md border border-neutral-300 px-3 py-2 text-body-sm text-neutral-500"
+            className="shrink-0 rounded-md border border-neutral-300 px-3 py-2 text-body-sm text-primary-50"
           >
             취소
           </button>
@@ -631,7 +631,7 @@ function FolderField({ value, onChange }: { value: string; onChange: (v: string)
           <button
             type="button"
             onClick={() => setCreating(true)}
-            className="shrink-0 rounded-md border border-neutral-300 px-3 py-2 text-body-sm text-neutral-600"
+            className="shrink-0 rounded-md border border-neutral-300 px-3 py-2 text-body-sm text-primary"
           >
             + 새 폴더
           </button>
@@ -698,7 +698,7 @@ function TagInput({ tags, onChange }: { tags: string[]; onChange: (next: string[
           />
         )}
       </div>
-      <p className="mt-1 px-1 text-caption text-neutral-400">
+      <p className="mt-1 px-1 text-caption text-primary-50">
         {tags.length}/{MAX_OWNER_TAGS} · Enter로 등록, X로 삭제
       </p>
     </div>
@@ -731,7 +731,7 @@ function Stepper({
       <button
         type="button"
         onClick={() => onChange(value - DURATION_STEP)}
-        className="grid h-8 w-8 place-items-center text-neutral-500 hover:bg-neutral-100"
+        className="grid h-8 w-8 place-items-center text-primary-50 hover:bg-neutral-100"
         aria-label="감소"
       >
         −
@@ -753,12 +753,12 @@ function Stepper({
           className="w-10 bg-transparent text-center text-body-sm tabular-nums outline-none"
           aria-label="소요시간 직접 입력"
         />
-        {suffix && <span className="pr-1.5 text-body-sm text-neutral-500">{suffix}</span>}
+        {suffix && <span className="pr-1.5 text-body-sm text-primary-50">{suffix}</span>}
       </div>
       <button
         type="button"
         onClick={() => onChange(value + DURATION_STEP)}
-        className="grid h-8 w-8 place-items-center text-neutral-500 hover:bg-neutral-100"
+        className="grid h-8 w-8 place-items-center text-primary-50 hover:bg-neutral-100"
         aria-label="증가"
       >
         +
@@ -811,7 +811,7 @@ function UploadTile({
   onFiles: (files: FileList | null) => void;
 }) {
   return (
-    <label className="flex h-24 w-24 cursor-pointer flex-col items-center justify-center rounded-md border border-dashed border-neutral-300 text-neutral-400 hover:border-secondary">
+    <label className="flex h-24 w-24 cursor-pointer flex-col items-center justify-center rounded-md border border-dashed border-neutral-300 text-primary-50 hover:border-secondary">
       <span className="text-2xl leading-none">+</span>
       <span className="mt-1 text-caption">{label}</span>
       <input
@@ -902,16 +902,16 @@ function DesignCard({ design }: { design: Design }) {
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
               {d.folder_name && (
-                <span className="shrink-0 rounded bg-neutral-100 px-1.5 py-0.5 text-caption font-semibold text-neutral-500">
+                <span className="shrink-0 rounded bg-neutral-100 px-1.5 py-0.5 text-caption font-semibold text-primary-50">
                   📁 {d.folder_name}
                 </span>
               )}
               <p className="truncate font-medium">{d.title}</p>
             </div>
-            <p className="mt-0.5 text-body-sm text-neutral-500">
+            <p className="mt-0.5 text-body-sm text-primary-50">
               {d.base_price.toLocaleString('ko-KR')}원 · 기본 {d.duration_minutes}분
             </p>
-            {designerLine && <p className="mt-0.5 truncate text-caption text-neutral-400">{designerLine}</p>}
+            {designerLine && <p className="mt-0.5 truncate text-caption text-primary-50">{designerLine}</p>}
           </div>
           <span className={`shrink-0 rounded px-2 py-0.5 text-caption font-bold ${AI_CLS[d.ai_analysis_status]}`}>
             {AI_LABEL[d.ai_analysis_status]}
@@ -924,7 +924,7 @@ function DesignCard({ design }: { design: Design }) {
       {showPhotos && (
         <div className="mt-3">
           {images.length === 0 ? (
-            <p className="text-caption text-neutral-400">등록된 사진이 없어요.</p>
+            <p className="text-caption text-primary-50">등록된 사진이 없어요.</p>
           ) : (
             <div className="flex flex-wrap gap-2">
               {images.map((img) => (
@@ -952,7 +952,7 @@ function DesignCard({ design }: { design: Design }) {
           ))}
           {d.ai_analysis_status === 'done' &&
             d.ai_tags.map((t) => (
-              <span key={`a-${t}`} className="rounded bg-neutral-100 px-2 py-0.5 text-caption text-neutral-500">
+              <span key={`a-${t}`} className="rounded bg-neutral-100 px-2 py-0.5 text-caption text-primary-50">
                 AI #{t}
               </span>
             ))}
@@ -982,12 +982,12 @@ function DesignCard({ design }: { design: Design }) {
               setConfirmDel(false);
               setActionError(null);
             }}
-            className="rounded-md border border-neutral-300 px-3 py-1.5 text-caption font-semibold text-neutral-600 hover:bg-neutral-50"
+            className="rounded-md border border-neutral-300 px-3 py-1.5 text-caption font-semibold text-primary hover:bg-neutral-50"
           >
             수정
           </button>
           {confirmDel ? (
-            <span className="inline-flex items-center gap-1.5 text-caption text-neutral-500">
+            <span className="inline-flex items-center gap-1.5 text-caption text-primary-50">
               삭제할까요?
               <button
                 onClick={() => remove.mutate()}
@@ -998,7 +998,7 @@ function DesignCard({ design }: { design: Design }) {
               </button>
               <button
                 onClick={() => setConfirmDel(false)}
-                className="rounded-md bg-neutral-100 px-2.5 py-1.5 text-caption font-semibold text-neutral-600"
+                className="rounded-md bg-neutral-100 px-2.5 py-1.5 text-caption font-semibold text-primary"
               >
                 취소
               </button>
@@ -1006,7 +1006,7 @@ function DesignCard({ design }: { design: Design }) {
           ) : (
             <button
               onClick={() => setConfirmDel(true)}
-              className="rounded-md border border-neutral-300 px-3 py-1.5 text-caption font-semibold text-neutral-500 hover:bg-neutral-50"
+              className="rounded-md border border-neutral-300 px-3 py-1.5 text-caption font-semibold text-primary-50 hover:bg-neutral-50"
             >
               삭제
             </button>
@@ -1051,7 +1051,7 @@ function DesignEditForm({ design: d, onClose }: { design: Design; onClose: () =>
 
   const inputCls =
     'w-full rounded-md border border-neutral-300 px-3 py-2 text-body-sm outline-none focus:border-secondary';
-  const labelCls = 'mb-1 block text-caption font-semibold text-neutral-500';
+  const labelCls = 'mb-1 block text-caption font-semibold text-primary-50';
 
   return (
     <div className="mt-3 space-y-3 rounded-lg border border-secondary/30 bg-secondary/5 p-3">
@@ -1103,7 +1103,7 @@ function DesignEditForm({ design: d, onClose }: { design: Design; onClose: () =>
         </button>
         <button
           onClick={onClose}
-          className="rounded-md bg-neutral-100 px-4 py-2 text-caption font-semibold text-neutral-600"
+          className="rounded-md bg-neutral-100 px-4 py-2 text-caption font-semibold text-primary"
         >
           취소
         </button>
@@ -1135,7 +1135,7 @@ function Field({
         {required && <span className="ml-0.5 text-red-500">*</span>}
       </label>
       {children}
-      {hint && !error && <p className="mt-1 text-caption text-neutral-400">{hint}</p>}
+      {hint && !error && <p className="mt-1 text-caption text-primary-50">{hint}</p>}
       {error && <p className="mt-1 text-caption text-red-600">{error}</p>}
     </div>
   );

@@ -117,20 +117,20 @@ export default function TimelinePage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <div className="text-heading-lg font-bold leading-tight text-secondary">{shop?.name ?? '내 샵'}</div>
-          <div className="text-caption font-semibold text-neutral-400">디자이너 스케줄</div>
+          <div className="text-caption font-semibold text-primary-50">디자이너 스케줄</div>
         </div>
 
         <div className="flex items-center gap-1.5">
           <button
             onClick={() => setDate(todayLocalDate())}
-            className="h-8 rounded-lg border border-neutral-200 bg-white px-3 text-body-sm font-semibold text-neutral-600 hover:bg-neutral-50"
+            className="h-8 rounded-lg border border-neutral-200 bg-white px-3 text-body-sm font-semibold text-primary hover:bg-neutral-50"
           >
             오늘
           </button>
           <button
             onClick={() => navigate(-1)}
             aria-label="이전"
-            className="grid h-8 w-8 place-items-center rounded-lg border border-neutral-200 bg-white text-neutral-500 hover:bg-neutral-50"
+            className="grid h-8 w-8 place-items-center rounded-lg border border-neutral-200 bg-white text-primary-50 hover:bg-neutral-50"
           >
             ‹
           </button>
@@ -138,7 +138,7 @@ export default function TimelinePage() {
           <button
             onClick={() => navigate(1)}
             aria-label="다음"
-            className="grid h-8 w-8 place-items-center rounded-lg border border-neutral-200 bg-white text-neutral-500 hover:bg-neutral-50"
+            className="grid h-8 w-8 place-items-center rounded-lg border border-neutral-200 bg-white text-primary-50 hover:bg-neutral-50"
           >
             ›
           </button>
@@ -150,7 +150,7 @@ export default function TimelinePage() {
               key={m}
               onClick={() => setMode(m)}
               className={`rounded-lg px-4 py-1.5 text-body-sm font-semibold ${
-                mode === m ? 'bg-white text-neutral-900 shadow-sm' : 'text-neutral-500 hover:text-neutral-700'
+                mode === m ? 'bg-white text-primary shadow-sm' : 'text-primary-50 hover:text-primary'
               }`}
             >
               {m === 'day' ? '일' : m === 'week' ? '주' : '월'}
@@ -168,9 +168,9 @@ export default function TimelinePage() {
         {error ? (
           <p className="m-4 rounded-md bg-red-50 px-3 py-2 text-body-sm text-red-700">{toUserMessage(error)}</p>
         ) : loading ? (
-          <p className="py-12 text-center text-body-sm text-neutral-400">불러오는 중…</p>
+          <p className="py-12 text-center text-body-sm text-primary-50">불러오는 중…</p>
         ) : designers.length === 0 ? (
-          <p className="m-4 rounded-md border border-dashed border-neutral-300 p-8 text-center text-body-sm text-neutral-500">
+          <p className="m-4 rounded-md border border-dashed border-neutral-300 p-8 text-center text-body-sm text-primary-50">
             등록된 디자이너가 없습니다. 디자이너 탭에서 추가해주세요.
           </p>
         ) : mode === 'day' ? (
@@ -228,7 +228,7 @@ function Filters({
       <button
         onClick={onAll}
         className={`inline-flex items-center gap-1.5 rounded-full border border-dashed px-3 py-1.5 text-body-sm font-semibold ${
-          allOn ? 'border-secondary text-neutral-800' : 'border-neutral-300 bg-neutral-50 text-neutral-400'
+          allOn ? 'border-secondary text-primary' : 'border-neutral-300 bg-neutral-50 text-primary-50'
         }`}
       >
         <span className="h-2.5 w-2.5 rounded-full" style={{ background: allOn ? 'var(--color-secondary, #8b7565)' : '#ccc' }} />
@@ -242,7 +242,7 @@ function Filters({
             key={d.id}
             onClick={() => onToggle(d.id)}
             className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-body-sm font-semibold ${
-              off ? 'border-neutral-200 bg-neutral-50 text-neutral-400' : 'border-neutral-200 text-neutral-800'
+              off ? 'border-neutral-200 bg-neutral-50 text-primary-50' : 'border-neutral-200 text-primary'
             }`}
           >
             <span
@@ -287,14 +287,14 @@ function WeekView({
     return map;
   }, [reservations]);
 
-  const dowCls = (d: string) => (dayOfWeek(d) === 0 ? 'text-[#e2574d]' : dayOfWeek(d) === 6 ? 'text-[#3b82f6]' : 'text-neutral-800');
+  const dowCls = (d: string) => (dayOfWeek(d) === 0 ? 'text-[#e2574d]' : dayOfWeek(d) === 6 ? 'text-[#3b82f6]' : 'text-primary');
 
   return (
     <div className="overflow-x-auto">
       <div className="min-w-[760px]">
         {/* 요일 헤더 */}
         <div className="sticky top-0 z-10 flex border-b border-neutral-200 bg-neutral-50">
-          <div className="w-[116px] shrink-0 border-r border-neutral-200 px-3.5 py-2 text-caption text-neutral-400">
+          <div className="w-[116px] shrink-0 border-r border-neutral-200 px-3.5 py-2 text-caption text-primary-50">
             디자이너
           </div>
           <div className="flex flex-1">
@@ -306,7 +306,7 @@ function WeekView({
                   onClick={() => onSelectDate(d)}
                   className={`flex-1 border-r border-neutral-100 py-1.5 text-center last:border-r-0 hover:bg-neutral-100 ${sel ? 'bg-[#ffeaf0]' : ''}`}
                 >
-                  <div className="text-caption text-neutral-400">{WEEKDAYS[(dayOfWeek(d) + 6) % 7].label}</div>
+                  <div className="text-caption text-primary-50">{WEEKDAYS[(dayOfWeek(d) + 6) % 7].label}</div>
                   <div className={`text-body-md font-bold ${dowCls(d)}`}>{dayOfMonth(d)}</div>
                 </button>
               );
@@ -417,7 +417,7 @@ function MonthView({
             <div
               key={w.value}
               className={`flex-1 border-r border-neutral-100 py-2.5 text-center text-body-sm last:border-r-0 ${
-                i === 5 ? 'text-[#3b82f6]' : i === 6 ? 'text-[#e2574d]' : 'text-neutral-500'
+                i === 5 ? 'text-[#3b82f6]' : i === 6 ? 'text-[#e2574d]' : 'text-primary-50'
               }`}
             >
               {w.label}
@@ -432,12 +432,12 @@ function MonthView({
               const isToday = cell.date === today;
               const dow = dayOfWeek(cell.date);
               const dateColor = !cell.inMonth
-                ? 'text-neutral-300'
+                ? 'text-primary-10'
                 : dow === 0
                   ? 'text-[#e2574d]'
                   : dow === 6
                     ? 'text-[#3b82f6]'
-                    : 'text-neutral-700';
+                    : 'text-primary';
               return (
                 <button
                   key={cell.date}
@@ -472,7 +472,7 @@ function MonthView({
                           );
                         })}
                       </div>
-                      <div className="mt-1.5 text-caption text-neutral-400">예약 {jobs.length}</div>
+                      <div className="mt-1.5 text-caption text-primary-50">예약 {jobs.length}</div>
                     </>
                   )}
                 </button>
@@ -560,7 +560,7 @@ function DetailSheet({
           <div className="text-body-md font-bold">예약 상세</div>
           <button
             onClick={close}
-            className="grid h-8 w-8 place-items-center rounded-lg bg-neutral-100 text-neutral-500 hover:bg-neutral-200"
+            className="grid h-8 w-8 place-items-center rounded-lg bg-neutral-100 text-primary-50 hover:bg-neutral-200"
           >
             ✕
           </button>
@@ -581,18 +581,18 @@ function DetailSheet({
             <Kv k="시간" v={`${formatTime(r.start_at)} ~ ${formatTime(r.end_at)}`} />
             <Kv k="금액" v={`${r.total_price.toLocaleString('ko-KR')}원`} />
 
-            <div className="mb-2 mt-4 text-caption font-bold text-neutral-400">디자인</div>
+            <div className="mb-2 mt-4 text-caption font-bold text-primary-50">디자인</div>
             {r.design ? (
               <ReservationDesignBlock reservation={r} />
             ) : (
-              <p className="text-body-sm text-neutral-400">디자인 정보가 없어요.</p>
+              <p className="text-body-sm text-primary-50">디자인 정보가 없어요.</p>
             )}
 
-            <div className="mb-2 mt-4 text-caption font-bold text-neutral-400">요청사항</div>
+            <div className="mb-2 mt-4 text-caption font-bold text-primary-50">요청사항</div>
             <InquiryThread reservation={r} />
             {r.status === 'pending' && !r.owner_reply && !reasonMode && (
               <div className="mt-3">
-                <label className="mb-1 block text-caption font-semibold text-neutral-500">
+                <label className="mb-1 block text-caption font-semibold text-primary-50">
                   답변 (선택) — 예약 확정 시 함께 전달돼요
                 </label>
                 <textarea
@@ -627,7 +627,7 @@ function DetailSheet({
                       setReasonMode(false);
                       setReason('');
                     }}
-                    className="flex-1 rounded-xl bg-neutral-100 py-2.5 text-body-sm font-bold text-neutral-600"
+                    className="flex-1 rounded-xl bg-neutral-100 py-2.5 text-body-sm font-bold text-primary"
                   >
                     닫기
                   </button>
@@ -659,7 +659,7 @@ function DetailSheet({
             )}
 
             {error && <p className="mt-2 text-caption text-red-600">{error}</p>}
-            <p className="mt-4 text-caption leading-relaxed text-neutral-400">
+            <p className="mt-4 text-caption leading-relaxed text-primary-50">
               방문완료·노쇼 등 다른 상태 처리는 예약 관리 화면에서 할 수 있어요.
             </p>
           </div>
@@ -672,7 +672,7 @@ function DetailSheet({
 function Kv({ k, v }: { k: string; v: string }) {
   return (
     <div className="flex gap-2.5 border-b border-neutral-100 py-2.5 text-body-sm">
-      <div className="w-[68px] shrink-0 text-neutral-400">{k}</div>
+      <div className="w-[68px] shrink-0 text-primary-50">{k}</div>
       <div className="font-semibold">{v}</div>
     </div>
   );
