@@ -46,9 +46,9 @@ const AI_LABEL: Record<string, string> = {
 };
 const AI_CLS: Record<string, string> = {
   pending: 'bg-neutral-100 text-primary',
-  in_progress: 'bg-blue-100 text-blue-700',
-  done: 'bg-green-100 text-green-700',
-  failed: 'bg-red-100 text-red-700',
+  in_progress: 'bg-info-bg text-info',
+  done: 'bg-success-bg text-success',
+  failed: 'bg-danger-bg text-danger',
 };
 
 const createSchema = z.object({
@@ -246,7 +246,7 @@ function NewFolderCard() {
           취소
         </button>
       </div>
-      {error && <p className="mt-1 text-caption text-red-600">{error}</p>}
+      {error && <p className="mt-1 text-caption text-danger">{error}</p>}
     </div>
   );
 }
@@ -276,7 +276,7 @@ function FolderDesigns({ view, onBack }: { view: FolderView; onBack: () => void 
       {q.isLoading ? (
         <p className="text-body-sm text-primary-50">불러오는 중…</p>
       ) : q.isError ? (
-        <p className="rounded-md bg-red-50 px-3 py-2 text-body-sm text-red-700">{toUserMessage(q.error)}</p>
+        <p className="rounded-md bg-danger-bg px-3 py-2 text-body-sm text-danger">{toUserMessage(q.error)}</p>
       ) : designs.length === 0 ? (
         <p className="rounded-md border border-dashed border-neutral-300 p-8 text-center text-body-sm text-primary-50">
           이 폴더에 디자인이 없습니다.
@@ -411,7 +411,7 @@ function CreateForm({ designers, onCreated }: { designers: Designer[]; onCreated
       <div>
         <div className="mb-1 flex items-center gap-2">
           <label className="text-body-sm font-medium">대표 스네일 사진</label>
-          <span className="text-red-500">*</span>
+          <span className="text-danger">*</span>
         </div>
         <p className="mb-2 text-caption text-primary-50">
           고객에게 <strong className="text-primary-50">썸네일</strong>로 노출되는 사진입니다. 1장 필수.
@@ -484,7 +484,7 @@ function CreateForm({ designers, onCreated }: { designers: Designer[]; onCreated
       {/* 디자이너 + 소요시간 */}
       <div>
         <label className="mb-1 block text-body-sm font-medium">
-          가능한 디자이너<span className="ml-0.5 text-red-500">*</span>
+          가능한 디자이너<span className="ml-0.5 text-danger">*</span>
         </label>
         <p className="mb-2 text-caption text-primary-50">
           선택하면 디자이너별 소요시간을 조정할 수 있어요. 미조정 시 기본 소요시간({baseDuration}분)을 사용합니다.
@@ -540,7 +540,7 @@ function CreateForm({ designers, onCreated }: { designers: Designer[]; onCreated
         <TagInput tags={tags} onChange={setTags} />
       </div>
 
-      {formError && <p className="rounded-md bg-red-50 px-3 py-2 text-body-sm text-red-700">{formError}</p>}
+      {formError && <p className="rounded-md bg-danger-bg px-3 py-2 text-body-sm text-danger">{formError}</p>}
 
       <button
         type="submit"
@@ -637,7 +637,7 @@ function FolderField({ value, onChange }: { value: string; onChange: (v: string)
           </button>
         </div>
       )}
-      {error && <p className="mt-1 text-caption text-red-600">{error}</p>}
+      {error && <p className="mt-1 text-caption text-danger">{error}</p>}
     </div>
   );
 }
@@ -960,7 +960,7 @@ function DesignCard({ design }: { design: Design }) {
       )}
 
       {d.ai_analysis_status === 'failed' && (
-        <div className="mt-2 rounded-md bg-red-50 p-2 text-caption text-red-700">
+        <div className="mt-2 rounded-md bg-danger-bg p-2 text-caption text-danger">
           {d.ai_error_message ?? 'AI 분석에 실패했습니다.'}
         </div>
       )}
@@ -992,7 +992,7 @@ function DesignCard({ design }: { design: Design }) {
               <button
                 onClick={() => remove.mutate()}
                 disabled={remove.isPending}
-                className="rounded-md bg-[#fdeaea] px-2.5 py-1.5 text-caption font-semibold text-[#cf3b3b] disabled:opacity-50"
+                className="rounded-md bg-danger-bg px-2.5 py-1.5 text-caption font-semibold text-danger disabled:opacity-50"
               >
                 {remove.isPending ? '삭제 중…' : '삭제 확인'}
               </button>
@@ -1016,7 +1016,7 @@ function DesignCard({ design }: { design: Design }) {
 
       {editing && <DesignEditForm design={d} onClose={() => setEditing(false)} />}
 
-      {actionError && <p className="mt-2 text-caption text-red-600">{actionError}</p>}
+      {actionError && <p className="mt-2 text-caption text-danger">{actionError}</p>}
     </li>
   );
 }
@@ -1091,7 +1091,7 @@ function DesignEditForm({ design: d, onClose }: { design: Design; onClose: () =>
         <TagInput tags={tags} onChange={setTags} />
       </div>
 
-      {err && <p className="text-caption text-red-600">{err}</p>}
+      {err && <p className="text-caption text-danger">{err}</p>}
 
       <div className="flex gap-2">
         <button
@@ -1132,11 +1132,11 @@ function Field({
     <div>
       <label className="mb-1 block text-body-sm font-medium">
         {label}
-        {required && <span className="ml-0.5 text-red-500">*</span>}
+        {required && <span className="ml-0.5 text-danger">*</span>}
       </label>
       {children}
       {hint && !error && <p className="mt-1 text-caption text-primary-50">{hint}</p>}
-      {error && <p className="mt-1 text-caption text-red-600">{error}</p>}
+      {error && <p className="mt-1 text-caption text-danger">{error}</p>}
     </div>
   );
 }

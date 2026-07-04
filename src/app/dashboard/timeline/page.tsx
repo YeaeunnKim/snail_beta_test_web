@@ -166,7 +166,7 @@ export default function TimelinePage() {
 
       <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
         {error ? (
-          <p className="m-4 rounded-md bg-red-50 px-3 py-2 text-body-sm text-red-700">{toUserMessage(error)}</p>
+          <p className="m-4 rounded-md bg-danger-bg px-3 py-2 text-body-sm text-danger">{toUserMessage(error)}</p>
         ) : loading ? (
           <p className="py-12 text-center text-body-sm text-primary-50">불러오는 중…</p>
         ) : designers.length === 0 ? (
@@ -304,7 +304,7 @@ function WeekView({
                 <button
                   key={d}
                   onClick={() => onSelectDate(d)}
-                  className={`flex-1 border-r border-neutral-100 py-1.5 text-center last:border-r-0 hover:bg-neutral-100 ${sel ? 'bg-[#ffeaf0]' : ''}`}
+                  className={`flex-1 border-r border-neutral-100 py-1.5 text-center last:border-r-0 hover:bg-neutral-100 ${sel ? 'bg-rose-hover' : ''}`}
                 >
                   <div className="text-caption text-primary-50">{WEEKDAYS[(dayOfWeek(d) + 6) % 7].label}</div>
                   <div className={`text-body-md font-bold ${dowCls(d)}`}>{dayOfMonth(d)}</div>
@@ -331,7 +331,7 @@ function WeekView({
                   return (
                     <div
                       key={d}
-                      className={`flex min-h-[60px] flex-1 flex-col gap-1 border-r border-neutral-100 p-1 last:border-r-0 ${sel ? 'bg-[#fff5f8]' : ''}`}
+                      className={`flex min-h-[60px] flex-1 flex-col gap-1 border-r border-neutral-100 p-1 last:border-r-0 ${sel ? 'bg-rose-hover' : ''}`}
                     >
                       {jobs.map((r) => (
                         <WeekPill key={r.id} reservation={r} color={color} onSelect={onSelect} />
@@ -442,7 +442,7 @@ function MonthView({
                 <button
                   key={cell.date}
                   onClick={() => onOpenDay(cell.date)}
-                  className={`min-h-[112px] flex-1 border-r border-neutral-100 p-2.5 text-left align-top last:border-r-0 hover:bg-[#fdf4f7] ${
+                  className={`min-h-[112px] flex-1 border-r border-neutral-100 p-2.5 text-left align-top last:border-r-0 hover:bg-rose-hover ${
                     cell.inMonth ? '' : 'bg-neutral-50/60'
                   }`}
                 >
@@ -618,7 +618,7 @@ function DetailSheet({
                   <button
                     disabled={busy || !reason.trim()}
                     onClick={doCancel}
-                    className="flex-1 rounded-xl bg-[#fdeaea] py-2.5 text-body-sm font-bold text-[#cf3b3b] disabled:opacity-50"
+                    className="flex-1 rounded-xl bg-danger-bg py-2.5 text-body-sm font-bold text-danger disabled:opacity-50"
                   >
                     {r.status === 'pending' ? '거절 확정' : '취소 확정'}
                   </button>
@@ -649,7 +649,7 @@ function DetailSheet({
                     <button
                       disabled={busy}
                       onClick={() => setReasonMode(true)}
-                      className="flex-1 rounded-xl bg-[#fdeaea] py-2.5 text-body-sm font-bold text-[#cf3b3b] disabled:opacity-50"
+                      className="flex-1 rounded-xl bg-danger-bg py-2.5 text-body-sm font-bold text-danger disabled:opacity-50"
                     >
                       예약 취소
                     </button>
@@ -658,7 +658,7 @@ function DetailSheet({
               )
             )}
 
-            {error && <p className="mt-2 text-caption text-red-600">{error}</p>}
+            {error && <p className="mt-2 text-caption text-danger">{error}</p>}
             <p className="mt-4 text-caption leading-relaxed text-primary-50">
               방문완료·노쇼 등 다른 상태 처리는 예약 관리 화면에서 할 수 있어요.
             </p>
