@@ -51,7 +51,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <div className="flex min-h-screen">
       <aside className="w-56 shrink-0 border-r border-primary-10 bg-surface p-4">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/snail-logo.png" alt={config.appName} className="mb-6 h-7 w-auto" />
+        <img src="/snail-logo.png" alt={config.appName} className="mb-6 h-[22.4px] w-auto" />
         <nav className="space-y-1">
           {NAV.map((item) => {
             const active =
