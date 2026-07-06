@@ -19,7 +19,7 @@ import { formatTime } from '@/lib/date';
 import { TodayTimeline } from '@/components/day-timeline';
 import { ReservationDetail } from '@/components/reservation-detail';
 
-const DOT = { brand: '#c97f7f', rose: '#e4a5a5', brown: '#8b7565', sage: '#8fa07f' };
+const DOT = { brand: '#c97f7f', rose: 'var(--color-rose-dot)', brown: 'var(--color-secondary)', sage: 'var(--color-sage)' };
 
 const VERIFICATION_LABEL: Record<string, string> = {
   pending: '심사 대기 중',

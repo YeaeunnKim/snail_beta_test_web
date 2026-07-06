@@ -47,6 +47,10 @@
   --color-info-bg: #dbeafe; /* 연한 배경 (기존 blue-100 계열) */
 
   --color-rose-hover: #fdf4f7; /* 로즈 hover/선택 배경 대표값 */
+
+  /* 대시보드 지표 dot 전용 accent (상태색 아님, 카드 구분용 장식) */
+  --color-sage: #8fa07f;
+  --color-rose-dot: #e4a5a5;
 }
 
 :root {
