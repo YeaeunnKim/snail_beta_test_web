@@ -19,7 +19,7 @@ import { formatTime } from '@/lib/date';
 import { TodayTimeline } from '@/components/day-timeline';
 import { ReservationDetail } from '@/components/reservation-detail';
 
-const DOT = { brand: '#c97f7f', rose: '#e4a5a5', brown: '#8b7565', sage: '#8fa07f' };
+const DOT = { brand: '#c97f7f', rose: 'var(--color-rose-dot)', brown: 'var(--color-secondary)', sage: 'var(--color-sage)' };
 
 const VERIFICATION_LABEL: Record<string, string> = {
   pending: '심사 대기 중',
@@ -48,15 +48,15 @@ export default function DashboardHome() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-xl font-bold">대시보드</h1>
-        <p className="mt-1 text-sm text-neutral-500">
+        <h1 className="text-heading-lg font-bold">대시보드</h1>
+        <p className="mt-1 text-body-sm text-primary-50">
           {summary ? `${dateLabel(summary.today)} · 오늘 하루 현황이에요.` : shop?.name ?? ' '}
         </p>
       </div>
 
       {/* 인증 상태 배너 */}
       {needsVerification && (
-        <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-800">
+        <div className="rounded-lg border border-warning-border bg-warning-bg p-4 text-body-sm text-warning">
           사업자 인증이 필요합니다 ({VERIFICATION_LABEL[verificationStatus ?? ''] ?? verificationStatus}).{' '}
           <Link href="/dashboard/verification" className="font-semibold underline">
             인증 화면으로 이동
@@ -69,12 +69,12 @@ export default function DashboardHome() {
 
       {/* 승인됐지만 아직 샵이 없으면 온보딩으로 유도 */}
       {isApproved && !shopLoading && shop === null && (
-        <div className="rounded-lg border border-brand/40 bg-brand/5 p-4 text-sm">
-          <p className="font-semibold text-neutral-800">아직 등록된 샵이 없습니다.</p>
-          <p className="mt-1 text-neutral-600">샵 정보를 등록하면 예약을 받을 수 있어요.</p>
+        <div className="rounded-lg border border-secondary/40 bg-secondary/5 p-4 text-body-sm">
+          <p className="font-semibold text-primary">아직 등록된 샵이 없습니다.</p>
+          <p className="mt-1 text-primary">샵 정보를 등록하면 예약을 받을 수 있어요.</p>
           <Link
             href="/onboarding"
-            className="mt-3 inline-block rounded-lg bg-brand px-4 py-2 text-xs font-semibold text-white"
+            className="mt-3 inline-block rounded-lg bg-secondary px-4 py-2 text-caption font-semibold text-white"
           >
             샵 등록 시작하기
           </Link>
@@ -84,7 +84,7 @@ export default function DashboardHome() {
       {shop && (
         <>
           {summaryError && (
-            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+            <p className="rounded-lg bg-danger-bg px-3 py-2 text-body-sm text-danger">
               요약 정보를 불러오지 못했습니다.
             </p>
           )}
@@ -132,8 +132,8 @@ export default function DashboardHome() {
           {/* 오늘 일정 (디자이너 타임라인) */}
           <section className="space-y-3">
             <div className="flex items-center justify-between">
-              <h2 className="text-base font-bold">오늘 일정</h2>
-              <Link href="/dashboard/timeline" className="text-xs font-semibold text-secondary">
+              <h2 className="text-body-md font-bold">오늘 일정</h2>
+              <Link href="/dashboard/timeline" className="text-caption font-semibold text-secondary">
                 전체 일정 →
               </Link>
             </div>
@@ -141,32 +141,32 @@ export default function DashboardHome() {
           </section>
 
           {/* 처리 대기 요청 */}
-          <section className="rounded-xl border border-line bg-white p-5">
+          <section className="rounded-xl border border-primary-10 bg-white p-5">
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-base font-bold">처리 대기 요청</h2>
+              <h2 className="text-body-md font-bold">처리 대기 요청</h2>
               <Link
                 href="/dashboard/reservations?status=pending"
-                className="text-xs font-semibold text-secondary"
+                className="text-caption font-semibold text-secondary"
               >
                 모두 보기 →
               </Link>
             </div>
             {summaryLoading ? (
-              <p className="text-sm text-neutral-400">불러오는 중…</p>
+              <p className="text-body-sm text-primary-50">불러오는 중…</p>
             ) : summary && summary.pendingItems.length > 0 ? (
-              <ul className="divide-y divide-line">
+              <ul className="divide-y divide-primary-10">
                 {summary.pendingItems.slice(0, 6).map((r) => (
                   <PendingRow key={r.id} r={r} />
                 ))}
               </ul>
             ) : (
-              <p className="py-8 text-center text-sm text-neutral-400">새로 들어온 요청이 없어요.</p>
+              <p className="py-8 text-center text-body-sm text-primary-50">새로 들어온 요청이 없어요.</p>
             )}
           </section>
 
           {/* 정산 요약 */}
           {summary && (
-            <div className="flex flex-wrap gap-x-10 gap-y-4 rounded-xl border border-line bg-white p-5">
+            <div className="flex flex-wrap gap-x-10 gap-y-4 rounded-xl border border-primary-10 bg-white p-5">
               <Settle k="정산 대기" v={won(summary.payWaitSum)} color={DOT.rose} />
               <Settle k="이번 달 정산 완료" v={won(summary.monthSettledSum)} color={DOT.sage} />
               <Settle
@@ -190,7 +190,7 @@ function PendingRow({ r }: { r: Reservation }) {
   });
 
   return (
-    <li className={open ? 'rounded-lg bg-[#fdf4f7]' : ''}>
+    <li className={open ? 'rounded-lg bg-rose-hover' : ''}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -198,22 +198,22 @@ function PendingRow({ r }: { r: Reservation }) {
       >
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
-            <b className="text-sm">{r.user?.nickname ?? '고객'}</b>
+            <b className="text-body-sm font-semibold">{r.user?.nickname ?? '고객'}</b>
             {r.designer?.name && (
-              <span className="text-xs text-neutral-400">· {r.designer.name}</span>
+              <span className="text-caption text-primary-50">· {r.designer.name}</span>
             )}
           </div>
-          <div className="mt-0.5 text-xs text-neutral-500">
+          <div className="mt-0.5 text-caption text-primary-50">
             {date} {formatTime(r.start_at)} · {r.design?.title ?? '시술'} · {won(r.total_price)}
           </div>
           {r.user_request && (
-            <div className="mt-1.5 inline-block max-w-full rounded-lg bg-brand-soft/40 px-2 py-1 text-xs text-[#a86a6a]">
+            <div className="mt-1.5 inline-block max-w-full rounded-lg bg-secondary-50/40 px-2 py-1 text-caption text-[#a86a6a]">
               “{r.user_request}”
             </div>
           )}
         </div>
         <span
-          className={`shrink-0 self-center text-xs text-neutral-300 transition-transform ${open ? 'rotate-180' : ''}`}
+          className={`shrink-0 self-center text-caption text-primary-10 transition-transform ${open ? 'rotate-180' : ''}`}
         >
           ⌄
         </span>
@@ -243,16 +243,16 @@ function StatCard({
   loading?: boolean;
 }) {
   const inner = (
-    <div className="h-full rounded-xl border border-line bg-white p-4 transition group-hover:border-brand group-hover:-translate-y-0.5">
-      <div className="flex items-center gap-1.5 text-xs text-neutral-500">
+    <div className="h-full rounded-xl border border-primary-10 bg-white p-4 transition group-hover:border-secondary group-hover:-translate-y-0.5">
+      <div className="flex items-center gap-1.5 text-caption text-primary-50">
         <span className="h-2 w-2 rounded-full" style={{ background: dot }} />
         {label}
       </div>
       <div className="mt-2 text-3xl font-extrabold leading-none">
         {loading ? '…' : value}
-        <span className="ml-1 align-baseline text-sm font-semibold text-neutral-400">건</span>
+        <span className="ml-1 align-baseline text-body-sm text-primary-50">건</span>
       </div>
-      {sub && <div className="mt-2 text-[11px] text-neutral-400">{sub}</div>}
+      {sub && <div className="mt-2 text-caption text-primary-50">{sub}</div>}
     </div>
   );
   return href ? (
@@ -267,8 +267,8 @@ function StatCard({
 function Settle({ k, v, color }: { k: string; v: string; color?: string }) {
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-xs text-neutral-500">{k}</span>
-      <span className="text-xl font-extrabold" style={color ? { color } : undefined}>
+      <span className="text-caption text-primary-50">{k}</span>
+      <span className="text-heading-lg font-extrabold" style={color ? { color } : undefined}>
         {v}
       </span>
     </div>

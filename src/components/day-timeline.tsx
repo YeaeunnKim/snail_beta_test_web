@@ -90,14 +90,14 @@ export function DayTimeline({
     <div className="overflow-x-auto">
       <div className="min-w-[760px]">
         <div className="sticky top-0 z-10 flex border-b border-neutral-200 bg-neutral-50">
-          <div className="w-[150px] shrink-0 border-r border-neutral-200 px-3.5 py-2 text-xs text-neutral-400">
+          <div className="w-[150px] shrink-0 border-r border-neutral-200 px-3.5 py-2 text-caption text-primary-50">
             디자이너
           </div>
           <div className="flex flex-1">
             {Array.from({ length: hourCount }, (_, i) => (
               <span
                 key={i}
-                className="flex-1 border-r border-neutral-100 px-1.5 pt-2.5 text-[11px] text-neutral-400 last:border-r-0"
+                className="flex-1 border-r border-neutral-100 px-1.5 pt-2.5 text-caption text-primary-50 last:border-r-0"
               >
                 {startHour + i}
               </span>
@@ -114,13 +114,13 @@ export function DayTimeline({
             <div key={d.id} className={`flex ${last ? '' : 'border-b border-neutral-100'}`}>
               <div className="flex w-[150px] shrink-0 items-center gap-2 border-r border-neutral-200 bg-neutral-50/60 px-3.5">
                 <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: color.border }} />
-                <span className="whitespace-nowrap text-[13.5px] font-semibold">{d.name}</span>
-                <span className="ml-auto text-[11px] text-neutral-300">{live}건</span>
+                <span className="whitespace-nowrap text-body-sm font-semibold">{d.name}</span>
+                <span className="ml-auto text-caption text-primary-10">{live}건</span>
               </div>
               <div className="relative h-[62px] flex-1" style={{ background: grid }}>
                 {showNow && (
-                  <div className="absolute inset-y-0 z-[2] w-0.5 bg-brand/70" style={{ left: `${nowPct}%` }}>
-                    <span className="absolute -left-[3px] -top-0.5 h-2 w-2 rounded-full bg-brand" />
+                  <div className="absolute inset-y-0 z-[2] w-0.5 bg-secondary/70" style={{ left: `${nowPct}%` }}>
+                    <span className="absolute -left-[3px] -top-0.5 h-2 w-2 rounded-full bg-secondary" />
                   </div>
                 )}
                 {jobs.map((r) => (
@@ -187,15 +187,15 @@ function DayBar({
       }}
       title={`${who} · ${svc} · ${formatTime(r.start_at)}~${formatTime(r.end_at)}`}
     >
-      <div className={`truncate text-[11.5px] font-bold ${cancelled ? 'line-through' : ''}`}>
+      <div className={`truncate text-caption font-semibold ${cancelled ? 'line-through' : ''}`}>
         {who}
         {requested && (
-          <span className="ml-1 rounded px-1 text-[9px] font-bold" style={{ background: color.bg, color: color.text }}>
+          <span className="ml-1 rounded px-1 text-caption font-bold" style={{ background: color.bg, color: color.text }}>
             요청
           </span>
         )}
       </div>
-      <div className="truncate text-[10.5px] opacity-85">
+      <div className="truncate text-caption opacity-85">
         {svc} · {formatTime(r.start_at)}~{formatTime(r.end_at)}
       </div>
     </button>
@@ -243,13 +243,13 @@ export function TodayTimeline() {
         <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => setHidden(new Set())}
-            className={`inline-flex items-center gap-1.5 rounded-full border border-dashed px-3 py-1.5 text-[12.5px] font-semibold ${
-              hidden.size === 0 ? 'border-brand text-neutral-800' : 'border-neutral-300 bg-neutral-50 text-neutral-400'
+            className={`inline-flex items-center gap-1.5 rounded-full border border-dashed px-3 py-1.5 text-body-sm font-semibold ${
+              hidden.size === 0 ? 'border-secondary text-primary' : 'border-neutral-300 bg-neutral-50 text-primary-50'
             }`}
           >
             <span
               className="h-2.5 w-2.5 rounded-full"
-              style={{ background: hidden.size === 0 ? 'var(--color-brand, #c97f7f)' : '#ccc' }}
+              style={{ background: hidden.size === 0 ? 'var(--color-secondary, #8b7565)' : '#ccc' }}
             />
             전체
           </button>
@@ -260,8 +260,8 @@ export function TodayTimeline() {
               <button
                 key={d.id}
                 onClick={() => toggle(d.id)}
-                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12.5px] font-semibold ${
-                  off ? 'border-neutral-200 bg-neutral-50 text-neutral-400' : 'border-neutral-200 text-neutral-800'
+                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-body-sm font-semibold ${
+                  off ? 'border-neutral-200 bg-neutral-50 text-primary-50' : 'border-neutral-200 text-primary'
                 }`}
               >
                 <span className="h-2.5 w-2.5 rounded-full" style={{ background: color.border, opacity: off ? 0.3 : 1 }} />
@@ -272,11 +272,11 @@ export function TodayTimeline() {
         </div>
       )}
 
-      <div className="overflow-hidden rounded-xl border border-line bg-white">
+      <div className="overflow-hidden rounded-xl border border-primary-10 bg-white">
         {loading ? (
-          <p className="py-10 text-center text-sm text-neutral-400">불러오는 중…</p>
+          <p className="py-10 text-center text-body-sm text-primary-50">불러오는 중…</p>
         ) : designers.length === 0 ? (
-          <p className="py-10 text-center text-sm text-neutral-400">등록된 디자이너가 없어요.</p>
+          <p className="py-10 text-center text-body-sm text-primary-50">등록된 디자이너가 없어요.</p>
         ) : (
           <DayTimeline
             designers={visible}
@@ -322,14 +322,14 @@ export function DesignerDayTimeline({ reservation: r }: { reservation: Reservati
       : [];
 
   if (resQuery.isLoading || designersQuery.isLoading) {
-    return <p className="py-4 text-[13px] text-neutral-400">일정 불러오는 중…</p>;
+    return <p className="py-4 text-body-sm text-primary-50">일정 불러오는 중…</p>;
   }
   if (rowDesigners.length === 0) {
-    return <p className="py-2 text-[13px] text-neutral-400">담당 디자이너 정보가 없어요.</p>;
+    return <p className="py-2 text-body-sm text-primary-50">담당 디자이너 정보가 없어요.</p>;
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-line bg-white">
+    <div className="overflow-hidden rounded-xl border border-primary-10 bg-white">
       <DayTimeline
         designers={rowDesigners}
         reservations={reservations}

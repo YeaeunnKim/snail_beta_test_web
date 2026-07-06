@@ -3,6 +3,9 @@ node_modules/
 .pnp
 .pnp.js
 
+# pnpm 전용 프로젝트 — npm이 생성하는 락파일은 추적하지 않음
+package-lock.json
+
 # Next.js
 .next/
 out/

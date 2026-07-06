@@ -70,38 +70,38 @@ export default function PendingPage() {
   };
 
   if (loading) {
-    return <p className="text-center text-sm text-neutral-500">불러오는 중…</p>;
+    return <p className="text-center text-body-sm text-primary-50">불러오는 중…</p>;
   }
 
   return (
     <div className="space-y-5 rounded-lg border border-neutral-200 bg-white p-6 text-center shadow-sm">
-      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-100 text-2xl">
+      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-warning-bg text-2xl">
         ⏳
       </div>
       <div>
-        <h2 className="text-lg font-bold">사업자 인증 심사 중</h2>
-        <p className="mt-2 text-sm text-neutral-600">
+        <h2 className="text-heading-md font-bold">사업자 인증 심사 중</h2>
+        <p className="mt-2 text-body-sm text-primary">
           제출하신 사업자 인증을 검토하고 있습니다. 승인이 완료되면 샵 등록과 운영을 시작할 수
           있어요.
         </p>
         {submission?.created_at && (
-          <p className="mt-2 text-xs text-neutral-400">
+          <p className="mt-2 text-caption text-primary-50">
             제출일: {new Date(submission.created_at).toLocaleString('ko-KR')}
           </p>
         )}
       </div>
 
-      {error && <p className="rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>}
+      {error && <p className="rounded-md bg-danger-bg px-3 py-2 text-caption text-danger">{error}</p>}
 
       <button
         onClick={onCheck}
         disabled={checking}
-        className="w-full rounded-md bg-brand py-2 text-sm font-semibold text-white disabled:opacity-50"
+        className="w-full rounded-md bg-secondary py-2 text-body-sm font-semibold text-white disabled:opacity-50"
       >
         {checking ? '확인 중…' : '심사 상태 확인'}
       </button>
 
-      <button onClick={logout} className="text-xs text-neutral-500 underline">
+      <button onClick={logout} className="text-caption font-semibold text-primary-50 underline">
         로그아웃
       </button>
     </div>

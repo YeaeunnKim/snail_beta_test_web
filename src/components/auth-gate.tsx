@@ -27,7 +27,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
   if (status === 'idle' || status === 'loading') {
     return (
-      <p className="text-center text-sm text-neutral-500">불러오는 중…</p>
+      <p className="text-center text-body-sm text-primary-50">불러오는 중…</p>
     );
   }
 

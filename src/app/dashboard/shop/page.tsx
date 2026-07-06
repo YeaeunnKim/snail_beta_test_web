@@ -165,20 +165,20 @@ export default function ShopPage() {
   };
 
   if (loading) {
-    return <p className="text-sm text-neutral-500">샵 정보를 불러오는 중…</p>;
+    return <p className="text-body-sm text-primary-50">샵 정보를 불러오는 중…</p>;
   }
 
   return (
     <div className="max-w-2xl space-y-6">
       <div>
-        <h1 className="text-xl font-bold">샵 관리</h1>
-        <p className="mt-1 text-sm text-neutral-500">
+        <h1 className="text-heading-lg font-bold">샵 관리</h1>
+        <p className="mt-1 text-body-sm text-primary-50">
           {isEdit ? '샵 정보를 수정합니다.' : '아직 등록된 샵이 없습니다. 새 샵을 만들어주세요.'}
         </p>
       </div>
 
       {!isApproved && !isEdit && (
-        <div className="rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-800">
+        <div className="rounded-md border border-warning-border bg-warning-bg p-4 text-body-sm text-warning">
           사업자 인증이 승인되어야 샵을 등록할 수 있습니다. (현재 상태가 approved가 아니면 저장이 거부됩니다.)
         </div>
       )}
@@ -249,17 +249,17 @@ export default function ShopPage() {
         </Field>
 
         <Field label="" error={errors.auto_accept?.message}>
-          <label className="flex items-center gap-2 text-sm">
+          <label className="flex items-center gap-2 text-body-sm font-semibold">
             <input type="checkbox" {...register('auto_accept')} />
             예약 자동 수락 (현장 결제에서만 가능)
           </label>
         </Field>
 
         {formError && (
-          <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{formError}</p>
+          <p className="rounded-md bg-danger-bg px-3 py-2 text-body-sm text-danger">{formError}</p>
         )}
         {savedAt && (
-          <p className="rounded-md bg-green-50 px-3 py-2 text-sm text-green-700">
+          <p className="rounded-md bg-success-bg px-3 py-2 text-body-sm text-success">
             저장되었습니다. ({savedAt})
           </p>
         )}
@@ -267,7 +267,7 @@ export default function ShopPage() {
         <button
           type="submit"
           disabled={isSubmitting}
-          className="rounded-md bg-brand px-5 py-2 text-sm font-semibold text-white disabled:opacity-50"
+          className="rounded-md bg-secondary px-5 py-2 text-body-sm font-semibold text-white disabled:opacity-50"
         >
           {isSubmitting ? '저장 중…' : isEdit ? '수정 저장' : '샵 만들기'}
         </button>
@@ -277,7 +277,7 @@ export default function ShopPage() {
 }
 
 const inputCls =
-  'w-full rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-brand';
+  'w-full rounded-md border border-neutral-300 px-3 py-2 text-body-sm outline-none focus:border-secondary';
 
 function Field({
   label,
@@ -295,14 +295,14 @@ function Field({
   return (
     <div>
       {label && (
-        <label className="mb-1 block text-sm font-medium">
+        <label className="mb-1 block text-body-sm font-medium">
           {label}
-          {required && <span className="ml-0.5 text-red-500">*</span>}
+          {required && <span className="ml-0.5 text-danger">*</span>}
         </label>
       )}
       {children}
-      {hint && !error && <p className="mt-1 text-xs text-neutral-400">{hint}</p>}
-      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+      {hint && !error && <p className="mt-1 text-caption text-primary-50">{hint}</p>}
+      {error && <p className="mt-1 text-caption text-danger">{error}</p>}
     </div>
   );
 }

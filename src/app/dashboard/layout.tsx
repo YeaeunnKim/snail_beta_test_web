@@ -39,7 +39,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   if (status === 'idle' || status === 'loading') {
     return (
-      <div className="flex min-h-screen items-center justify-center text-sm text-neutral-500">
+      <div className="flex min-h-screen items-center justify-center text-body-sm text-primary-50">
         불러오는 중…
       </div>
     );
@@ -49,9 +49,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="flex min-h-screen">
-      <aside className="w-56 shrink-0 border-r border-line bg-surface p-4">
+      <aside className="w-56 shrink-0 border-r border-primary-10 bg-surface p-4">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/snail-logo.png" alt={config.appName} className="mb-6 h-7 w-auto" />
+        <img src="/snail-logo.png" alt={config.appName} className="mb-6 h-[22.4px] w-auto" />
         <nav className="space-y-1">
           {NAV.map((item) => {
             const active =
@@ -62,8 +62,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <Link
                 key={item.href}
                 href={item.href}
-                className={`block rounded-md px-3 py-2 text-sm ${
-                  active ? 'bg-brand text-white' : 'text-neutral-700 hover:bg-neutral-200'
+                className={`block rounded-md px-3 py-2 text-body-sm font-semibold ${
+                  active ? 'bg-secondary text-white' : 'text-primary hover:bg-neutral-200'
                 }`}
               >
                 {item.label}
@@ -74,14 +74,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </aside>
 
       <div className="flex flex-1 flex-col">
-        <header className="flex items-center justify-between border-b border-line px-6 py-3">
-          <span className="text-sm text-neutral-600">{owner?.representative_name ?? owner?.email}</span>
+        <header className="flex items-center justify-between border-b border-primary-10 px-6 py-3">
+          <span className="text-body-sm text-primary">{owner?.representative_name ?? owner?.email}</span>
           <button
             onClick={() => {
               logout();
               router.replace('/login');
             }}
-            className="text-xs text-neutral-500 underline"
+            className="text-caption font-semibold text-primary-50 underline"
           >
             로그아웃
           </button>

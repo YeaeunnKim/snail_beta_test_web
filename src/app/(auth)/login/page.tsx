@@ -26,7 +26,7 @@ type LoginForm = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<p className="text-center text-sm text-neutral-500">불러오는 중…</p>}>
+    <Suspense fallback={<p className="text-center text-body-sm text-primary-50">불러오는 중…</p>}>
       <LoginForm />
     </Suspense>
   );
@@ -74,46 +74,46 @@ function LoginForm() {
       noValidate
     >
       <div>
-        <label className="mb-1 block text-sm font-medium" htmlFor="email">
+        <label className="mb-1 block text-body-sm font-medium" htmlFor="email">
           이메일
         </label>
         <input
           id="email"
           type="email"
           autoComplete="email"
-          className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-brand"
+          className="w-full rounded-md border border-neutral-300 px-3 py-2 text-body-sm outline-none focus:border-secondary"
           {...register('email')}
         />
-        {errors.email && <p className="mt-1 text-xs text-red-600">{errors.email.message}</p>}
+        {errors.email && <p className="mt-1 text-caption text-danger">{errors.email.message}</p>}
       </div>
 
       <div>
-        <label className="mb-1 block text-sm font-medium" htmlFor="password">
+        <label className="mb-1 block text-body-sm font-medium" htmlFor="password">
           비밀번호
         </label>
         <input
           id="password"
           type="password"
           autoComplete="current-password"
-          className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-brand"
+          className="w-full rounded-md border border-neutral-300 px-3 py-2 text-body-sm outline-none focus:border-secondary"
           {...register('password')}
         />
-        {errors.password && <p className="mt-1 text-xs text-red-600">{errors.password.message}</p>}
+        {errors.password && <p className="mt-1 text-caption text-danger">{errors.password.message}</p>}
       </div>
 
       {formError && (
-        <p className="rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">{formError}</p>
+        <p className="rounded-md bg-danger-bg px-3 py-2 text-caption text-danger">{formError}</p>
       )}
 
       <button
         type="submit"
         disabled={isSubmitting}
-        className="w-full rounded-md bg-brand py-2 text-sm font-semibold text-white disabled:opacity-50"
+        className="w-full rounded-md bg-secondary py-2 text-body-sm font-semibold text-white disabled:opacity-50"
       >
         {isSubmitting ? '로그인 중…' : '로그인'}
       </button>
 
-      <p className="text-center text-xs text-neutral-500">
+      <p className="text-center text-caption text-primary-50">
         <a href="/register" className="underline">
           회원가입
         </a>{' '}
