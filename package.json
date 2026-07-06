@@ -16,8 +16,9 @@
     "typecheck": "tsc --noEmit",
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\"",
-    "generate:types": "openapi-typescript ./backend-context/openapi.json -o ./src/types/api.d.ts",
-    "generate:types:remote": "openapi-typescript https://poi82999.github.io/snail_backend_specification/openapi.json -o ./src/types/api.d.ts"
+    "generate:types": "openapi-typescript ./backend-context/openapi.json --default-non-nullable false -o ./src/types/api.d.ts",
+    "generate:types:remote": "openapi-typescript https://poi82999.github.io/snail_backend_specification/openapi.json --default-non-nullable false -o ./src/types/api.d.ts",
+    "verify:backend": "node scripts/e2e-check.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

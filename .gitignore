@@ -51,8 +51,8 @@ coverage/
 # Backend API context (synced per developer)
 backend-context/
 
-# 로컬 전용 가짜 백엔드 (개인 프론트/디자인 작업용, 커밋 대상 아님)
-mock-server/
+# E2E 연동 점검 토큰 (scripts/e2e-check.mjs 가 발급, 커밋 금지)
+scripts/.e2e-token.json
 
 # Misc
 *.log
