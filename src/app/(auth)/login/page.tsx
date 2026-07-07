@@ -1,11 +1,10 @@
 'use client';
 
 /**
- * 동작하는 로그인 레퍼런스 화면.
+ * 베타 로그인 — 인스타그램 아이디(또는 이메일)로 로그인.
  *
- * 이 화면은 "백엔드 연결이 실제로 동작함"을 검증하기 위한 참조 구현이다.
- * 프론트/디자인팀은 이 흐름(react-hook-form + zod + 서비스 호출 + ApiError 처리)을
- * 패턴으로 삼아 실제 디자인으로 다시 만들면 된다.
+ * 입력한 인스타 핸들을 회원가입과 동일한 규칙으로 이메일(handle@beta.snail.app)로
+ * 매핑해 백엔드에 로그인 요청한다. 이메일을 직접 입력하면(운영자 시드 계정 등) 그대로 사용.
  */
 import { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -13,12 +12,12 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAuth } from '@/hooks/use-auth';
-import { isApiError } from '@/lib/api-error';
 import { toUserMessage } from '@/lib/error-messages';
 import { resolveAuthedHome } from '@/lib/auth-routing';
+import { instagramToEmail } from '@/lib/beta-account';
 
 const loginSchema = z.object({
-  email: z.string().email('올바른 이메일 형식이 아닙니다.'),
+  instagram: z.string().min(1, '인스타그램 아이디를 입력해주세요.'),
   password: z.string().min(1, '비밀번호를 입력해주세요.'),
 });
 
@@ -41,28 +40,21 @@ function LoginForm() {
   const {
     register,
     handleSubmit,
-    setError,
     formState: { errors, isSubmitting },
   } = useForm<LoginForm>({ resolver: zodResolver(loginSchema) });
 
   const onSubmit = async (values: LoginForm) => {
     setFormError(null);
     try {
-      const owner = await login(values);
-      // 승인 완료 + 딥링크(redirect)면 그곳으로, 아니면 인증 상태별 진입 경로로.
+      const owner = await login({
+        email: instagramToEmail(values.instagram),
+        password: values.password,
+      });
       const redirect = searchParams.get('redirect');
       const dest =
-        owner.verification_status === 'approved' && redirect
-          ? redirect
-          : resolveAuthedHome(owner);
+        owner.verification_status === 'approved' && redirect ? redirect : resolveAuthedHome(owner);
       router.replace(dest);
     } catch (e) {
-      if (isApiError(e) && e.fieldErrors) {
-        // 서버 필드 에러를 폼에 매핑
-        for (const [field, message] of Object.entries(e.fieldErrors)) {
-          setError(field as keyof LoginForm, { message });
-        }
-      }
       setFormError(toUserMessage(e));
     }
   };
@@ -70,21 +62,31 @@ function LoginForm() {
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
-      className="space-y-4 rounded-lg border border-neutral-200 bg-white p-6 shadow-sm"
+      className="space-y-5 rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm"
       noValidate
     >
+      <div className="text-center">
+        <h1 className="text-heading-lg font-bold text-primary">로그인</h1>
+        <p className="mt-1 text-caption text-primary-50">가입한 인스타 아이디로 로그인하세요.</p>
+      </div>
+
       <div>
-        <label className="mb-1 block text-body-sm font-medium" htmlFor="email">
-          이메일
+        <label className="mb-1 block text-body-sm font-medium" htmlFor="instagram">
+          인스타그램 아이디
         </label>
-        <input
-          id="email"
-          type="email"
-          autoComplete="email"
-          className="w-full rounded-md border border-neutral-300 px-3 py-2 text-body-sm outline-none focus:border-secondary"
-          {...register('email')}
-        />
-        {errors.email && <p className="mt-1 text-caption text-danger">{errors.email.message}</p>}
+        <div className="flex items-center rounded-lg border border-neutral-300 px-3 focus-within:border-secondary">
+          <span className="text-body-sm text-primary-50">@</span>
+          <input
+            id="instagram"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
+            placeholder="sujin_nail"
+            className="w-full bg-transparent px-1.5 py-2.5 text-body-sm outline-none"
+            {...register('instagram')}
+          />
+        </div>
+        {errors.instagram && <p className="mt-1 text-caption text-danger">{errors.instagram.message}</p>}
       </div>
 
       <div>
@@ -95,7 +97,7 @@ function LoginForm() {
           id="password"
           type="password"
           autoComplete="current-password"
-          className="w-full rounded-md border border-neutral-300 px-3 py-2 text-body-sm outline-none focus:border-secondary"
+          className="w-full rounded-lg border border-neutral-300 px-3 py-2.5 text-body-sm outline-none focus:border-secondary"
           {...register('password')}
         />
         {errors.password && <p className="mt-1 text-caption text-danger">{errors.password.message}</p>}
@@ -108,18 +110,15 @@ function LoginForm() {
       <button
         type="submit"
         disabled={isSubmitting}
-        className="w-full rounded-md bg-secondary py-2 text-body-sm font-semibold text-white disabled:opacity-50"
+        className="w-full rounded-lg bg-secondary py-2.5 text-body-sm font-semibold text-white disabled:opacity-50"
       >
         {isSubmitting ? '로그인 중…' : '로그인'}
       </button>
 
       <p className="text-center text-caption text-primary-50">
-        <a href="/register" className="underline">
+        아직 계정이 없으신가요?{' '}
+        <a href="/register" className="font-semibold text-secondary underline">
           회원가입
-        </a>{' '}
-        ·{' '}
-        <a href="/password-reset" className="underline">
-          비밀번호 재설정
         </a>
       </p>
     </form>

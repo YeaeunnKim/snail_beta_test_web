@@ -1,11 +1,14 @@
 'use client';
 
 /**
- * 사장님 회원가입.
+ * 베타 회원가입 — 인스타그램 아이디 기반.
  *
- * 흐름: 가입(POST /auth/owner/signup) → 같은 자격증명으로 자동 로그인 →
- *       verification_status에 따라 분기(resolveAuthedHome). 신규 가입자는
- *       보통 pending → /pending → (미제출이면) /business-verification 로 이어진다.
+ * 백엔드는 이메일+비밀번호로 가입받지만, 베타 테스터는 인스타 아이디로만 가입한다.
+ * 인스타 핸들을 결정적 이메일(handle@beta.snail.app)로 매핑해 백엔드에 전달한다.
+ * 대표자명·연락처는 베타에서 받지 않고, 대표자명은 핸들, 연락처는 자리표시자로 채운다.
+ *
+ * 흐름: 가입(POST /auth/owner/signup) → 자동 로그인 → resolveAuthedHome.
+ *       신규 가입자는 pending → /pending(운영자 승인 대기).
  */
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -14,22 +17,27 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { authApi } from '@/services';
 import { useAuth } from '@/hooks/use-auth';
-import { isApiError } from '@/lib/api-error';
 import { toUserMessage } from '@/lib/error-messages';
 import { resolveAuthedHome } from '@/lib/auth-routing';
 import { PRIVACY_VERSION, TERMS_VERSION } from '@/lib/legal';
+import { instagramToEmail, isValidInstagramHandle, normalizeInstagramHandle } from '@/lib/beta-account';
 
 const registerSchema = z
   .object({
-    email: z.string().email('올바른 이메일 형식이 아닙니다.'),
-    password: z.string().min(8, '비밀번호는 8자 이상이어야 합니다.'),
+    instagram: z
+      .string()
+      .min(1, '인스타그램 아이디를 입력해주세요.')
+      .refine((v) => isValidInstagramHandle(normalizeInstagramHandle(v)), {
+        message: '올바른 인스타 아이디를 입력해주세요. (영문/숫자/밑줄/마침표)',
+      }),
+    password: z
+      .string()
+      .min(8, '비밀번호는 8자 이상이어야 합니다.')
+      .regex(/[A-Z]/, '대문자를 최소 1자 포함해주세요.')
+      .regex(/[a-z]/, '소문자를 최소 1자 포함해주세요.')
+      .regex(/[0-9]/, '숫자를 최소 1자 포함해주세요.'),
     passwordConfirm: z.string(),
-    representative_name: z.string().min(1, '대표자명을 입력해주세요.'),
-    phone_number: z.string().min(1, '연락처를 입력해주세요.'),
-    agree_terms: z.literal(true, { errorMap: () => ({ message: '이용약관에 동의해주세요.' }) }),
-    agree_privacy: z.literal(true, {
-      errorMap: () => ({ message: '개인정보 처리방침에 동의해주세요.' }),
-    }),
+    agree: z.literal(true, { errorMap: () => ({ message: '약관에 동의해주세요.' }) }),
   })
   .refine((v) => v.password === v.passwordConfirm, {
     path: ['passwordConfirm'],
@@ -46,30 +54,28 @@ export default function RegisterPage() {
   const {
     register,
     handleSubmit,
-    setError,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<RegisterForm>({ resolver: zodResolver(registerSchema) });
 
+  const handle = normalizeInstagramHandle(watch('instagram') ?? '');
+
   const onSubmit = async (values: RegisterForm) => {
     setFormError(null);
+    const email = instagramToEmail(values.instagram);
+    const handleName = normalizeInstagramHandle(values.instagram);
     try {
       await authApi.signup({
-        email: values.email,
+        email,
         password: values.password,
-        representative_name: values.representative_name,
-        phone_number: values.phone_number,
+        representative_name: handleName,
+        phone_number: '000-0000-0000', // 베타에서는 연락처를 받지 않는다(백엔드 필수 필드 자리표시자).
         accepted_terms_version: TERMS_VERSION,
         accepted_privacy_version: PRIVACY_VERSION,
       });
-      // 가입 직후 자동 로그인 → 상태별 진입 경로로 이동
-      const owner = await login({ email: values.email, password: values.password });
+      const owner = await login({ email, password: values.password });
       router.replace(resolveAuthedHome(owner));
     } catch (e) {
-      if (isApiError(e) && e.fieldErrors) {
-        for (const [field, message] of Object.entries(e.fieldErrors)) {
-          setError(field as keyof RegisterForm, { message });
-        }
-      }
       setFormError(toUserMessage(e));
     }
   };
@@ -77,60 +83,64 @@ export default function RegisterPage() {
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
-      className="space-y-4 rounded-lg border border-neutral-200 bg-white p-6 shadow-sm"
+      className="space-y-5 rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm"
       noValidate
     >
-      <Field label="이메일" error={errors.email?.message} required>
-        <input type="email" autoComplete="email" className={inputCls} {...register('email')} />
-      </Field>
-
-      <div className="grid grid-cols-2 gap-3">
-        <Field label="비밀번호" error={errors.password?.message} required>
-          <input
-            type="password"
-            autoComplete="new-password"
-            className={inputCls}
-            {...register('password')}
-          />
-        </Field>
-        <Field label="비밀번호 확인" error={errors.passwordConfirm?.message} required>
-          <input
-            type="password"
-            autoComplete="new-password"
-            className={inputCls}
-            {...register('passwordConfirm')}
-          />
-        </Field>
+      <div className="text-center">
+        <h1 className="text-heading-lg font-bold text-primary">베타 회원가입</h1>
+        <p className="mt-1 text-caption text-primary-50">인스타 아이디로 간편하게 시작하세요.</p>
       </div>
 
-      <Field label="대표자명" error={errors.representative_name?.message} required>
-        <input className={inputCls} {...register('representative_name')} />
-      </Field>
+      <div>
+        <label className="mb-1 block text-body-sm font-medium">인스타그램 아이디</label>
+        <div className="flex items-center rounded-lg border border-neutral-300 px-3 focus-within:border-secondary">
+          <span className="text-body-sm text-primary-50">@</span>
+          <input
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
+            placeholder="sujin_nail"
+            className="w-full bg-transparent px-1.5 py-2.5 text-body-sm outline-none"
+            {...register('instagram')}
+          />
+        </div>
+        {handle && !errors.instagram && (
+          <p className="mt-1 text-caption text-primary-50">로그인 아이디로 @{handle} 를 사용합니다.</p>
+        )}
+        {errors.instagram && <p className="mt-1 text-caption text-danger">{errors.instagram.message}</p>}
+      </div>
 
-      <Field label="연락처" error={errors.phone_number?.message} required>
-        <input type="tel" autoComplete="tel" className={inputCls} {...register('phone_number')} />
-      </Field>
+      <div>
+        <label className="mb-1 block text-body-sm font-medium">비밀번호</label>
+        <input
+          type="password"
+          autoComplete="new-password"
+          placeholder="8자 이상, 대·소문자와 숫자 포함"
+          className={inputCls}
+          {...register('password')}
+        />
+        {errors.password && <p className="mt-1 text-caption text-danger">{errors.password.message}</p>}
+      </div>
 
-      <div className="space-y-2 rounded-md border border-neutral-200 p-3">
-        <label className="flex items-start gap-2 text-body-sm">
-          <input type="checkbox" className="mt-0.5" {...register('agree_terms')} />
-          <span>
-            [필수] 이용약관에 동의합니다.{' '}
-            <span className="text-primary-50">(v{TERMS_VERSION})</span>
-          </span>
-        </label>
-        {errors.agree_terms && <p className="text-caption text-danger">{errors.agree_terms.message}</p>}
-        <label className="flex items-start gap-2 text-body-sm">
-          <input type="checkbox" className="mt-0.5" {...register('agree_privacy')} />
-          <span>
-            [필수] 개인정보 처리방침에 동의합니다.{' '}
-            <span className="text-primary-50">(v{PRIVACY_VERSION})</span>
-          </span>
-        </label>
-        {errors.agree_privacy && (
-          <p className="text-caption text-danger">{errors.agree_privacy.message}</p>
+      <div>
+        <label className="mb-1 block text-body-sm font-medium">비밀번호 확인</label>
+        <input type="password" autoComplete="new-password" className={inputCls} {...register('passwordConfirm')} />
+        {errors.passwordConfirm && (
+          <p className="mt-1 text-caption text-danger">{errors.passwordConfirm.message}</p>
         )}
       </div>
+
+      <label className="flex items-start gap-2 text-body-sm">
+        <input type="checkbox" className="mt-0.5" {...register('agree')} />
+        <span>
+          [필수] 이용약관 및 개인정보 처리방침에 동의합니다.
+          <span className="text-primary-50">
+            {' '}
+            (약관 v{TERMS_VERSION} · 개인정보 v{PRIVACY_VERSION})
+          </span>
+        </span>
+      </label>
+      {errors.agree && <p className="-mt-2 text-caption text-danger">{errors.agree.message}</p>}
 
       {formError && (
         <p className="rounded-md bg-danger-bg px-3 py-2 text-caption text-danger">{formError}</p>
@@ -139,14 +149,14 @@ export default function RegisterPage() {
       <button
         type="submit"
         disabled={isSubmitting}
-        className="w-full rounded-md bg-secondary py-2 text-body-sm font-semibold text-white disabled:opacity-50"
+        className="w-full rounded-lg bg-secondary py-2.5 text-body-sm font-semibold text-white disabled:opacity-50"
       >
         {isSubmitting ? '가입 중…' : '회원가입'}
       </button>
 
       <p className="text-center text-caption text-primary-50">
         이미 계정이 있으신가요?{' '}
-        <a href="/login" className="underline">
+        <a href="/login" className="font-semibold text-secondary underline">
           로그인
         </a>
       </p>
@@ -155,27 +165,4 @@ export default function RegisterPage() {
 }
 
 const inputCls =
-  'w-full rounded-md border border-neutral-300 px-3 py-2 text-body-sm outline-none focus:border-secondary';
-
-function Field({
-  label,
-  error,
-  required,
-  children,
-}: {
-  label: string;
-  error?: string;
-  required?: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <label className="mb-1 block text-body-sm font-medium">
-        {label}
-        {required && <span className="ml-0.5 text-danger">*</span>}
-      </label>
-      {children}
-      {error && <p className="mt-1 text-caption text-danger">{error}</p>}
-    </div>
-  );
-}
+  'w-full rounded-lg border border-neutral-300 px-3 py-2.5 text-body-sm outline-none focus:border-secondary';

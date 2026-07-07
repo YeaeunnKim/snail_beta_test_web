@@ -12,7 +12,7 @@
  *
  * 목록: 카드별 AI 분석 상태 배지(pending/in_progress면 폴링), failed 시 재분석.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -21,6 +21,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { designersApi, designsApi, uploadsApi } from '@/services';
 import type { Design, Designer, DesignFolder } from '@/services';
 import { toUserMessage } from '@/lib/error-messages';
+import { useMyShop } from '@/hooks/use-my-shop';
 
 interface PhotoItem {
   id: string;
@@ -30,6 +31,9 @@ interface PhotoItem {
   status: 'uploading' | 'done' | 'error';
   error?: string;
 }
+
+/** 샵마다 기본으로 만들어 두는 디자인 폴더 */
+const DEFAULT_FOLDERS = ['7월의 아트', '8월의 아트'];
 
 const MAX_DETAIL_PHOTOS = 5;
 const MAX_OWNER_TAGS = 10;
@@ -84,6 +88,36 @@ export default function DesignsPage() {
 
   const folders = foldersQuery.data ?? [];
   const unfiledCount = unfiledQuery.data?.length ?? 0;
+
+  // 기본 폴더(7월의 아트·8월의 아트)가 없으면 자동 생성 (샵마다 1회)
+  const { data: shop } = useMyShop();
+  const seededRef = useRef(false);
+  useEffect(() => {
+    if (seededRef.current || !shop || !foldersQuery.isSuccess) return;
+    const flag = `snail_beta_folders:${shop.id}`;
+    if (typeof window !== 'undefined' && window.localStorage.getItem(flag)) {
+      seededRef.current = true;
+      return;
+    }
+    const names = new Set((foldersQuery.data ?? []).map((f) => f.name));
+    const missing = DEFAULT_FOLDERS.filter((n) => !names.has(n));
+    seededRef.current = true;
+    void (async () => {
+      for (const name of missing) {
+        try {
+          await designsApi.createFolder({ name });
+        } catch {
+          /* 무시 */
+        }
+      }
+      try {
+        window.localStorage.setItem(flag, '1');
+      } catch {
+        /* 무시 */
+      }
+      if (missing.length) qc.invalidateQueries({ queryKey: ['design-folders'] });
+    })();
+  }, [shop, foldersQuery.isSuccess, foldersQuery.data, qc]);
 
   const refetchAll = () => {
     qc.invalidateQueries({ queryKey: ['designs'] });
@@ -179,7 +213,7 @@ function FolderCard({
       className="flex flex-col rounded-xl border border-neutral-200 bg-white p-4 text-left transition hover:border-secondary hover:shadow-sm"
     >
       <span className="text-2xl">{muted ? '🗂️' : '📁'}</span>
-      <span className="mt-2 truncate font-semibold">{name}</span>
+      <span className="mt-2 line-clamp-2 w-full break-keep font-semibold">{name}</span>
       <span className="mt-0.5 text-caption text-primary-50">디자인 {count}개</span>
     </button>
   );
