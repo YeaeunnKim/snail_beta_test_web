@@ -18,16 +18,18 @@ export function payState(r: Reservation): PayState {
 export function badgeMeta(status: ReservationStatus): { label: string; bg: string; tx: string } {
   switch (status) {
     case 'pending':
-      return { label: '요청', bg: '#fff0d6', tx: '#aa7510' };
+      return { label: '요청', bg: 'var(--color-warning-bg, #fff0d6)', tx: 'var(--color-warning, #aa7510)' };
     case 'confirmed':
     case 'payment_pending':
-      return { label: '확정', bg: '#e7f6ee', tx: '#1c8a5b' };
+      return { label: '확정', bg: 'var(--color-info-bg, #dbeafe)', tx: 'var(--color-info, #2563b0)' };
     case 'completed':
-      return { label: '완료', bg: '#eceae4', tx: '#5f5d57' };
+      return { label: '완료', bg: 'var(--color-success-bg, #e7f6ee)', tx: 'var(--color-success, #1c8a5b)' };
     case 'no_show':
-      return { label: '노쇼', bg: '#fdeaea', tx: '#cf3b3b' };
+      return { label: '노쇼', bg: 'var(--color-danger-bg, #fdeaea)', tx: 'var(--color-danger, #cf3b3b)' };
+    case 'rejected':
+      return { label: '거절', bg: 'var(--color-danger-bg, #fdeaea)', tx: 'var(--color-danger, #cf3b3b)' };
     default:
-      return { label: status === 'rejected' ? '거절' : '취소', bg: '#f3f2ee', tx: '#8f8c85' };
+      return { label: '취소', bg: 'var(--color-primary-10, #dddddd)', tx: 'var(--color-primary-50, #7e7e7d)' };
   }
 }
 

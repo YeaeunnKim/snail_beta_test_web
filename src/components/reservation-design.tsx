@@ -2,23 +2,16 @@
 
 /**
  * 예약 상세에서 공용으로 쓰는 조각들.
- *  - ReservationDesignBlock: 대표 썸네일(클릭 시 등록된 상세 사진 펼침) + 선택 옵션(연장/제거/케어)
+ *  - ReservationDesignBlock: 대표 썸네일(클릭 시 등록된 상세 사진 펼침) + 제목 + 태그
+ *    (가격·소요시간·선택 옵션은 예약 상세의 별도 정보 그룹에서 보여준다)
  *  - InquiryThread: 고객 요청사항 + 사장님 답변(읽기 전용)
  *
- * 예약 응답엔 디자인 요약(썸네일 1장)만 있어, 상세 사진·옵션은 getDesign으로 채운다.
+ * 예약 응답엔 디자인 요약(썸네일 1장)만 있어, 상세 사진·태그는 getDesign으로 채운다.
  */
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { designsApi } from '@/services';
 import type { Reservation } from '@/services';
-
-const won = (n: number) => `${n.toLocaleString('ko-KR')}원`;
-
-const OPTION_META: Record<string, { label: string; bg: string; tx: string }> = {
-  extend: { label: '연장', bg: '#eae6fd', tx: '#5a4fc0' },
-  removal: { label: '제거', bg: '#fde7ec', tx: '#b12544' },
-  care: { label: '케어', bg: '#e1f5ee', tx: '#0f6e56' },
-};
 
 export function ReservationDesignBlock({ reservation }: { reservation: Reservation }) {
   const [open, setOpen] = useState(false);
@@ -28,20 +21,19 @@ export function ReservationDesignBlock({ reservation }: { reservation: Reservati
   });
   const design = q.data;
   const images = design?.images ?? [];
-  const selected = new Set(reservation.selected_option_ids ?? []);
-  const options = (design?.options ?? []).filter((o) => selected.has(o.id));
 
   const thumb = reservation.design?.thumbnail_url ?? design?.thumbnail_url ?? null;
   const title = reservation.design?.title ?? design?.title ?? '시술';
-  const duration = reservation.design?.duration_minutes ?? design?.duration_minutes;
+  const ownerTags = design?.owner_tags ?? [];
+  const photoCount = images.length || (thumb ? 1 : 0);
 
   return (
-    <div>
+    <div className="rounded-lg border border-neutral-200 bg-white p-4">
       <div className="flex items-start gap-3">
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-neutral-200"
+          className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-neutral-200"
           title="사진 보기"
         >
           {thumb ? (
@@ -51,30 +43,18 @@ export function ReservationDesignBlock({ reservation }: { reservation: Reservati
             <span className="block h-full w-full bg-neutral-100" />
           )}
           <span className="absolute inset-x-0 bottom-0 bg-black/40 py-0.5 text-center text-caption font-semibold text-white">
-            {open ? '접기' : '사진'}
+            {open ? '접기' : `사진 ${photoCount}`}
           </span>
         </button>
-        <div className="min-w-0 text-body-sm">
-          <div className="font-semibold">{title}</div>
-          <div className="text-caption text-primary-50">
-            {duration != null && `약 ${duration}분 · `}
-            {won(reservation.total_price)}
-          </div>
-          {options.length > 0 && (
-            <div className="mt-1.5 flex flex-wrap gap-1">
-              {options.map((o) => {
-                const meta = OPTION_META[o.kind] ?? { label: o.kind, bg: '#f0eee9', tx: '#8f8c85' };
-                return (
-                  <span
-                    key={o.id}
-                    className="rounded-md px-1.5 py-0.5 text-caption font-semibold"
-                    style={{ background: meta.bg, color: meta.tx }}
-                    title={o.name}
-                  >
-                    {meta.label}
-                  </span>
-                );
-              })}
+        <div className="min-w-0">
+          <p className="truncate font-medium">{title}</p>
+          {ownerTags.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-1">
+              {ownerTags.map((t) => (
+                <span key={t} className="rounded bg-secondary/10 px-2 py-0.5 text-caption text-secondary">
+                  #{t}
+                </span>
+              ))}
             </div>
           )}
         </div>

@@ -16,8 +16,8 @@ import { useAuth } from '@/hooks/use-auth';
 import { useMyShop } from '@/hooks/use-my-shop';
 
 const TABS = [
-  { href: '/dashboard/designs', label: '디자인 등록', icon: '🎨' },
-  { href: '/dashboard/schedule', label: '일정 관리', icon: '🗓️' },
+  { href: '/dashboard/designs', label: '디자인', icon: '🎨' },
+  { href: '/dashboard/schedule', label: '일정', icon: '🗓️' },
   { href: '/dashboard/notifications', label: '알림', icon: '🔔' },
 ];
 

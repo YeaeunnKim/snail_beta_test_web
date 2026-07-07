@@ -18,12 +18,12 @@ export const RESERVATION_STATUS_LABEL: Record<ReservationStatus, string> = {
 };
 
 export const RESERVATION_STATUS_CLS: Record<ReservationStatus, string> = {
-  pending: 'bg-amber-100 text-amber-700',
-  payment_pending: 'bg-orange-100 text-orange-700',
-  confirmed: 'bg-green-100 text-green-700',
-  rejected: 'bg-red-100 text-red-700',
-  cancelled_by_user: 'bg-neutral-100 text-neutral-500',
-  cancelled_by_shop: 'bg-neutral-100 text-neutral-500',
-  no_show: 'bg-red-100 text-red-700',
-  completed: 'bg-blue-100 text-blue-700',
+  pending: 'bg-warning-bg text-warning font-bold',
+  payment_pending: 'bg-warning-bg text-warning font-bold',
+  confirmed: 'bg-info-bg text-info font-bold',
+  rejected: 'bg-danger-bg text-danger font-bold',
+  cancelled_by_user: 'bg-primary-10 text-primary-50 font-bold',
+  cancelled_by_shop: 'bg-primary-10 text-primary-50 font-bold',
+  no_show: 'bg-danger-bg text-danger font-bold',
+  completed: 'bg-success-bg text-success font-bold',
 };
