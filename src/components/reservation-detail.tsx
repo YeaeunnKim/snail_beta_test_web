@@ -7,8 +7,8 @@
  * 캐시를 무효화한다. 확정/거절·취소(사유 필수)/방문완료/노쇼를 모두 다룬다.
  */
 import { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { reservationsApi } from '@/services';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { designsApi, reservationsApi } from '@/services';
 import type { Reservation } from '@/services';
 import { toUserMessage } from '@/lib/error-messages';
 import { formatTime } from '@/lib/date';
@@ -58,23 +58,41 @@ export function ReservationDetail({
   const run = (fn: () => Promise<unknown>) => action.mutate(fn);
   const busy = action.isPending;
 
+  // 선택된 옵션 이름(사장님이 지은 이름) — 옵션을 골랐을 때만 디자인 상세를 불러와 매칭한다.
+  const hasSelectedOptions = (r.selected_option_ids?.length ?? 0) > 0;
+  const designQuery = useQuery({
+    queryKey: ['design', r.design_id],
+    queryFn: () => designsApi.getDesign(r.design_id),
+    enabled: hasSelectedOptions,
+  });
+  const selectedOptionNames = hasSelectedOptions
+    ? (designQuery.data?.options ?? [])
+        .filter((o) => r.selected_option_ids!.includes(o.id))
+        .map((o) => o.name)
+    : [];
+
   const timeline: { label: string; at: string }[] = [{ label: '예약 요청', at: r.created_at }];
   if (r.owner_payment_confirmed_at) timeline.push({ label: '입금 확인', at: r.owner_payment_confirmed_at });
   if (r.completed_at) timeline.push({ label: '방문 완료', at: r.completed_at });
   if (r.no_show_at) timeline.push({ label: '노쇼 처리', at: r.no_show_at });
 
   return (
-    <div className="border-t border-neutral-100 bg-rose-hover px-5 pb-6 pt-1">
-      <InfoLine k="요청일" v={dateTimeLabel(r.created_at)} />
-      <InfoLine k="방문일" v={`${dayLabel(r.start_at)} ${formatTime(r.start_at)}~${formatTime(r.end_at)}`} />
-      <InfoLine k="담당자" v={r.designer?.name ?? '-'} />
-      <InfoLine k="금액" v={won(r.total_price)} />
+    <div className="rounded-lg border border-secondary/30 bg-secondary/5 p-4">
+      <InfoLine k="예약자명" v={r.user?.nickname ?? '-'} />
+      <InfoLine k="연락처" v="제공된 정보 없음" />
 
-      <SectionTitle>담당 디자이너 일정 · 방문일</SectionTitle>
+      <InfoLine k="예약 일시" v={dateTimeLabel(r.created_at)} />
+      <InfoLine k="방문 일시" v={`${dayLabel(r.start_at)} ${formatTime(r.start_at)}~${formatTime(r.end_at)}`} />
+
+      <SectionTitle>담당 디자이너 - {r.designer?.name ?? '-'}</SectionTitle>
       <DesignerDayTimeline reservation={r} />
 
       <SectionTitle>디자인</SectionTitle>
       {r.design ? <ReservationDesignBlock reservation={r} /> : <p className="text-body-sm text-primary-50">디자인 정보가 없어요.</p>}
+
+      <InfoLine k="추가옵션" v={selectedOptionNames.length > 0 ? selectedOptionNames.join(' + ') : '없음'} />
+      <InfoLine k="가격" v={won(r.total_price)} />
+      <InfoLine k="소요시간" v={r.design?.duration_minutes != null ? `${r.design.duration_minutes}분` : '-'} />
 
       {ps && (
         <>

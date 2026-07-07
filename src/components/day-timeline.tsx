@@ -44,6 +44,7 @@ export function DayTimeline({
   colorOf,
   onSelect,
   highlightId,
+  hideDesignerLabel,
 }: {
   designers: Designer[];
   reservations: Reservation[];
@@ -52,6 +53,8 @@ export function DayTimeline({
   colorOf: Map<string, Palette>;
   onSelect?: (id: string) => void;
   highlightId?: string;
+  /** 담당 디자이너가 1명으로 이미 확정된 화면(예약 상세)에서 이름 열을 생략하고 시간축부터 바로 보여준다. */
+  hideDesignerLabel?: boolean;
 }) {
   const dayRes = useMemo(
     () => reservations.filter((r) => localDateOf(r.start_at) === date),
@@ -88,11 +91,13 @@ export function DayTimeline({
 
   return (
     <div className="overflow-x-auto">
-      <div className="min-w-[760px]">
+      <div className={hideDesignerLabel ? 'min-w-[610px]' : 'min-w-[760px]'}>
         <div className="sticky top-0 z-10 flex border-b border-neutral-200 bg-neutral-50">
-          <div className="w-[150px] shrink-0 border-r border-neutral-200 px-3.5 py-2 text-caption text-primary-50">
-            디자이너
-          </div>
+          {!hideDesignerLabel && (
+            <div className="w-[150px] shrink-0 border-r border-neutral-200 px-3.5 py-2 text-caption text-primary-50">
+              디자이너
+            </div>
+          )}
           <div className="flex flex-1">
             {Array.from({ length: hourCount }, (_, i) => (
               <span
@@ -112,11 +117,13 @@ export function DayTimeline({
           const last = i === designers.length - 1;
           return (
             <div key={d.id} className={`flex ${last ? '' : 'border-b border-neutral-100'}`}>
-              <div className="flex w-[150px] shrink-0 items-center gap-2 border-r border-neutral-200 bg-neutral-50/60 px-3.5">
-                <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: color.border }} />
-                <span className="whitespace-nowrap text-body-sm font-semibold">{d.name}</span>
-                <span className="ml-auto text-caption text-primary-10">{live}건</span>
-              </div>
+              {!hideDesignerLabel && (
+                <div className="flex w-[150px] shrink-0 items-center gap-2 border-r border-neutral-200 bg-neutral-50/60 px-3.5">
+                  <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: color.border }} />
+                  <span className="whitespace-nowrap text-body-sm font-semibold">{d.name}</span>
+                  <span className="ml-auto text-caption text-primary-10">{live}건</span>
+                </div>
+              )}
               <div className="relative h-[62px] flex-1" style={{ background: grid }}>
                 {showNow && (
                   <div className="absolute inset-y-0 z-[2] w-0.5 bg-secondary/70" style={{ left: `${nowPct}%` }}>
@@ -337,6 +344,7 @@ export function DesignerDayTimeline({ reservation: r }: { reservation: Reservati
         date={date}
         colorOf={colorOf}
         highlightId={r.id}
+        hideDesignerLabel
       />
     </div>
   );

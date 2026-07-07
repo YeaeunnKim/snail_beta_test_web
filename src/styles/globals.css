@@ -63,5 +63,5 @@ body {
 }
 
 body {
-  @apply bg-white text-neutral-900 antialiased;
+  @apply bg-surface text-primary antialiased;
 }

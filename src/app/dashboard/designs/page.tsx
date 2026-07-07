@@ -12,7 +12,7 @@
  *
  * 목록: 카드별 AI 분석 상태 배지(pending/in_progress면 폴링), failed 시 재분석.
  */
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -41,19 +41,6 @@ const TAG_MAXLEN = 40;
 const DURATION_MIN = 30;
 const DURATION_MAX = 600;
 const DURATION_STEP = 10;
-
-const AI_LABEL: Record<string, string> = {
-  pending: 'AI 분석 대기',
-  in_progress: 'AI 분석 중',
-  done: '분석 완료',
-  failed: '분석 실패',
-};
-const AI_CLS: Record<string, string> = {
-  pending: 'bg-neutral-100 text-primary',
-  in_progress: 'bg-info-bg text-info',
-  done: 'bg-success-bg text-success',
-  failed: 'bg-danger-bg text-danger',
-};
 
 const createSchema = z.object({
   title: z.string().min(1, '제목을 입력해주세요.'),
@@ -179,7 +166,7 @@ function FolderGrid({
   if (loading) return <p className="text-body-sm text-primary-50">불러오는 중…</p>;
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3">
       {folders.map((f) => (
         <FolderCard
           key={f.id}
@@ -316,7 +303,7 @@ function FolderDesigns({ view, onBack }: { view: FolderView; onBack: () => void 
           이 폴더에 디자인이 없습니다.
         </p>
       ) : (
-        <ul className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <ul className="grid grid-cols-1 gap-3">
           {designs.map((d) => (
             <DesignCard key={d.id} design={d} />
           ))}
@@ -881,13 +868,6 @@ function DesignCard({ design }: { design: Design }) {
     },
   });
   const d = data ?? design;
-  const designerLine = useMemo(
-    () =>
-      (d.designers ?? [])
-        .map((dz) => (dz.duration_minutes != null ? `${dz.name} ${dz.duration_minutes}분` : dz.name))
-        .join(', '),
-    [d.designers],
-  );
 
   const reanalyze = useMutation({
     mutationFn: () => designsApi.reanalyze(d.id),
@@ -934,23 +914,60 @@ function DesignCard({ design }: { design: Design }) {
 
         <div className="flex min-w-0 flex-1 items-start justify-between gap-2">
           <div className="min-w-0">
-            <div className="flex items-center gap-1.5">
-              {d.folder_name && (
-                <span className="shrink-0 rounded bg-neutral-100 px-1.5 py-0.5 text-caption font-semibold text-primary-50">
-                  📁 {d.folder_name}
-                </span>
-              )}
-              <p className="truncate font-medium">{d.title}</p>
-            </div>
+            <p className="truncate font-medium">{d.title}</p>
             <p className="mt-0.5 text-body-sm text-primary-50">
               {d.base_price.toLocaleString('ko-KR')}원 · 기본 {d.duration_minutes}분
             </p>
-            {designerLine && <p className="mt-0.5 truncate text-caption text-primary-50">{designerLine}</p>}
+            {d.owner_tags.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1">
+                {d.owner_tags.map((t) => (
+                  <span key={`o-${t}`} className="rounded bg-secondary/10 px-2 py-0.5 text-caption text-secondary">
+                    #{t}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
-          <span className={`shrink-0 rounded px-2 py-0.5 text-caption font-bold ${AI_CLS[d.ai_analysis_status]}`}>
-            {AI_LABEL[d.ai_analysis_status]}
-            {(d.ai_analysis_status === 'pending' || d.ai_analysis_status === 'in_progress') && ' …'}
-          </span>
+
+          {!editing && (
+            <div className="flex shrink-0 items-center gap-2">
+              <button
+                onClick={() => {
+                  setEditing(true);
+                  setConfirmDel(false);
+                  setActionError(null);
+                }}
+                className="rounded-md border border-neutral-300 px-3 py-1.5 text-caption font-semibold text-primary hover:bg-neutral-50"
+              >
+                수정
+              </button>
+              {confirmDel ? (
+                <span className="inline-flex items-center gap-1.5 text-caption text-primary-50">
+                  삭제할까요?
+                  <button
+                    onClick={() => remove.mutate()}
+                    disabled={remove.isPending}
+                    className="rounded-md bg-danger-bg px-2.5 py-1.5 text-caption font-semibold text-danger disabled:opacity-50"
+                  >
+                    {remove.isPending ? '삭제 중…' : '삭제 확인'}
+                  </button>
+                  <button
+                    onClick={() => setConfirmDel(false)}
+                    className="rounded-md bg-neutral-100 px-2.5 py-1.5 text-caption font-semibold text-primary"
+                  >
+                    취소
+                  </button>
+                </span>
+              ) : (
+                <button
+                  onClick={() => setConfirmDel(true)}
+                  className="rounded-md border border-neutral-300 px-3 py-1.5 text-caption font-semibold text-primary-50 hover:bg-neutral-50"
+                >
+                  삭제
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -977,72 +994,18 @@ function DesignCard({ design }: { design: Design }) {
         </div>
       )}
 
-      {(d.owner_tags.length > 0 || d.ai_tags.length > 0) && (
-        <div className="mt-2 flex flex-wrap gap-1">
-          {d.owner_tags.map((t) => (
-            <span key={`o-${t}`} className="rounded bg-secondary/10 px-2 py-0.5 text-caption text-secondary">
-              #{t}
-            </span>
-          ))}
-          {d.ai_analysis_status === 'done' &&
-            d.ai_tags.map((t) => (
-              <span key={`a-${t}`} className="rounded bg-neutral-100 px-2 py-0.5 text-caption text-primary-50">
-                AI #{t}
-              </span>
-            ))}
-        </div>
-      )}
-
       {d.ai_analysis_status === 'failed' && (
-        <div className="mt-2 rounded-md bg-danger-bg p-2 text-caption text-danger">
-          {d.ai_error_message ?? 'AI 분석에 실패했습니다.'}
-        </div>
-      )}
-
-      {!editing && (
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          {d.ai_analysis_status === 'failed' && (
+          <div className="rounded-md bg-danger-bg p-2 text-caption text-danger">
+            {d.ai_error_message ?? 'AI 분석에 실패했습니다.'}
+          </div>
+          {!editing && (
             <button
               onClick={() => reanalyze.mutate()}
               disabled={reanalyze.isPending}
               className="rounded-md bg-secondary px-3 py-1.5 text-caption font-semibold text-white disabled:opacity-50"
             >
               {reanalyze.isPending ? '요청 중…' : '재분석'}
-            </button>
-          )}
-          <button
-            onClick={() => {
-              setEditing(true);
-              setConfirmDel(false);
-              setActionError(null);
-            }}
-            className="rounded-md border border-neutral-300 px-3 py-1.5 text-caption font-semibold text-primary hover:bg-neutral-50"
-          >
-            수정
-          </button>
-          {confirmDel ? (
-            <span className="inline-flex items-center gap-1.5 text-caption text-primary-50">
-              삭제할까요?
-              <button
-                onClick={() => remove.mutate()}
-                disabled={remove.isPending}
-                className="rounded-md bg-danger-bg px-2.5 py-1.5 text-caption font-semibold text-danger disabled:opacity-50"
-              >
-                {remove.isPending ? '삭제 중…' : '삭제 확인'}
-              </button>
-              <button
-                onClick={() => setConfirmDel(false)}
-                className="rounded-md bg-neutral-100 px-2.5 py-1.5 text-caption font-semibold text-primary"
-              >
-                취소
-              </button>
-            </span>
-          ) : (
-            <button
-              onClick={() => setConfirmDel(true)}
-              className="rounded-md border border-neutral-300 px-3 py-1.5 text-caption font-semibold text-primary-50 hover:bg-neutral-50"
-            >
-              삭제
             </button>
           )}
         </div>
@@ -1066,15 +1029,42 @@ function DesignEditForm({ design: d, onClose }: { design: Design; onClose: () =>
   const [tags, setTags] = useState<string[]>(d.owner_tags ?? []);
   const [err, setErr] = useState<string | null>(null);
 
+  const designersQuery = useQuery({ queryKey: ['designers'], queryFn: () => designersApi.listDesigners() });
+  const designers = designersQuery.data ?? [];
+  const multiDesigner = designers.length >= 2;
+
+  // designerId → 소요시간(분). 현재 이 디자인을 담당하는 디자이너로 초기화한다(다인샵 전용).
+  const [picked, setPicked] = useState<Record<string, number>>(() =>
+    Object.fromEntries((d.designers ?? []).map((dz) => [dz.id, clampDuration(dz.duration_minutes)])),
+  );
+
+  const toggleDesigner = (id: string) =>
+    setPicked((prev) => {
+      const next = { ...prev };
+      if (id in next) delete next[id];
+      else next[id] = duration; // 선택 시 기본 소요시간으로 시작
+      return next;
+    });
+  const setDesignerDuration = (id: string, minutes: number) =>
+    setPicked((prev) => ({ ...prev, [id]: clampDuration(minutes) }));
+
   const save = useMutation({
-    mutationFn: () =>
-      designsApi.updateDesign(d.id, {
+    mutationFn: () => {
+      const designerIds = Object.keys(picked);
+      // 기본값과 다른 디자이너만 오버라이드로 전송(나머지는 기본 소요시간 사용) — 등록 폼과 동일한 규칙.
+      const designerDurations = designerIds
+        .filter((id) => picked[id] !== duration)
+        .map((id) => ({ designer_id: id, duration_minutes: picked[id] }));
+
+      return designsApi.updateDesign(d.id, {
         title: title.trim(),
         description: description.trim() || null,
         base_price: Number(price) || 0,
         duration_minutes: clampDuration(duration),
         owner_tags: tags,
-      }),
+        ...(multiDesigner ? { designer_ids: designerIds, designer_durations: designerDurations } : {}),
+      });
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['design', d.id] });
       qc.invalidateQueries({ queryKey: ['designs'] });
@@ -1082,6 +1072,15 @@ function DesignEditForm({ design: d, onClose }: { design: Design; onClose: () =>
     },
     onError: (e) => setErr(toUserMessage(e)),
   });
+
+  const attemptSave = () => {
+    if (multiDesigner && Object.keys(picked).length === 0) {
+      setErr('이 디자인을 할 수 있는 디자이너를 1명 이상 선택해주세요.');
+      return;
+    }
+    setErr(null);
+    save.mutate();
+  };
 
   const inputCls =
     'w-full rounded-md border border-neutral-300 px-3 py-2 text-body-sm outline-none focus:border-secondary';
@@ -1094,8 +1093,8 @@ function DesignEditForm({ design: d, onClose }: { design: Design; onClose: () =>
         <input value={title} onChange={(e) => setTitle(e.target.value)} className={inputCls} />
       </div>
 
-      <div className="flex flex-wrap gap-3">
-        <div className="min-w-[8rem] flex-1">
+      <div className={multiDesigner ? '' : 'flex flex-wrap gap-3'}>
+        <div className={multiDesigner ? '' : 'min-w-[8rem] flex-1'}>
           <label className={labelCls}>가격(원)</label>
           <input
             type="number"
@@ -1104,11 +1103,49 @@ function DesignEditForm({ design: d, onClose }: { design: Design; onClose: () =>
             className={inputCls}
           />
         </div>
-        <div>
-          <label className={labelCls}>기본 소요시간</label>
-          <Stepper value={duration} onChange={(v) => setDuration(clampDuration(v))} suffix="분" />
-        </div>
+        {!multiDesigner && (
+          <div>
+            <label className={labelCls}>기본 소요시간</label>
+            <Stepper value={duration} onChange={(v) => setDuration(clampDuration(v))} suffix="분" />
+          </div>
+        )}
       </div>
+
+      {/* 다인샵: 가격 아래로 줄바꿈해 디자이너별 소요시간을 노출/조정 */}
+      {multiDesigner && (
+        <div>
+          <label className={labelCls}>디자이너별 소요시간</label>
+          <p className="mb-2 text-caption text-primary-50">
+            체크한 디자이너만 이 디자인을 할 수 있어요. 소요시간은 디자이너별로 다르게 조정할 수 있어요.
+          </p>
+          <div className="space-y-2">
+            {designers.map((dz) => {
+              const checked = dz.id in picked;
+              return (
+                <div
+                  key={dz.id}
+                  className={`flex flex-wrap items-center gap-3 rounded-md border p-2 ${
+                    checked ? 'border-secondary/40 bg-secondary/5' : 'border-neutral-200'
+                  }`}
+                >
+                  <label className="flex items-center gap-2 text-caption font-semibold">
+                    <input type="checkbox" checked={checked} onChange={() => toggleDesigner(dz.id)} />
+                    {dz.name}
+                  </label>
+                  {checked && (
+                    <div className="ml-auto flex items-center gap-2">
+                      <Stepper value={picked[dz.id]} onChange={(v) => setDesignerDuration(dz.id, v)} suffix="분" />
+                      {picked[dz.id] !== duration && (
+                        <span className="text-caption font-semibold text-secondary">조정됨</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div>
         <label className={labelCls}>설명 (앱 미노출 · 메모용)</label>
@@ -1129,8 +1166,8 @@ function DesignEditForm({ design: d, onClose }: { design: Design; onClose: () =>
 
       <div className="flex gap-2">
         <button
-          disabled={!title.trim() || save.isPending}
-          onClick={() => save.mutate()}
+          disabled={!title.trim() || save.isPending || (multiDesigner && Object.keys(picked).length === 0)}
+          onClick={attemptSave}
           className="rounded-md bg-secondary px-4 py-2 text-caption font-semibold text-white disabled:opacity-50"
         >
           {save.isPending ? '저장 중…' : '저장'}

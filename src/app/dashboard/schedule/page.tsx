@@ -43,12 +43,9 @@ const availKey = (id: string) => `snail_beta_avail:${id}`;
 const tidKey = (id: string) => `snail_beta_tid:${id}`;
 const cell = (date: string, slot: number) => `${date}|${slot}`;
 
-/** 최초 기본 가용시간: 매일 10:00~22:00 */
+/** 최초 기본 가용시간: 전부 불가(비활성화) — 드래그로 켠 시간만 예약 가능해진다. */
 function defaultAvail(): Set<string> {
-  const set = new Set<string>();
-  const from = (10 * 60 - DAY_START_MIN) / 30; // 10:00
-  for (const date of BETA_DATES) for (let i = from; i < SLOTS_PER_DAY; i += 1) set.add(cell(date, i));
-  return set;
+  return new Set<string>();
 }
 
 /** localStorage에서 디자이너 가용시간 로드(키 없으면 기본값 시드) */
@@ -259,8 +256,8 @@ export default function SchedulePage() {
     <div className="space-y-3">
       <div className="flex items-start justify-between gap-2">
         <div>
-          <h1 className="text-heading-md font-bold text-primary">일정 관리</h1>
-          <p className="mt-0.5 text-caption text-primary-50">
+          <h1 className="text-heading-lg font-bold text-primary">일정 관리</h1>
+          <p className="mt-1 text-body-sm text-primary-50">
             {editing ? '세로로 드래그해 예약 가능 시간을 켜고 끄세요.' : '요청·예약을 누르면 상세가 열려요.'}
           </p>
         </div>
@@ -324,7 +321,7 @@ export default function SchedulePage() {
             <span className="h-2.5 w-2.5 rounded-sm border border-neutral-300 bg-white" /> 가능
           </span>
           <span className="inline-flex items-center gap-1">
-            <span className="h-2.5 w-2.5 rounded-sm bg-neutral-200" /> 불가
+            <span className="h-2.5 w-2.5 rounded-sm bg-neutral-400" /> 불가
           </span>
           <span className="inline-flex items-center gap-1">
             <span className="h-2.5 w-2.5 rounded-sm border border-warning bg-warning-bg" /> 요청
@@ -363,7 +360,7 @@ export default function SchedulePage() {
             {columns.map((c, i) => (
               <div
                 key={`${c.designerId}-${c.date}-${i}`}
-                className={`flex-1 truncate border-r border-neutral-100 px-1 py-1.5 text-center text-[11px] font-bold leading-tight last:border-r-0 ${
+                className={`flex-1 truncate border-r border-neutral-100 px-1 py-1.5 text-center text-caption font-bold leading-tight last:border-r-0 ${
                   c.danger ? 'text-danger' : 'text-primary'
                 }`}
                 style={{ minWidth: colMinW }}
@@ -377,7 +374,7 @@ export default function SchedulePage() {
             <div className="w-9 shrink-0 border-r border-neutral-200" style={{ height: GRID_H }}>
               {HOURS.slice(0, -1).map((h) => (
                 <div key={h} className="relative border-b border-neutral-100" style={{ height: ROW_H }}>
-                  <span className="absolute right-1 -top-1.5 text-[9px] text-primary-50">{h}</span>
+                  <span className="absolute right-1 -top-1.5 text-caption text-primary-50">{h}</span>
                 </div>
               ))}
             </div>
@@ -389,7 +386,7 @@ export default function SchedulePage() {
               return (
                 <div
                   key={`${c.designerId}-${c.date}-${i}`}
-                  className={`relative flex-1 border-r border-neutral-100 bg-neutral-200 last:border-r-0 ${editing ? 'touch-pan-x cursor-pointer' : ''}`}
+                  className={`relative flex-1 border-r border-neutral-100 bg-neutral-400 last:border-r-0 ${editing ? 'touch-pan-x cursor-pointer' : ''}`}
                   style={{ height: GRID_H, minWidth: colMinW }}
                   onPointerDown={editing ? onDown(c.designerId, c.date) : undefined}
                   onPointerMove={editing ? onMove : undefined}
@@ -416,7 +413,6 @@ export default function SchedulePage() {
                     <ResBar
                       key={b.res.id}
                       item={b}
-                      compact={view === 'week'}
                       editing={editing}
                       onClick={(e) => {
                         e.stopPropagation();
@@ -463,12 +459,10 @@ export default function SchedulePage() {
 
 function ResBar({
   item,
-  compact,
   editing,
   onClick,
 }: {
   item: ResBarItem;
-  compact: boolean;
   editing: boolean;
   onClick: (e: React.MouseEvent) => void;
 }) {
@@ -488,36 +482,13 @@ function ResBar({
     <button
       onClick={onClick}
       onPointerDown={(e) => e.stopPropagation()}
-      className={`absolute inset-x-0.5 overflow-hidden rounded-lg border px-1.5 py-1 text-left leading-tight shadow-sm ${
+      className={`absolute inset-x-0 flex items-center justify-center overflow-hidden border px-1.5 py-1 leading-tight ${
         editing ? 'opacity-70' : ''
       }`}
       style={{ top: `${top}%`, height: `${Math.max(height, 5)}%`, ...style }}
       title={`${name} · ${design} ${minToTime(startMin)}~${minToTime(endMin)}`}
     >
-      <div className="flex items-center gap-1">
-        <span className="truncate text-[10px] font-bold">{name}</span>
-        {pending && (
-          <span
-            className="shrink-0 rounded px-1 py-px text-[8px] font-bold text-white"
-            style={{ background: 'var(--color-warning)' }}
-          >
-            요청
-          </span>
-        )}
-        {completed && (
-          <span
-            className="shrink-0 rounded px-1 py-px text-[8px] font-bold text-white"
-            style={{ background: 'var(--color-primary-50)' }}
-          >
-            완료
-          </span>
-        )}
-      </div>
-      {!compact && (
-        <span className="mt-0.5 block truncate text-[9px] font-medium opacity-90">
-          {design} · {minToTime(startMin)}~{minToTime(endMin)}
-        </span>
-      )}
+      <span className="truncate text-center text-caption font-semibold">{name}</span>
     </button>
   );
 }
