@@ -20,6 +20,7 @@ import { z } from 'zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { designersApi, designsApi, uploadsApi } from '@/services';
 import type { Design, Designer, DesignFolder } from '@/services';
+import { collectAll } from '@/lib/api-client';
 import { toUserMessage } from '@/lib/error-messages';
 import { useMyShop } from '@/hooks/use-my-shop';
 
@@ -70,7 +71,8 @@ export default function DesignsPage() {
   });
   const unfiledQuery = useQuery({
     queryKey: ['designs', 'unfiled'],
-    queryFn: () => designsApi.listDesigns({ unfiled: true, limit: 50 }),
+    queryFn: () =>
+      collectAll<Design>((cursor) => designsApi.listDesigns({ unfiled: true, limit: 50, cursor })),
   });
 
   const folders = foldersQuery.data ?? [];
@@ -277,7 +279,10 @@ function NewFolderCard() {
 function FolderDesigns({ view, onBack }: { view: FolderView; onBack: () => void }) {
   const q = useQuery({
     queryKey: ['designs', view.unfiled ? 'unfiled' : 'folder', view.folderId ?? 'none'],
-    queryFn: () => designsApi.listDesigns({ folder_id: view.folderId, unfiled: view.unfiled, limit: 50 }),
+    queryFn: () =>
+      collectAll<Design>((cursor) =>
+        designsApi.listDesigns({ folder_id: view.folderId, unfiled: view.unfiled, limit: 50, cursor }),
+      ),
   });
   const designs = q.data ?? [];
 
