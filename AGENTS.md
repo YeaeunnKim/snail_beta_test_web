@@ -21,7 +21,9 @@ pnpm build
 ```
 
 - 완료 검증은 `pnpm typecheck && pnpm lint && pnpm build`.
-- 자동 테스트와 CI는 현재 없다.
+- CI: `.github/workflows/ci.yml` (main PR/push) — `pnpm install --frozen-lockfile → typecheck → lint`. `build`는 초기 제외(TODO).
+- 자동 유닛 테스트 러너는 없다.
+- 브라우저 런타임 검증이 필요하면 `.claude/skills/verify/`의 approved-owner 세션 주입 Playwright 하네스를 우선 확인한다(owner 웹에서 이식한 코드 정독본 — 첫 구동 시 셀렉터 대조 필요).
 - `package.json`의 의존성/스크립트는 work-order가 명시하지 않으면 바꾸지 않는다.
 
 ## 2. 백엔드 계약
