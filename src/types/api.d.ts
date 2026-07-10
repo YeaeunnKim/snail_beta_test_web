@@ -464,6 +464,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/import/uploads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Import manifest 업로드 */
+        post: operations["admin_upload_import_manifest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/import/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Import 실행(dry-run 검증 / 적재) */
+        post: operations["admin_create_import_run"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/import/drive-prefill": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 영업 드라이브 → manifest 스켈레톤 프리필 */
+        post: operations["admin_create_import_drive_prefill"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/import/batches/{batch_id}/manifest-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Import 배치 manifest 다운로드 URL */
+        get: operations["admin_get_import_manifest_url"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/designs/{design_id}/publish": {
         parameters: {
             query?: never;
@@ -637,6 +705,23 @@ export interface paths {
         head?: never;
         /** 내 샵 수정 */
         patch: operations["shops_update_my_shop"];
+        trace?: never;
+    };
+    "/api/v1/shops/me/visibility": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 내 샵 공개 상태 변경 */
+        post: operations["shops_change_my_shop_visibility"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/shops/me/business-hours": {
@@ -2053,6 +2138,60 @@ export interface components {
             ai_analysis_status: components["schemas"]["AiAnalysisStatus"];
             visibility: components["schemas"]["Visibility"];
         };
+        /** AdminImportDrivePrefillRequest */
+        AdminImportDrivePrefillRequest: {
+            /**
+             * Drive Folder
+             * @description 영업 드라이브 최상위 폴더 URL 또는 ID
+             */
+            drive_folder: string;
+            /**
+             * Image Set
+             * @default before
+             * @enum {string}
+             */
+            image_set?: "before" | "after";
+        };
+        /** AdminImportManifestUrlResponse */
+        AdminImportManifestUrlResponse: {
+            /** Url */
+            url: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+        };
+        /**
+         * AdminImportOverrides
+         * @description 웹 빠른 보정(quick-fix). 검증/적재 직전에 manifest 워크북에 적용한다.
+         *
+         *     시트 키: "shops" | "designers" | "designs" | "design_images" | "design_options".
+         *     값은 스칼라(bool/int/float/str)만 허용하고 그대로 셀에 기록한다. 잘못된 enum/키는
+         *     요청단이 아니라 이후 manifest 검증코드(INVALID_ENUM 등)가 잡는다.
+         */
+        AdminImportOverrides: {
+            /** Column Defaults */
+            column_defaults?: {
+                [key: string]: {
+                    [key: string]: boolean | number | string;
+                };
+            };
+            /** Cell Overrides */
+            cell_overrides?: {
+                [key: string]: {
+                    [key: string]: {
+                        [key: string]: boolean | number | string;
+                    };
+                };
+            };
+            /** Row Status */
+            row_status?: {
+                [key: string]: {
+                    [key: string]: string;
+                };
+            };
+        };
         /** AdminImportRecordItem */
         AdminImportRecordItem: {
             /**
@@ -2084,6 +2223,49 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+        };
+        /** AdminImportRunRequest */
+        AdminImportRunRequest: {
+            /** Object Key */
+            object_key: string;
+            /** Source Filename */
+            source_filename: string;
+            /**
+             * Dry Run
+             * @default true
+             */
+            dry_run?: boolean;
+            /**
+             * Source Namespace
+             * @default instagram_import
+             */
+            source_namespace?: string;
+            overrides?: components["schemas"]["AdminImportOverrides"] | null;
+        };
+        /**
+         * AdminImportRunResponse
+         * @description 생성된 배치 핸들. 프론트는 기존 GET /import/batches/{id} 로 상태를 폴링한다.
+         */
+        AdminImportRunResponse: {
+            /**
+             * Batch Id
+             * Format: uuid
+             */
+            batch_id: string;
+            /** Status */
+            status: string;
+        };
+        /**
+         * AdminImportUploadResponse
+         * @description 업로드된 manifest 참조. runs 엔드포인트에 object_key 를 넘겨 실행한다.
+         */
+        AdminImportUploadResponse: {
+            /** Object Key */
+            object_key: string;
+            /** Source Filename */
+            source_filename: string;
+            /** Byte Size */
+            byte_size: number;
         };
         /** AdminLoginRequest */
         AdminLoginRequest: {
@@ -2514,6 +2696,15 @@ export interface components {
             /** Blocked */
             blocked: boolean;
         };
+        /** Body_admin_upload_import_manifest */
+        Body_admin_upload_import_manifest: {
+            /**
+             * File
+             * Format: binary
+             * @description snail_import_manifest xlsx
+             */
+            file: string;
+        };
         /** Body_uploads_create_owner_upload */
         Body_uploads_create_owner_upload: {
             /**
@@ -2825,7 +3016,10 @@ export interface components {
         };
         /** DesignOptionCreate */
         DesignOptionCreate: {
-            /** @description 디자인 옵션 종류. 허용값: extend, removal, care. */
+            /**
+             * @description 디자인 옵션 종류. 허용값: extend, removal, care.
+             * @example extend
+             */
             kind: components["schemas"]["DesignOptionKind"];
             /** Name */
             name: string;
@@ -2854,7 +3048,10 @@ export interface components {
              * Format: uuid
              */
             id: string;
-            /** @description 디자인 옵션 종류. 허용값: extend, removal, care. */
+            /**
+             * @description 디자인 옵션 종류. 허용값: extend, removal, care.
+             * @example removal
+             */
             kind: components["schemas"]["DesignOptionKind"];
             /** Name */
             name: string;
@@ -2869,7 +3066,10 @@ export interface components {
         };
         /** DesignOptionUpdate */
         DesignOptionUpdate: {
-            /** @description 디자인 옵션 종류. 허용값: extend, removal, care. */
+            /**
+             * @description 디자인 옵션 종류. 허용값: extend, removal, care.
+             * @example care
+             */
             kind?: components["schemas"]["DesignOptionKind"] | null;
             /** Name */
             name?: string | null;
@@ -3572,7 +3772,12 @@ export interface components {
              * Format: date-time
              */
             end_at: string;
-            /** @description 예약 상태. 허용값: pending, payment_pending, confirmed, rejected, cancelled_by_user, cancelled_by_shop, no_show, completed. */
+            /**
+             * @description 예약 상태. 허용값: pending, payment_pending, confirmed, rejected, cancelled_by_user, cancelled_by_shop, no_show, completed.
+             * @example pending
+             * @example confirmed
+             * @example completed
+             */
             status: components["schemas"]["ReservationStatus"];
             /** User Request */
             user_request?: string | null;
@@ -3650,7 +3855,12 @@ export interface components {
              * Format: date-time
              */
             end_at: string;
-            /** @description 예약 상태. 허용값: pending, payment_pending, confirmed, rejected, cancelled_by_user, cancelled_by_shop, no_show, completed. */
+            /**
+             * @description 예약 상태. 허용값: pending, payment_pending, confirmed, rejected, cancelled_by_user, cancelled_by_shop, no_show, completed.
+             * @example pending
+             * @example confirmed
+             * @example completed
+             */
             status: components["schemas"]["ReservationStatus"];
             /** User Request */
             user_request?: string | null;
@@ -3728,7 +3938,7 @@ export interface components {
          * ReservationStatus
          * @enum {string}
          */
-        ReservationStatus: "pending" | "payment_pending" | "confirmed" | "rejected" | "cancelled_by_user" | "cancelled_by_shop" | "no_show" | "completed";
+        ReservationStatus: "pending" | "payment_pending" | "confirmed" | "rejected" | "cancelled_by_user" | "cancelled_by_shop" | "expired" | "no_show" | "completed";
         /** ReservationUserSummary */
         ReservationUserSummary: {
             /**
@@ -4185,6 +4395,10 @@ export interface components {
              */
             updated_at: string;
         };
+        /** ShopVisibilityUpdate */
+        ShopVisibilityUpdate: {
+            visibility: components["schemas"]["Visibility"];
+        };
         /** SnapCreate */
         SnapCreate: {
             /** Body */
@@ -4362,7 +4576,11 @@ export interface components {
             bio?: string | null;
             /** Interest Tags */
             interest_tags: string[];
-            /** @description 이미지 보기 방식. 허용값: model, wear. */
+            /**
+             * @description 이미지 보기 방식. 허용값: model, wear.
+             * @example model
+             * @example wear
+             */
             image_view_mode: components["schemas"]["ImageViewMode"];
             /**
              * Created At
@@ -4473,7 +4691,10 @@ export interface components {
             profile_image_url?: string | null;
             /** Interest Tags */
             interest_tags?: string[] | null;
-            /** @description 이미지 보기 방식. 허용값: model, wear. */
+            /**
+             * @description 이미지 보기 방식. 허용값: model, wear.
+             * @example wear
+             */
             image_view_mode?: components["schemas"]["ImageViewMode"] | null;
         };
         /**
@@ -6853,6 +7074,342 @@ export interface operations {
             };
         };
     };
+    admin_upload_import_manifest: {
+        parameters: {
+            query?: never;
+            header: {
+                authorization?: string | null;
+                /** @description Required for mutating requests. */
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_admin_upload_import_manifest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminImportUploadResponse"];
+                };
+            };
+            /** @description UNAUTHORIZED */
+            401: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description NOT_FOUND */
+            404: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description CONFLICT */
+            409: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description VALIDATION_ERROR */
+            422: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    admin_create_import_run: {
+        parameters: {
+            query?: never;
+            header: {
+                authorization?: string | null;
+                /** @description Required for mutating requests. */
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminImportRunRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminImportRunResponse"];
+                };
+            };
+            /** @description UNAUTHORIZED */
+            401: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description NOT_FOUND */
+            404: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description CONFLICT */
+            409: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description VALIDATION_ERROR */
+            422: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    admin_create_import_drive_prefill: {
+        parameters: {
+            query?: never;
+            header: {
+                authorization?: string | null;
+                /** @description Required for mutating requests. */
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminImportDrivePrefillRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminImportRunResponse"];
+                };
+            };
+            /** @description UNAUTHORIZED */
+            401: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description NOT_FOUND */
+            404: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description CONFLICT */
+            409: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description VALIDATION_ERROR */
+            422: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    admin_get_import_manifest_url: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                batch_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminImportManifestUrlResponse"];
+                };
+            };
+            /** @description UNAUTHORIZED */
+            401: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description NOT_FOUND */
+            404: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description CONFLICT */
+            409: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description VALIDATION_ERROR */
+            422: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     admin_publish_import_design: {
         parameters: {
             query?: never;
@@ -8014,6 +8571,91 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["ShopUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShopMe"];
+                };
+            };
+            /** @description UNAUTHORIZED */
+            401: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description NOT_FOUND */
+            404: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description CONFLICT */
+            409: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description VALIDATION_ERROR */
+            422: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    shops_change_my_shop_visibility: {
+        parameters: {
+            query?: never;
+            header: {
+                authorization?: string | null;
+                /** @description Required for mutating requests. */
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShopVisibilityUpdate"];
             };
         };
         responses: {
@@ -10844,13 +11486,17 @@ export interface operations {
                 q?: string | null;
                 /** @example 강남 */
                 region?: string | null;
-                /** @example [
+                /**
+                 * @example [
                  *       "핑크"
-                 *     ] */
+                 *     ]
+                 */
                 colors?: string[] | null;
-                /** @example [
+                /**
+                 * @example [
                  *       "러블리"
-                 *     ] */
+                 *     ]
+                 */
                 moods?: string[] | null;
                 price_min?: number | null;
                 price_max?: number | null;
@@ -13370,9 +14016,11 @@ export interface operations {
             query: {
                 /** @example 2026-06-01 */
                 date: string;
-                /** @example [
+                /**
+                 * @example [
                  *       "77777777-7777-4777-8777-777777777777"
-                 *     ] */
+                 *     ]
+                 */
                 option_ids?: string[] | null;
             };
             header?: never;

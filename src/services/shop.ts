@@ -1,6 +1,6 @@
 /** 내 샵 관리 API. 샵 정보·영업시간·이미지. */
 import { apiClient } from '@/lib/api-client';
-import type { BusinessHoursSet, ShopCreate, ShopImageCreate, ShopUpdate } from './types';
+import type { BusinessHoursSet, ShopCreate, ShopImageCreate, ShopUpdate, ShopVisibilityUpdate } from './types';
 
 /** 내 샵 조회 (없으면 404 SHOP_NOT_FOUND) */
 export async function getMyShop() {
@@ -15,6 +15,11 @@ export async function createMyShop(body: ShopCreate) {
 /** 내 샵 수정 */
 export async function updateMyShop(body: ShopUpdate) {
   return apiClient.patch('/api/v1/shops/me', { body });
+}
+
+/** 내 샵 공개 상태 변경 */
+export async function setVisibility(body: ShopVisibilityUpdate) {
+  return apiClient.post('/api/v1/shops/me/visibility', { body });
 }
 
 /** 영업시간 일괄 설정 (요일별 7건) */
