@@ -18,6 +18,7 @@ import { useMyShop } from '@/hooks/use-my-shop';
 const TABS = [
   { href: '/dashboard/designs', label: '디자인', icon: '🎨' },
   { href: '/dashboard/schedule', label: '일정', icon: '🗓️' },
+  { href: '/dashboard/shop', label: '샵', icon: '🏠' },
   { href: '/dashboard/notifications', label: '알림', icon: '🔔' },
 ];
 

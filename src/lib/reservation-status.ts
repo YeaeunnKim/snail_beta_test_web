@@ -13,6 +13,7 @@ export const RESERVATION_STATUS_LABEL: Record<ReservationStatus, string> = {
   rejected: '거절',
   cancelled_by_user: '고객취소',
   cancelled_by_shop: '샵취소',
+  expired: '만료',
   no_show: '노쇼',
   completed: '완료',
 };
@@ -24,6 +25,7 @@ export const RESERVATION_STATUS_CLS: Record<ReservationStatus, string> = {
   rejected: 'bg-danger-bg text-danger font-bold',
   cancelled_by_user: 'bg-primary-10 text-primary-50 font-bold',
   cancelled_by_shop: 'bg-primary-10 text-primary-50 font-bold',
+  expired: 'bg-primary-10 text-primary-50 font-bold',
   no_show: 'bg-danger-bg text-danger font-bold',
   completed: 'bg-success-bg text-success font-bold',
 };
