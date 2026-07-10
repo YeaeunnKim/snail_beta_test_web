@@ -61,3 +61,5 @@ scripts/.e2e-token.json
 .orch/reports/
 .orch/last-report.md
 .orch/last-review.md
+
+.env*

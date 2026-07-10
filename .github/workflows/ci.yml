@@ -32,7 +32,8 @@ jobs:
       - name: Lint
         run: pnpm lint
 
-      # TODO: `pnpm build`는 빌드타임 env / prerender 의존 가능성이 있어 초기 CI에서 제외.
-      # env 및 프리렌더 안정화 후 아래 단계를 활성화할 것.
-      # - name: Build
-      #   run: pnpm build
+      # 빌드 게이트: 프로덕션 빌드가 실제로 컴파일/프리렌더되는지 검증한다.
+      # NEXT_PUBLIC_* 는 미설정 시 코드 기본값으로 폴백되므로 CI에 별도 env 주입 불필요
+      # (실제 값 주입은 Vercel 빌드에서 수행). 배포 전 컴파일 회귀를 여기서 잡는다.
+      - name: Build
+        run: pnpm build
