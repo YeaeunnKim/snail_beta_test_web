@@ -1,8 +1,8 @@
 {
-  "name": "snail-owner-web",
+  "name": "snail-beta-test-web",
   "version": "0.1.0",
   "private": true,
-  "description": "Snail 네일 예약 플랫폼 사장님 관리 웹 대시보드",
+  "description": "Snail 네일 예약 플랫폼 사장님 관리 웹 대시보드 (베타 테스트)",
   "packageManager": "pnpm@11.5.0",
   "engines": {
     "node": ">=20.0.0",

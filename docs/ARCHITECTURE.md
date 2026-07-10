@@ -1,216 +1,126 @@
-# 🏗️ Snail Owner Web 아키텍처
+# Snail Beta Test Web 아키텍처
 
-## Next.js App Router 구조
+> ⚠️ 일부 낡음: 이 문서는 원본 `snail_owner_web`에서 온 설명을 포함할 수 있습니다. 현재 실제 라우트/구조의 SSOT는 루트 `AGENTS.md`입니다.
 
-### 라우트 그룹
+## 프로젝트 정체
 
-```
-app/
-├── (auth)/              # 인증 관련 (로그인 레이아웃)
-│   ├── layout.tsx       # 인증 페이지 전용 레이아웃 (센터 정렬, 로고)
-│   ├── login/
-│   ├── signup/
-│   └── password-reset/
-│
-├── (dashboard)/         # 인증 필요 (대시보드 레이아웃)
-│   ├── layout.tsx       # 사이드바 + 헤더 + 인증 가드
-│   ├── page.tsx         # 대시보드 홈 (오늘의 예약 요약)
-│   ├── verification/    # 사업자 인증
-│   ├── shop/            # 샵 관리
-│   ├── designers/       # 디자이너 관리
-│   ├── designs/         # 디자인 관리
-│   ├── reservations/    # 예약 관리
-│   ├── reviews/         # 리뷰 관리
-│   └── notifications/   # 알림
-│
-└── layout.tsx           # 루트 레이아웃 (폰트, 메타데이터)
-```
+이 저장소는 네일 예약 플랫폼 사장님 웹(`snail_owner_web`)을 복사해 만든 베타 테스트용 모바일 웹 fork입니다. 제품명과 백엔드 계약의 큰 표면은 원본 사장님 웹과 공유하지만, 라우트와 화면 구성은 현재 코드 기준으로 갈라져 있습니다.
 
----
+## Next.js App Router 실제 구조
 
-## 인증
+현재 `src/app/` 라우트는 아래 구조입니다.
 
-### 흐름
-
-```
-사장님                   웹                         백엔드
-  │                     │                           │
-  │  이메일/비밀번호 입력  │                           │
-  │────────────────────►│                           │
-  │                     │  POST /auth/owner/login   │
-  │                     │─────────────────────────►│
-  │                     │                           │
-  │                     │  access + refresh token   │
-  │                     │◄─────────────────────────│
-  │                     │                           │
-  │                     │  localStorage에 저장       │
-  │                     │                           │
-  │  대시보드 진입        │                           │
-  │◄────────────────────│                           │
+```text
+src/app/
+├── page.tsx
+├── layout.tsx
+├── (auth)/
+│   ├── layout.tsx
+│   ├── login/page.tsx
+│   ├── register/page.tsx
+│   └── password-reset/page.tsx
+├── (gate)/
+│   ├── layout.tsx
+│   ├── business-verification/page.tsx
+│   └── pending/page.tsx
+├── dashboard/
+│   ├── layout.tsx
+│   ├── page.tsx
+│   ├── designs/page.tsx
+│   ├── notifications/page.tsx
+│   ├── schedule/page.tsx
+│   └── shop/page.tsx
+└── onboarding/page.tsx
 ```
 
-### 토큰 관리
+현재 존재하지 않는 구 원본 라우트:
 
-- **access_token**: 1시간 만료 → `localStorage` (또는 `httpOnly cookie`)
-- **refresh_token**: 30일 만료 → `localStorage`
-- **자동 갱신**: API 클라이언트에서 401 응답 시 자동으로 `/auth/refresh` 호출
+- `dashboard/reservations`
+- `dashboard/reviews`
+- `dashboard/designers`
+- `dashboard/shop/hours`
+- `dashboard/shop/images`
 
-### 인증 가드
+예약 운영 기능은 `dashboard/schedule/`, 알림/예약성 목록 기능은 `dashboard/notifications/`에 흡수되어 있습니다. 사업자 인증/대기 화면은 `(gate)/`, 베타 온보딩은 `onboarding/`에 있습니다.
 
-```typescript
-// (dashboard)/layout.tsx
-export default function DashboardLayout({ children }) {
-  // 서버 컴포넌트에서는 쿠키 확인
-  // 클라이언트에서는 useAuth() 훅으로 리다이렉트
-}
+## 소스 디렉터리
+
+```text
+src/
+├── app/             # Next.js App Router
+├── components/
+│   └── ui/          # 공통 UI 컴포넌트
+├── hooks/           # 화면/도메인 훅
+├── lib/             # API 클라이언트, 토큰, 유틸리티
+├── services/        # 백엔드 API 서비스 래퍼
+├── stores/          # Zustand 스토어
+├── styles/          # 전역 스타일
+└── types/           # TypeScript 타입, api.d.ts 자동 생성물
 ```
 
-### 온보딩 분기
+`components/features/design/` 같은 기능별 컴포넌트 폴더는 현재 실재하지 않습니다. 새 구조를 추가할 때는 기존 코드 관례와 work-order 범위를 우선합니다.
 
-로그인 후 `GET /owners/me`의 `verification_status`에 따라:
+## 인증과 게이트 흐름
 
-| 상태 | 행동 |
-|---|---|
-| `pending` | 사업자 인증 대기 화면 표시 |
-| `rejected` | 재제출 안내 + 거부 사유 표시 |
-| `approved` | 대시보드 진입 |
+```text
+로그인/가입
+  -> GET /owners/me
+  -> verification_status 또는 베타 자동승인 상태에 따라 분기
+  -> (gate)/business-verification 또는 (gate)/pending 또는 dashboard
+```
 
----
+베타 환경에는 `BETA_AUTO_APPROVE_OWNERS` 자동승인 플로우가 있습니다. 가입 즉시 승인되는 경로가 있으므로 원본 사장님 웹의 사업자 인증 전제만으로 흐름을 단정하지 않습니다.
 
 ## API 클라이언트
 
-### 구조
+주요 역할:
 
-```
-src/lib/
-├── api-client.ts        # fetch wrapper (인증, 멱등성, 에러 처리)
-├── api-error.ts         # 에러 타입 정의
-└── token.ts             # 토큰 저장/조회/갱신
-```
+1. 인증 헤더: `Authorization: Bearer <token>`
+2. 변이 멱등성: `POST/PUT/PATCH/DELETE` 요청에 `Idempotency-Key`
+3. 토큰 갱신: 401 응답 시 refresh 후 재시도
+4. 에러 정규화: 서버 에러를 프론트에서 다루는 형태로 변환
+5. 타입 안전성: OpenAPI에서 생성한 `src/types/api.d.ts` 사용
 
-### 핵심 기능
+## 백엔드 계약
 
-1. **자동 인증 헤더**: Bearer 토큰 자동 삽입
-2. **멱등성 키**: 변이 요청에 UUID 자동 생성
-3. **토큰 자동 갱신**: 401 → refresh → 재시도
-4. **에러 정규화**: 서버 에러 → `ApiError` 객체
-5. **타입 안전**: OpenAPI에서 생성한 타입 사용
+계약은 아래 순서로 확인합니다.
 
----
+1. `backend-context/owner_web.ai.txt`
+2. `backend-context/api_cookbook.ai.txt`
+3. `backend-context/openapi.json`
 
-## 상태 관리
-
-### React Server Components (RSC)
-
-- 서버에서 데이터 fetch → 클라이언트에 props로 전달
-- 초기 페이지 로드 최적화
-
-### Zustand (클라이언트 상태)
-
-```typescript
-// src/stores/auth-store.ts
-interface AuthStore {
-  owner: Owner | null;
-  isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
-}
-```
-
-사용 범위:
-- **전역**: 인증 상태, 사장님 정보
-- **로컬**: 각 페이지의 필터/정렬 상태는 `useState` 또는 URL search params
-
----
-
-## OpenAPI 타입 생성
-
-### 워크플로우
+`src/types/api.d.ts`는 `openapi-typescript` 자동 생성물입니다. 손수정하지 않습니다.
 
 ```bash
-# 1. 최신 OpenAPI 스펙에서 TypeScript 타입 생성
 pnpm run generate:types
-
-# 내부적으로 실행되는 명령:
-# openapi-typescript https://poi82999.github.io/snail_backend_specification/openapi.json -o src/types/api.d.ts
 ```
 
-### 사용 예시
+현재 backend-context와 generated type이 stale일 수 있습니다. 계약 드리프트와 알려진 갭은 `docs/OWNER_WEB_GAPS.md`를 확인합니다.
 
-```typescript
-import type { paths, components } from '@/types/api';
+## 주요 페이지별 API 표면
 
-// 응답 타입
-type ShopResponse = components['schemas']['OwnerShopResponse'];
-
-// 요청 타입
-type CreateDesignBody = components['schemas']['DesignCreateRequest'];
-```
-
----
-
-## 주요 페이지별 API 매핑
-
-| 페이지 | 핵심 API | 비고 |
+| 페이지 | 핵심 API/도메인 | 비고 |
 |---|---|---|
 | 로그인 | `POST /auth/owner/login` | |
-| 회원가입 | `POST /auth/owner/signup` | |
-| 사업자 인증 | `POST /owners/me/business-verification` | 파일 업로드 포함 |
-| 샵 정보 | `GET/POST/PATCH /shops/me` | |
-| 영업시간 | `PUT /shops/me/business-hours` | 7일 일괄 설정 |
-| 디자이너 | `CRUD /shops/me/designers` | 스케줄 PUT 포함 |
-| 디자인 목록 | `GET /shops/me/designs` | AI 분석 상태 표시 |
-| 디자인 등록 | `POST /shops/me/designs` | 이미지 업로드 → object key |
-| 예약 목록 | `GET /shops/me/reservations` | 날짜/상태 필터 |
-| 예약 액션 | `POST .../accept\|reject\|confirm-payment\|complete\|no-show\|cancel` | 상태 전이 |
-| 리뷰 | `GET /shops/{id}/reviews` + `POST /reviews/{id}/replies` | 답글 작성 |
+| 회원가입/온보딩 | owner signup, shop setup, designer/design setup | 베타 플로우 포함 |
+| 사업자 인증 | `POST /owners/me/business-verification` | `(gate)/business-verification` |
+| 샵 정보 | `GET/POST/PATCH /shops/me` | `dashboard/shop` |
+| 스케줄/예약 | reservation list/actions | `dashboard/schedule` |
+| 디자인 목록/관리 | `GET/POST/PATCH /shops/me/designs*` | envelope 드리프트 주의 |
+| 알림/운영 목록 | notifications/inquiries/reservation-related data | `dashboard/notifications` |
 
----
+## 알려진 주의점
 
-## 디렉토리 구조 (예정)
+- `GET /shops/me/designs` 응답이 envelope로 바뀌어, stale `api.d.ts`와 배열 전제 소비가 만나면 `designs.map is not a function` 크래시가 날 수 있습니다.
+- `src/app/dashboard/designs/page.tsx`는 약 1,218줄 대형 파일입니다. 부분 수정 시 주변 상태와 인라인 컴포넌트 결합을 확인해야 합니다.
+- backend-context 동기화는 backend repo의 `tools/sync_contract.ps1` 흐름으로 별도 처리됩니다.
 
-```
-src/
-├── app/                    # Next.js App Router
-├── components/
-│   ├── ui/                 # 공통 UI (Button, Input, Modal, ...)
-│   ├── layout/             # Header, Sidebar, Footer
-│   └── features/           # 기능별 컴포넌트
-│       ├── reservation/
-│       ├── design/
-│       └── designer/
-├── hooks/                  # 커스텀 훅
-│   ├── use-auth.ts
-│   └── use-api.ts
-├── lib/                    # 유틸리티
-│   ├── api-client.ts
-│   ├── token.ts
-│   └── utils.ts
-├── stores/                 # Zustand 스토어
-│   └── auth-store.ts
-├── types/                  # TypeScript 타입
-│   ├── api.d.ts            # (자동 생성)
-│   └── index.ts
-└── styles/
-    └── globals.css         # Tailwind + 커스텀 스타일
+## 검증
+
+```bash
+pnpm typecheck
+pnpm lint
+pnpm build
 ```
 
----
-
-## 배포
-
-### Vercel (권장)
-
-1. GitHub 레포 연결
-2. Framework Preset: **Next.js**
-3. Environment Variables 설정
-4. `main` push → 자동 배포
-5. PR → Preview 배포
-
-### 환경별 URL
-
-| 환경 | URL | 트리거 |
-|---|---|---|
-| Production | `https://owner.snail.example.com` | `main` push |
-| Preview | `https://xxx.vercel.app` | PR 생성 |
-| Local | `http://localhost:3000` | `pnpm dev` |
+자동 테스트와 CI는 현재 없습니다.

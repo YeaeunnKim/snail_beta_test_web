@@ -57,3 +57,7 @@ scripts/.e2e-token.json
 # Misc
 *.log
 *.orig
+.worktrees/
+.orch/reports/
+.orch/last-report.md
+.orch/last-review.md
