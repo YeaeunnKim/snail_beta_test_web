@@ -52,6 +52,7 @@ const TAG_MAXLEN = 40;
 const DURATION_MIN = 30;
 const DURATION_MAX = 600;
 const DURATION_STEP = 10;
+const PRICE_STEP = 5000; // 디자이너별 가격 +/- 단위(원)
 
 const createSchema = z.object({
   title: z.string().min(1, '제목을 입력해주세요.'),
@@ -380,6 +381,8 @@ function CreateForm({
   const [folderId, setFolderId] = useState<string>(defaultFolderId); // '' = 폴더 없음
   // designerId → 소요시간(분). 체크된 디자이너만 들어있다.
   const [picked, setPicked] = useState<Record<string, number>>({});
+  // designerId → 가격(원). picked와 같은 키를 유지한다.
+  const [pickedPrice, setPickedPrice] = useState<Record<string, number>>({});
   const [formError, setFormError] = useState<string | null>(null);
 
   const {
@@ -392,6 +395,7 @@ function CreateForm({
     defaultValues: { duration_minutes: 120 },
   });
   const baseDuration = clampDuration(Number(watch('duration_minutes')) || DURATION_MIN);
+  const basePrice = Math.max(0, Number(watch('base_price')) || 0);
 
   const uploading =
     thumbnail?.status === 'uploading' || details.some((p) => p.status === 'uploading');
@@ -430,16 +434,25 @@ function CreateForm({
   };
   const removeDetail = (id: string) => setDetails((list) => list.filter((it) => it.id !== id));
 
-  // --- 디자이너 토글 ---
-  const toggleDesigner = (id: string) =>
+  // --- 디자이너 토글 (소요시간·가격을 함께 관리) ---
+  const toggleDesigner = (id: string) => {
     setPicked((prev) => {
       const next = { ...prev };
       if (id in next) delete next[id];
       else next[id] = baseDuration; // 선택 시 기본 소요시간으로 시작
       return next;
     });
+    setPickedPrice((prev) => {
+      const next = { ...prev };
+      if (id in next) delete next[id];
+      else next[id] = basePrice; // 선택 시 기본 가격으로 시작
+      return next;
+    });
+  };
   const setDesignerDuration = (id: string, minutes: number) =>
     setPicked((prev) => ({ ...prev, [id]: clampDuration(minutes) }));
+  const setDesignerPrice = (id: string, price: number) =>
+    setPickedPrice((prev) => ({ ...prev, [id]: Math.max(0, price) }));
 
   const onSubmit = async (values: CreateFormValues) => {
     setFormError(null);
@@ -462,6 +475,12 @@ function CreateForm({
       .filter((id) => picked[id] !== values.duration_minutes)
       .map((id) => ({ designer_id: id, duration_minutes: picked[id] }));
 
+    // 디자이너별 가격 오버라이드(기본가격과 다른 디자이너만).
+    // ⚠️ 현재 배포 백엔드는 이 필드를 저장하지 않음(무시됨). 백엔드가 designer_prices를 받으면 그대로 반영된다.
+    const designerPrices = designerIds
+      .filter((id) => (pickedPrice[id] ?? values.base_price) !== values.base_price)
+      .map((id) => ({ designer_id: id, base_price: pickedPrice[id] ?? values.base_price }));
+
     try {
       await designsApi.createDesign({
         title: values.title,
@@ -470,6 +489,7 @@ function CreateForm({
         duration_minutes: values.duration_minutes,
         designer_ids: designerIds,
         designer_durations: designerDurations,
+        designer_prices: designerPrices,
         folder_id: folderId || null,
         image_upload_keys: imageKeys,
         owner_tags: tags,
@@ -568,7 +588,8 @@ function CreateForm({
           가능한 디자이너<span className="ml-0.5 text-danger">*</span>
         </label>
         <p className="mb-2 text-caption text-primary-50">
-          선택하면 디자이너별 소요시간을 조정할 수 있어요. 미조정 시 기본 소요시간({baseDuration}분)을 사용합니다.
+          선택하면 디자이너별 소요시간과 가격을 조정할 수 있어요. 미조정 시 기본값(소요시간 {baseDuration}분 · 가격{' '}
+          {basePrice.toLocaleString('ko-KR')}원)을 사용합니다.
         </p>
         {designers.length === 0 ? (
           <p className="text-caption text-primary-50">
@@ -594,16 +615,26 @@ function CreateForm({
                     {d.name}
                   </label>
                   {checked && (
-                    <div className="ml-auto flex items-center gap-2">
-                      <span className="text-caption text-primary-50">소요시간</span>
-                      <Stepper
-                        value={picked[d.id]}
-                        onChange={(v) => setDesignerDuration(d.id, v)}
-                        suffix="분"
-                      />
-                      {picked[d.id] !== baseDuration && (
-                        <span className="text-caption font-semibold text-secondary">조정됨</span>
-                      )}
+                    <div className="ml-auto flex flex-wrap items-center justify-end gap-x-3 gap-y-2">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-caption text-primary-50">시간</span>
+                        <Stepper
+                          value={picked[d.id]}
+                          onChange={(v) => setDesignerDuration(d.id, v)}
+                          suffix="분"
+                          ariaLabel="소요시간 직접 입력"
+                        />
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-caption text-primary-50">가격</span>
+                        <Stepper
+                          value={pickedPrice[d.id] ?? basePrice}
+                          onChange={(v) => setDesignerPrice(d.id, v)}
+                          step={PRICE_STEP}
+                          suffix="원"
+                          ariaLabel="가격 직접 입력"
+                        />
+                      </div>
                     </div>
                   )}
                 </div>
@@ -792,10 +823,14 @@ function Stepper({
   value,
   onChange,
   suffix,
+  step = DURATION_STEP,
+  ariaLabel = '직접 입력',
 }: {
   value: number;
   onChange: (v: number) => void;
   suffix?: string;
+  step?: number;
+  ariaLabel?: string;
 }) {
   // 직접 입력용 로컬 문자열 상태. +/- 또는 외부 값 변경 시 동기화하고, 입력은 blur/Enter에 확정한다.
   const [text, setText] = useState(String(value));
@@ -811,7 +846,7 @@ function Stepper({
     <div className="flex items-center rounded-md border border-neutral-300">
       <button
         type="button"
-        onClick={() => onChange(value - DURATION_STEP)}
+        onClick={() => onChange(value - step)}
         className="grid h-8 w-8 place-items-center text-primary-50 hover:bg-neutral-100"
         aria-label="감소"
       >
@@ -831,14 +866,14 @@ function Stepper({
               (e.target as HTMLInputElement).blur();
             }
           }}
-          className="w-10 bg-transparent text-center text-body-sm tabular-nums outline-none"
-          aria-label="소요시간 직접 입력"
+          className="w-16 bg-transparent text-center text-body-sm tabular-nums outline-none"
+          aria-label={ariaLabel}
         />
         {suffix && <span className="pr-1.5 text-body-sm text-primary-50">{suffix}</span>}
       </div>
       <button
         type="button"
-        onClick={() => onChange(value + DURATION_STEP)}
+        onClick={() => onChange(value + step)}
         className="grid h-8 w-8 place-items-center text-primary-50 hover:bg-neutral-100"
         aria-label="증가"
       >
