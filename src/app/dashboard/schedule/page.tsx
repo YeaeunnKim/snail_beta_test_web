@@ -28,12 +28,14 @@ import {
   SLOTS_PER_DAY,
   appWeekday,
   availDayToScheduleAndTimeOff,
+  businessHoursSeed,
   dateShortLabel,
   localDateOf,
   localMinOf,
   minToTime,
   slotStartMin,
 } from '@/lib/beta-schedule';
+import { useMyShop } from '@/hooks/use-my-shop';
 
 const HOLDING: ReservationStatus[] = ['pending', 'payment_pending', 'confirmed', 'completed'];
 const ROW_H = 36;
@@ -43,20 +45,18 @@ const availKey = (id: string) => `snail_beta_avail:${id}`;
 const tidKey = (id: string) => `snail_beta_tid:${id}`;
 const cell = (date: string, slot: number) => `${date}|${slot}`;
 
-/** 최초 기본 가용시간: 전부 불가(비활성화) — 드래그로 켠 시간만 예약 가능해진다. */
-function defaultAvail(): Set<string> {
-  return new Set<string>();
-}
-
-/** localStorage에서 디자이너 가용시간 로드(키 없으면 기본값 시드) */
-function loadAvail(id: string): Set<string> {
-  if (typeof window === 'undefined') return new Set();
+/**
+ * localStorage에서 디자이너 가용시간 로드. 저장한 적 없으면 null을 반환해
+ * 호출부가 영업시간 기본값(seed)으로 채우게 한다.
+ */
+function loadAvail(id: string): Set<string> | null {
+  if (typeof window === 'undefined') return null;
   const raw = window.localStorage.getItem(availKey(id));
-  if (raw === null) return defaultAvail();
+  if (raw === null) return null;
   try {
     return new Set(JSON.parse(raw) as string[]);
   } catch {
-    return defaultAvail();
+    return new Set();
   }
 }
 function loadIds(id: string): string[] {
@@ -110,19 +110,26 @@ export default function SchedulePage() {
   const designersQuery = useQuery({ queryKey: ['designers'], queryFn: () => designersApi.listDesigners() });
   const designers = useMemo(() => designersQuery.data ?? [], [designersQuery.data]);
 
+  // 샵 영업시간 → 저장 이력이 없는 디자이너의 하얀칸 기본값(seed).
+  const shopQuery = useMyShop();
+  const seedSet = useMemo(
+    () => businessHoursSeed(shopQuery.data?.business_hours),
+    [shopQuery.data?.business_hours],
+  );
+
   useEffect(() => {
     if (!weekDesignerId && designers.length > 0) setWeekDesignerId(designers[0].id);
   }, [designers, weekDesignerId]);
 
   const reloadAvail = () => {
     const map: Record<string, Set<string>> = {};
-    for (const d of designers) map[d.id] = loadAvail(d.id);
+    for (const d of designers) map[d.id] = loadAvail(d.id) ?? new Set(seedSet);
     setAvailBy(map);
   };
   useEffect(() => {
     if (designers.length > 0) reloadAvail();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [designers]);
+  }, [designers, seedSet]);
 
   const reservationsQuery = useQuery({
     queryKey: ['reservations', 'beta-schedule'],
