@@ -2860,6 +2860,8 @@ export interface components {
             designer_ids: string[];
             /** Designer Durations */
             designer_durations?: components["schemas"]["DesignerDurationInput"][];
+            /** Designer Prices */
+            designer_prices?: components["schemas"]["DesignerPriceInput"][];
             /** Image Upload Keys */
             image_upload_keys: string[];
             /** Owner Tags */
@@ -2885,6 +2887,8 @@ export interface components {
             profile_image_url?: string | null;
             /** Specialty Tags */
             specialty_tags: string[];
+            /** Base Price */
+            base_price: number;
             /** Duration Minutes */
             duration_minutes: number;
         };
@@ -3174,6 +3178,11 @@ export interface components {
              * @description 디자이너별 소요시간 변경 시 designer_ids 전체 목록과 함께 보내야 합니다.
              */
             designer_durations?: components["schemas"]["DesignerDurationInput"][] | null;
+            /**
+             * Designer Prices
+             * @description 디자이너별 가격 변경 시 designer_ids 전체 목록과 함께 보내야 합니다.
+             */
+            designer_prices?: components["schemas"]["DesignerPriceInput"][] | null;
             /** Image Upload Keys */
             image_upload_keys?: string[] | null;
             /** Owner Tags */
@@ -3224,6 +3233,16 @@ export interface components {
             designer_id: string;
             /** Duration Minutes */
             duration_minutes: number;
+        };
+        /** DesignerPriceInput */
+        DesignerPriceInput: {
+            /**
+             * Designer Id
+             * Format: uuid
+             */
+            designer_id: string;
+            /** Base Price */
+            base_price: number;
         };
         /** DesignerPublic */
         DesignerPublic: {
