@@ -14,9 +14,6 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { designersApi, designsApi, uploadsApi } from '@/services';
 import type { Design, Designer, DesignFolder } from '@/services';
@@ -52,19 +49,49 @@ const TAG_MAXLEN = 40;
 const DURATION_MIN = 30;
 const DURATION_MAX = 600;
 const DURATION_STEP = 10;
-const PRICE_STEP = 5000; // 디자이너별 가격 +/- 단위(원)
+const PRICE_STEP = 5000; // 디자이너별 가격 · 추가옵션 가격 +/- 단위(원)
+const OPTION_PRICE_DEFAULT = 50000; // 추가옵션 기본 추가금액(원)
 
-const createSchema = z.object({
-  title: z.string().min(1, '제목을 입력해주세요.'),
-  description: z.string().optional(),
-  base_price: z.coerce.number().int().min(0, '가격을 입력해주세요.'),
-  duration_minutes: z.coerce
-    .number()
-    .int()
-    .min(DURATION_MIN, `소요시간은 ${DURATION_MIN}분 이상이어야 합니다.`)
-    .max(DURATION_MAX, `소요시간은 ${DURATION_MAX}분 이하여야 합니다.`),
-});
-type CreateFormValues = z.infer<typeof createSchema>;
+/** 추가옵션 종류. 백엔드 DesignOptionKind(extend/removal/care)와 1:1. */
+const OPTION_KINDS = [
+  { value: 'extend', label: '연장' },
+  { value: 'removal', label: '제거' },
+  { value: 'care', label: '케어' },
+] as const;
+type OptionKind = (typeof OPTION_KINDS)[number]['value'];
+
+/** 폼에서 편집하는 추가옵션 한 줄. id가 있으면 기존(수정 대상) 옵션. */
+interface OptionRow {
+  uid: string;
+  id?: string;
+  kind: OptionKind;
+  name: string;
+  priceDelta: number;
+}
+
+/** 새 디자인/폴더 첫 등록 시 기본으로 깔아두는 3줄(연장·제거·케어, 각 5만원). */
+function defaultOptionRows(): OptionRow[] {
+  return OPTION_KINDS.map((k) => ({
+    uid: crypto.randomUUID(),
+    kind: k.value,
+    name: k.label,
+    priceDelta: OPTION_PRICE_DEFAULT,
+  }));
+}
+
+/** 디자인에 추가옵션들을 순서대로 생성한다(이름 빈 줄은 건너뜀). */
+async function createOptionsFor(designId: string, rows: OptionRow[]) {
+  for (let i = 0; i < rows.length; i += 1) {
+    const r = rows[i];
+    if (!r.name.trim()) continue;
+    await designsApi.createOption(designId, {
+      kind: r.kind,
+      name: r.name.trim(),
+      price_delta: Math.max(0, Math.round(r.priceDelta) || 0),
+      sort_order: i,
+    });
+  }
+}
 
 const clampDuration = (n: number) => Math.max(DURATION_MIN, Math.min(DURATION_MAX, n));
 
@@ -377,28 +404,25 @@ function CreateForm({
 }) {
   const [thumbnail, setThumbnail] = useState<PhotoItem | null>(null);
   const [details, setDetails] = useState<PhotoItem[]>([]);
-  const [tags, setTags] = useState<string[]>([]);
   const [folderId, setFolderId] = useState<string>(defaultFolderId); // '' = 폴더 없음
-  // designerId → 소요시간(분). 체크된 디자이너만 들어있다.
-  const [picked, setPicked] = useState<Record<string, number>>({});
-  // designerId → 가격(원). picked와 같은 키를 유지한다.
-  const [pickedPrice, setPickedPrice] = useState<Record<string, number>>({});
+  const [title, setTitle] = useState('');
+  const [settings, setSettings] = useState<DesignSettings>(() => defaultBulkSettings());
   const [formError, setFormError] = useState<string | null>(null);
-
-  const {
-    register,
-    handleSubmit,
-    watch,
-    formState: { errors, isSubmitting },
-  } = useForm<CreateFormValues>({
-    resolver: zodResolver(createSchema),
-    defaultValues: { duration_minutes: 120 },
-  });
-  const baseDuration = clampDuration(Number(watch('duration_minutes')) || DURATION_MIN);
-  const basePrice = Math.max(0, Number(watch('base_price')) || 0);
+  const [submitting, setSubmitting] = useState(false);
+  // 이 폴더에 저장된 이전 공통설정(있으면 "불러오기" 배너 노출) — 반복 등록 편의.
+  const [folderPreset, setFolderPreset] = useState<DesignSettings | null>(null);
 
   const uploading =
     thumbnail?.status === 'uploading' || details.some((p) => p.status === 'uploading');
+
+  // 폴더를 고르면 그 폴더의 이전 설정이 있는지 확인한다.
+  useEffect(() => {
+    if (!folderId) {
+      setFolderPreset(null);
+      return;
+    }
+    setFolderPreset(loadBulkSettings(`snail_bulk_settings:${folderId}`, designers));
+  }, [folderId, designers]);
 
   // --- 사진 업로드 헬퍼 ---
   const startUpload = (file: File, onDone: (item: PhotoItem) => void) => {
@@ -434,75 +458,83 @@ function CreateForm({
   };
   const removeDetail = (id: string) => setDetails((list) => list.filter((it) => it.id !== id));
 
-  // --- 디자이너 토글 (소요시간·가격을 함께 관리) ---
-  const toggleDesigner = (id: string) => {
-    setPicked((prev) => {
-      const next = { ...prev };
-      if (id in next) delete next[id];
-      else next[id] = baseDuration; // 선택 시 기본 소요시간으로 시작
-      return next;
-    });
-    setPickedPrice((prev) => {
-      const next = { ...prev };
-      if (id in next) delete next[id];
-      else next[id] = basePrice; // 선택 시 기본 가격으로 시작
-      return next;
-    });
-  };
-  const setDesignerDuration = (id: string, minutes: number) =>
-    setPicked((prev) => ({ ...prev, [id]: clampDuration(minutes) }));
-  const setDesignerPrice = (id: string, price: number) =>
-    setPickedPrice((prev) => ({ ...prev, [id]: Math.max(0, price) }));
-
-  const onSubmit = async (values: CreateFormValues) => {
+  const onSubmit = async () => {
     setFormError(null);
-
+    if (!title.trim()) {
+      setFormError('제목을 입력해주세요.');
+      return;
+    }
     if (!thumbnail || thumbnail.status !== 'done' || !thumbnail.objectKey) {
       setFormError('대표 스네일 사진 1장을 등록해주세요.');
       return;
     }
-    const designerIds = Object.keys(picked);
-    if (designerIds.length === 0) {
-      setFormError('이 디자인을 할 수 있는 디자이너를 1명 이상 선택해주세요.');
+    const price = Number(settings.price);
+    if (settings.price.trim() === '' || !Number.isFinite(price) || price < 0) {
+      setFormError('가격을 입력해주세요.');
       return;
     }
+    const multiDesigner = designers.length >= 2;
+    let designerIds: string[];
+    if (multiDesigner) {
+      designerIds = Object.keys(settings.picked);
+      if (designerIds.length === 0) {
+        setFormError('이 디자인을 할 수 있는 디자이너를 1명 이상 선택해주세요.');
+        return;
+      }
+    } else {
+      if (designers.length === 0) {
+        setFormError('먼저 디자이너 탭에서 디자이너를 등록해주세요.');
+        return;
+      }
+      designerIds = [designers[0].id];
+    }
+
     const detailKeys = details.filter((p) => p.status === 'done' && p.objectKey).map((p) => p.objectKey!);
     // 대표 사진이 image_upload_keys[0] → 썸네일로 사용된다.
     const imageKeys = [thumbnail.objectKey, ...detailKeys];
 
-    // 기본값과 다른 디자이너만 오버라이드로 전송(나머지는 기본 소요시간 사용).
-    const designerDurations = designerIds
-      .filter((id) => picked[id] !== values.duration_minutes)
-      .map((id) => ({ designer_id: id, duration_minutes: picked[id] }));
+    // 기본값과 다른 디자이너만 오버라이드로 전송(다인샵 전용).
+    const designerDurations = multiDesigner
+      ? designerIds
+          .filter((id) => settings.picked[id] !== settings.duration)
+          .map((id) => ({ designer_id: id, duration_minutes: settings.picked[id] }))
+      : [];
+    const designerPrices = multiDesigner
+      ? designerIds
+          .filter((id) => (settings.pickedPrice[id] ?? price) !== price)
+          .map((id) => ({ designer_id: id, base_price: settings.pickedPrice[id] ?? price }))
+      : [];
 
-    // 디자이너별 가격 오버라이드(기본가격과 다른 디자이너만).
-    // ⚠️ 현재 배포 백엔드는 이 필드를 저장하지 않음(무시됨). 백엔드가 designer_prices를 받으면 그대로 반영된다.
-    const designerPrices = designerIds
-      .filter((id) => (pickedPrice[id] ?? values.base_price) !== values.base_price)
-      .map((id) => ({ designer_id: id, base_price: pickedPrice[id] ?? values.base_price }));
-
+    setSubmitting(true);
     try {
-      await designsApi.createDesign({
-        title: values.title,
-        description: values.description || null,
-        base_price: values.base_price,
-        duration_minutes: values.duration_minutes,
+      const created = await designsApi.createDesign({
+        title: title.trim(),
+        description: settings.description.trim() || null,
+        base_price: price,
+        duration_minutes: clampDuration(settings.duration),
         designer_ids: designerIds,
         designer_durations: designerDurations,
         designer_prices: designerPrices,
         folder_id: folderId || null,
         image_upload_keys: imageKeys,
-        owner_tags: tags,
+        owner_tags: settings.tags,
       });
+      await createOptionsFor(created.id, settings.options);
+      if (folderId) saveBulkSettings(`snail_bulk_settings:${folderId}`, settings);
       onCreated();
     } catch (e) {
       setFormError(toUserMessage(e));
+    } finally {
+      setSubmitting(false);
     }
   };
 
   return (
     <form
-      onSubmit={handleSubmit(onSubmit)}
+      onSubmit={(e) => {
+        e.preventDefault();
+        onSubmit();
+      }}
       className="space-y-5 rounded-lg border border-neutral-200 bg-white p-5"
       noValidate
     >
@@ -544,122 +576,60 @@ function CreateForm({
       </div>
 
       {/* 제목 (관리용) */}
-      <Field
-        label="제목 (관리용)"
-        error={errors.title?.message}
-        required
-        hint="사장님 관리용 이름입니다. 고객에게는 노출되지 않습니다."
-      >
-        <input className={inputCls} {...register('title')} />
-      </Field>
-
-      <div className="grid grid-cols-2 gap-4">
-        <Field label="가격(원)" error={errors.base_price?.message} required>
-          <input type="number" min={0} className={inputCls} {...register('base_price')} />
-        </Field>
-        <Field
-          label="기본 소요시간(분)"
-          error={errors.duration_minutes?.message}
-          required
-          hint="디자이너별로 아래에서 조정할 수 있어요."
-        >
-          <input
-            type="number"
-            min={DURATION_MIN}
-            max={DURATION_MAX}
-            step={DURATION_STEP}
-            className={inputCls}
-            {...register('duration_minutes')}
-          />
-        </Field>
-      </div>
-
-      {/* 설명 (미노출 메모) */}
-      <Field label="설명 (메모)" error={errors.description?.message} hint="앱에는 노출되지 않는 내부 메모입니다.">
-        <textarea rows={2} className={inputCls} {...register('description')} />
+      <Field label="제목 (관리용)" required hint="사장님 관리용 이름입니다. 고객에게는 노출되지 않습니다.">
+        <input className={inputCls} value={title} onChange={(e) => setTitle(e.target.value)} />
       </Field>
 
       {/* 폴더 */}
       <FolderField value={folderId} onChange={setFolderId} />
+      {folderPreset && (
+        <div className="flex flex-wrap items-center gap-2 rounded-md bg-secondary/10 px-3 py-2 text-caption text-primary">
+          <span className="flex-1">이 폴더에 저장된 이전 설정(가격·디자이너·태그·추가옵션)이 있어요.</span>
+          <button
+            type="button"
+            onClick={() => {
+              setSettings(folderPreset);
+              setFolderPreset(null);
+            }}
+            className="rounded-md bg-secondary px-3 py-1.5 font-semibold text-white"
+          >
+            이전 설정 불러오기
+          </button>
+          <button
+            type="button"
+            onClick={() => setFolderPreset(null)}
+            className="px-2 py-1 font-semibold text-primary-50"
+          >
+            닫기
+          </button>
+        </div>
+      )}
 
-      {/* 디자이너 + 소요시간 */}
-      <div>
-        <label className="mb-1 block text-body-sm font-medium">
-          가능한 디자이너<span className="ml-0.5 text-danger">*</span>
-        </label>
-        <p className="mb-2 text-caption text-primary-50">
-          선택하면 디자이너별 소요시간과 가격을 조정할 수 있어요. 미조정 시 기본값(소요시간 {baseDuration}분 · 가격{' '}
-          {basePrice.toLocaleString('ko-KR')}원)을 사용합니다.
+      {designers.length === 0 && (
+        <p className="text-caption text-primary-50">
+          등록된 디자이너가 없습니다.{' '}
+          <Link href="/dashboard/designers" className="text-secondary underline">
+            디자이너
+          </Link>{' '}
+          탭에서 먼저 추가하세요.
         </p>
-        {designers.length === 0 ? (
-          <p className="text-caption text-primary-50">
-            등록된 디자이너가 없습니다.{' '}
-            <Link href="/dashboard/designers" className="text-secondary underline">
-              디자이너
-            </Link>{' '}
-            탭에서 먼저 추가하세요.
-          </p>
-        ) : (
-          <div className="space-y-2">
-            {designers.map((d) => {
-              const checked = d.id in picked;
-              return (
-                <div
-                  key={d.id}
-                  className={`flex flex-wrap items-center gap-3 rounded-md border p-2 ${
-                    checked ? 'border-secondary/40 bg-secondary/5' : 'border-neutral-200'
-                  }`}
-                >
-                  <label className="flex items-center gap-2 text-body-sm font-medium">
-                    <input type="checkbox" checked={checked} onChange={() => toggleDesigner(d.id)} />
-                    {d.name}
-                  </label>
-                  {checked && (
-                    <div className="ml-auto flex flex-wrap items-center justify-end gap-x-3 gap-y-2">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-caption text-primary-50">시간</span>
-                        <Stepper
-                          value={picked[d.id]}
-                          onChange={(v) => setDesignerDuration(d.id, v)}
-                          suffix="분"
-                          ariaLabel="소요시간 직접 입력"
-                        />
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-caption text-primary-50">가격</span>
-                        <Stepper
-                          value={pickedPrice[d.id] ?? basePrice}
-                          onChange={(v) => setDesignerPrice(d.id, v)}
-                          step={PRICE_STEP}
-                          suffix="원"
-                          ariaLabel="가격 직접 입력"
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
+      )}
 
-      {/* 사장님 태그 */}
-      <div>
-        <label className="mb-1 block text-body-sm font-medium">
-          사장님 태그 <span className="text-caption text-primary-50">최대 {MAX_OWNER_TAGS}개</span>
-        </label>
-        <TagInput tags={tags} onChange={setTags} />
-      </div>
+      {/* 가격·디자이너별 소요시간/가격·설명·태그·추가옵션 (더미·수정 폼과 동일) */}
+      <DesignSettingsFields
+        designers={designers}
+        value={settings}
+        onChange={(p) => setSettings((prev) => ({ ...prev, ...p }))}
+      />
 
       {formError && <p className="rounded-md bg-danger-bg px-3 py-2 text-body-sm text-danger">{formError}</p>}
 
       <button
         type="submit"
-        disabled={isSubmitting || uploading}
+        disabled={submitting || uploading}
         className="rounded-md bg-secondary px-5 py-2 text-body-sm font-semibold text-white disabled:opacity-50"
       >
-        {isSubmitting ? '등록 중…' : uploading ? '사진 업로드 중…' : '디자인 등록'}
+        {submitting ? '등록 중…' : uploading ? '사진 업로드 중…' : '디자인 등록'}
       </button>
     </form>
   );
@@ -1287,10 +1257,12 @@ interface DesignSettings {
   description: string;
   tags: string[];
   picked: Record<string, number>; // designerId → 소요시간(분). 다인샵에서 선택된 디자이너.
+  pickedPrice: Record<string, number>; // designerId → 가격(원). picked와 같은 키를 유지.
+  options: OptionRow[]; // 추가옵션(연장/제거/케어 등)
 }
 
 function defaultBulkSettings(): DesignSettings {
-  return { price: '', duration: 120, description: '', tags: [], picked: {} };
+  return { price: '', duration: 120, description: '', tags: [], picked: {}, pickedPrice: {}, options: defaultOptionRows() };
 }
 
 /** 이미지 URL에서 업로드 object_key를 역추출(버킷명 무관). 기존 사진 보존용. */
@@ -1311,12 +1283,24 @@ function loadBulkSettings(key: string, designers: Designer[]): DesignSettings | 
     const ids = new Set(designers.map((d) => d.id));
     const picked: Record<string, number> = {};
     for (const [k, v] of Object.entries(s.picked ?? {})) if (ids.has(k)) picked[k] = v;
+    const pickedPrice: Record<string, number> = {};
+    for (const [k, v] of Object.entries(s.pickedPrice ?? {})) if (ids.has(k)) pickedPrice[k] = v;
+    const options: OptionRow[] = Array.isArray(s.options)
+      ? s.options.map((o) => ({
+          uid: crypto.randomUUID(),
+          kind: (OPTION_KINDS.some((k) => k.value === o.kind) ? o.kind : 'extend') as OptionKind,
+          name: o.name ?? '',
+          priceDelta: Math.max(0, Math.round(o.priceDelta) || 0),
+        }))
+      : defaultOptionRows();
     return {
       price: s.price ?? '',
       duration: s.duration ?? 120,
       description: s.description ?? '',
       tags: s.tags ?? [],
       picked,
+      pickedPrice,
+      options,
     };
   } catch {
     return null;
@@ -1355,19 +1339,28 @@ function DesignSettingsFields({
   onChange: (patch: Partial<DesignSettings>) => void;
 }) {
   const multiDesigner = designers.length >= 2;
-  const { price, duration, description, tags, picked } = value;
+  const { price, duration, description, tags, picked, pickedPrice, options } = value;
+  const basePrice = Math.max(0, Number(price) || 0);
   const labelCls = 'mb-1 block text-caption font-semibold text-primary-50';
   const fieldCls =
     'w-full rounded-md border border-neutral-300 px-3 py-2 text-body-sm outline-none focus:border-secondary';
 
   const toggleDesigner = (id: string) => {
-    const next = { ...picked };
-    if (id in next) delete next[id];
-    else next[id] = duration;
-    onChange({ picked: next });
+    const nextPicked = { ...picked };
+    const nextPrice = { ...pickedPrice };
+    if (id in nextPicked) {
+      delete nextPicked[id];
+      delete nextPrice[id];
+    } else {
+      nextPicked[id] = duration;
+      nextPrice[id] = basePrice;
+    }
+    onChange({ picked: nextPicked, pickedPrice: nextPrice });
   };
   const setDesignerDuration = (id: string, minutes: number) =>
     onChange({ picked: { ...picked, [id]: clampDuration(minutes) } });
+  const setDesignerPrice = (id: string, won: number) =>
+    onChange({ pickedPrice: { ...pickedPrice, [id]: Math.max(0, won) } });
 
   return (
     <>
@@ -1391,9 +1384,10 @@ function DesignSettingsFields({
 
       {multiDesigner && (
         <div>
-          <label className={labelCls}>디자이너별 소요시간</label>
+          <label className={labelCls}>디자이너별 소요시간 · 가격</label>
           <p className="mb-2 text-caption text-primary-50">
-            체크한 디자이너만 이 디자인을 할 수 있어요. 소요시간은 디자이너별로 다르게 조정할 수 있어요.
+            체크한 디자이너만 이 디자인을 할 수 있어요. 소요시간·가격을 디자이너별로 다르게 조정할 수 있어요. 미조정 시
+            기본값(소요시간 {duration}분 · 가격 {basePrice.toLocaleString('ko-KR')}원).
           </p>
           <div className="space-y-2">
             {designers.map((dz) => {
@@ -1410,11 +1404,26 @@ function DesignSettingsFields({
                     {dz.name}
                   </label>
                   {checked && (
-                    <div className="ml-auto flex items-center gap-2">
-                      <Stepper value={picked[dz.id]} onChange={(v) => setDesignerDuration(dz.id, v)} suffix="분" />
-                      {picked[dz.id] !== duration && (
-                        <span className="text-caption font-semibold text-secondary">조정됨</span>
-                      )}
+                    <div className="ml-auto flex flex-wrap items-center justify-end gap-x-3 gap-y-2">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-caption text-primary-50">시간</span>
+                        <Stepper
+                          value={picked[dz.id]}
+                          onChange={(v) => setDesignerDuration(dz.id, v)}
+                          suffix="분"
+                          ariaLabel="소요시간 직접 입력"
+                        />
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-caption text-primary-50">가격</span>
+                        <Stepper
+                          value={pickedPrice[dz.id] ?? basePrice}
+                          onChange={(v) => setDesignerPrice(dz.id, v)}
+                          step={PRICE_STEP}
+                          suffix="원"
+                          ariaLabel="가격 직접 입력"
+                        />
+                      </div>
                     </div>
                   )}
                 </div>
@@ -1438,7 +1447,80 @@ function DesignSettingsFields({
         <label className={labelCls}>사장님 태그</label>
         <TagInput tags={tags} onChange={(t) => onChange({ tags: t })} />
       </div>
+
+      <OptionsField options={options} onChange={(next) => onChange({ options: next })} />
     </>
+  );
+}
+
+/** 추가옵션 편집기: 연장/제거/케어 + 이름 + 추가금액을 줄 단위로 관리. 앱에서 옵션 선택 시 가격에 반영된다. */
+function OptionsField({ options, onChange }: { options: OptionRow[]; onChange: (next: OptionRow[]) => void }) {
+  const labelCls = 'mb-1 block text-caption font-semibold text-primary-50';
+  const update = (uid: string, patch: Partial<OptionRow>) =>
+    onChange(options.map((o) => (o.uid === uid ? { ...o, ...patch } : o)));
+  const remove = (uid: string) => onChange(options.filter((o) => o.uid !== uid));
+  const add = () =>
+    onChange([
+      ...options,
+      { uid: crypto.randomUUID(), kind: 'extend', name: '', priceDelta: OPTION_PRICE_DEFAULT },
+    ]);
+
+  return (
+    <div>
+      <label className={labelCls}>추가옵션</label>
+      <p className="mb-2 text-caption text-primary-50">
+        연장·제거·케어 등 추가 시술과 추가금액이에요. 고객이 앱에서 옵션을 고르면 그만큼 가격이 올라갑니다.
+      </p>
+      <div className="space-y-2">
+        {options.map((o) => (
+          <div key={o.uid} className="flex flex-wrap items-center gap-2 rounded-md border border-neutral-200 p-2">
+            <select
+              value={o.kind}
+              onChange={(e) => update(o.uid, { kind: e.target.value as OptionKind })}
+              className="rounded-md border border-neutral-300 px-2 py-2 text-body-sm outline-none focus:border-secondary"
+              aria-label="옵션 종류"
+            >
+              {OPTION_KINDS.map((k) => (
+                <option key={k.value} value={k.value}>
+                  {k.label}
+                </option>
+              ))}
+            </select>
+            <input
+              value={o.name}
+              onChange={(e) => update(o.uid, { name: e.target.value })}
+              placeholder="옵션 이름 (예: 길이 연장)"
+              className="min-w-[7rem] flex-1 rounded-md border border-neutral-300 px-3 py-2 text-body-sm outline-none focus:border-secondary"
+            />
+            <div className="flex items-center gap-1.5">
+              <span className="text-caption text-primary-50">+</span>
+              <Stepper
+                value={o.priceDelta}
+                onChange={(v) => update(o.uid, { priceDelta: Math.max(0, v) })}
+                step={PRICE_STEP}
+                suffix="원"
+                ariaLabel="추가금액 직접 입력"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => remove(o.uid)}
+              className="grid h-8 w-8 shrink-0 place-items-center rounded-md border border-neutral-300 text-primary-50 hover:bg-neutral-50"
+              aria-label="옵션 삭제"
+            >
+              ×
+            </button>
+          </div>
+        ))}
+      </div>
+      <button
+        type="button"
+        onClick={add}
+        className="mt-2 rounded-md border border-secondary px-3 py-1.5 text-caption font-semibold text-secondary"
+      >
+        + 옵션 추가
+      </button>
+    </div>
   );
 }
 
@@ -1553,6 +1635,12 @@ function BulkAddModal({
           .filter((id) => s.picked[id] !== s.duration)
           .map((id) => ({ designer_id: id, duration_minutes: s.picked[id] }))
       : [];
+    // 기본가격과 다른 디자이너만 오버라이드로 전송(다인샵 전용).
+    const designerPrices = multiDesigner
+      ? designerIds
+          .filter((id) => (s.pickedPrice[id] ?? price) !== price)
+          .map((id) => ({ designer_id: id, base_price: s.pickedPrice[id] ?? price }))
+      : [];
 
     saveBulkSettings(storageKey, s);
 
@@ -1562,17 +1650,19 @@ function BulkAddModal({
       const title = `${folderName}_${pad(startNumber + i)}`;
       try {
         const up = await uploadsApi.uploadFile(files[i], 'design');
-        await designsApi.createDesign({
+        const created = await designsApi.createDesign({
           title,
           description: s.description.trim() || null,
           base_price: price,
           duration_minutes: clampDuration(s.duration),
           designer_ids: designerIds,
           designer_durations: designerDurations,
+          designer_prices: designerPrices,
           folder_id: folderId,
           image_upload_keys: [up.object_key],
           owner_tags: s.tags,
         });
+        await createOptionsFor(created.id, s.options);
       } catch (e) {
         failed.push(`${title}: ${toUserMessage(e)}`);
       }
@@ -1715,6 +1805,22 @@ function DesignEditForm({ design: d, onClose }: { design: Design; onClose: () =>
   const [picked, setPicked] = useState<Record<string, number>>(() =>
     Object.fromEntries((d.designers ?? []).map((dz) => [dz.id, clampDuration(dz.duration_minutes)])),
   );
+  // designerId → 가격(원). 현재 담당 디자이너의 가격으로 초기화한다(다인샵 전용).
+  const [pickedPrice, setPickedPrice] = useState<Record<string, number>>(() =>
+    Object.fromEntries((d.designers ?? []).map((dz) => [dz.id, dz.base_price])),
+  );
+
+  // 추가옵션: 기존 옵션으로 초기화하고, 저장 시 원본과 비교해 추가/변경/삭제한다.
+  const originalOptionsRef = useRef(d.options ?? []);
+  const [options, setOptions] = useState<OptionRow[]>(() =>
+    (d.options ?? []).map((o) => ({
+      uid: crypto.randomUUID(),
+      id: o.id,
+      kind: (OPTION_KINDS.some((k) => k.value === o.kind) ? o.kind : 'extend') as OptionKind,
+      name: o.name,
+      priceDelta: o.price_delta,
+    })),
+  );
 
   // 사진 편집: 기존 사진(URL→key 역추출) + 새 업로드를 통합 관리. index 0 = 대표사진.
   const [photos, setPhotos] = useState<EditPhoto[]>(() => {
@@ -1770,25 +1876,65 @@ function DesignEditForm({ design: d, onClose }: { design: Design; onClose: () =>
   };
 
   const save = useMutation({
-    mutationFn: () => {
+    mutationFn: async () => {
       const designerIds = Object.keys(picked);
-      // 기본값과 다른 디자이너만 오버라이드로 전송(나머지는 기본 소요시간 사용) — 등록 폼과 동일한 규칙.
+      const basePriceNum = Number(price) || 0;
+      // 기본값과 다른 디자이너만 오버라이드로 전송(나머지는 기본값 사용) — 등록 폼과 동일한 규칙.
       const designerDurations = designerIds
         .filter((id) => picked[id] !== duration)
         .map((id) => ({ designer_id: id, duration_minutes: picked[id] }));
+      const designerPrices = designerIds
+        .filter((id) => (pickedPrice[id] ?? basePriceNum) !== basePriceNum)
+        .map((id) => ({ designer_id: id, base_price: pickedPrice[id] ?? basePriceNum }));
 
-      return designsApi.updateDesign(d.id, {
+      await designsApi.updateDesign(d.id, {
         title: title.trim(),
         description: description.trim() || null,
-        base_price: Number(price) || 0,
+        base_price: basePriceNum,
         duration_minutes: clampDuration(duration),
         owner_tags: tags,
         // 사진을 바꿨을 때만 전체 세트를 전송(백엔드는 image_upload_keys를 통째로 교체).
         ...(photosDirty
           ? { image_upload_keys: photos.filter((p) => p.status === 'done').map((p) => p.key) }
           : {}),
-        ...(multiDesigner ? { designer_ids: designerIds, designer_durations: designerDurations } : {}),
+        ...(multiDesigner
+          ? { designer_ids: designerIds, designer_durations: designerDurations, designer_prices: designerPrices }
+          : {}),
       });
+
+      // 추가옵션 동기화: 삭제된 것 제거 → 이름 있는 줄은 추가/변경.
+      const orig = originalOptionsRef.current;
+      const keptIds = new Set(options.filter((o) => o.id).map((o) => o.id));
+      for (const o of orig) {
+        if (o.id && !keptIds.has(o.id)) await designsApi.deleteOption(d.id, o.id);
+      }
+      for (let i = 0; i < options.length; i += 1) {
+        const r = options[i];
+        const body = {
+          kind: r.kind,
+          name: r.name.trim(),
+          price_delta: Math.max(0, Math.round(r.priceDelta) || 0),
+          sort_order: i,
+        };
+        if (r.id) {
+          if (!r.name.trim()) {
+            await designsApi.deleteOption(d.id, r.id); // 이름을 비우면 삭제
+            continue;
+          }
+          const before = orig.find((o) => o.id === r.id);
+          if (
+            !before ||
+            before.kind !== body.kind ||
+            before.name !== body.name ||
+            before.price_delta !== body.price_delta ||
+            before.sort_order !== i
+          ) {
+            await designsApi.updateOption(d.id, r.id, body);
+          }
+        } else if (r.name.trim()) {
+          await designsApi.createOption(d.id, body);
+        }
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['design', d.id] });
@@ -1892,13 +2038,15 @@ function DesignEditForm({ design: d, onClose }: { design: Design; onClose: () =>
       {/* 가격·디자이너·소요시간·설명·태그 (등록/일괄과 동일한 필드) */}
       <DesignSettingsFields
         designers={designers}
-        value={{ price, duration, description, tags, picked }}
+        value={{ price, duration, description, tags, picked, pickedPrice, options }}
         onChange={(p) => {
           if (p.price !== undefined) setPrice(p.price);
           if (p.duration !== undefined) setDuration(p.duration);
           if (p.description !== undefined) setDescription(p.description);
           if (p.tags !== undefined) setTags(p.tags);
           if (p.picked !== undefined) setPicked(p.picked);
+          if (p.pickedPrice !== undefined) setPickedPrice(p.pickedPrice);
+          if (p.options !== undefined) setOptions(p.options);
         }}
       />
 
