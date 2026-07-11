@@ -1061,7 +1061,8 @@ function DesignCard({ design }: { design: Design }) {
     onError: (e) => setMoveErr(toUserMessage(e)),
   });
 
-  // 디자인별 공개/비공개 전환. 공개 조건(백엔드 검증): AI 분석 done + 샵 공개 + 오너 승인.
+  // 디자인별 공개/비공개 전환. 공개 조건(백엔드 검증): 샵 공개 + 오너 승인 (AI 분석과 무관).
+  // AI는 백그라운드로 계속 돌며 완료 시 검색 랭킹만 보강 — 공개(노출)를 막지 않는다.
   const publish = useMutation({
     mutationFn: (visibility: 'active' | 'hidden') => designsApi.changeVisibility(d.id, { visibility }),
     onSuccess: () => {
@@ -1181,7 +1182,9 @@ function DesignCard({ design }: { design: Design }) {
         </div>
       )}
 
-      {/* 앱 노출(디자인별 공개) — 샵 공개와 별개로 디자인마다 공개해야 앱 피드에 노출된다. */}
+      {/* 앱 노출(디자인별 공개) — 샵 공개와 별개로 디자인마다 공개해야 앱 피드에 노출된다.
+          공개는 AI 분석과 무관(백엔드가 노출을 AI에서 분리). AI가 아직/실패여도 바로 공개할 수 있고,
+          AI는 백그라운드로 돌며 완료 시 검색 랭킹만 보강한다. */}
       {!editing && (
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <span className="text-caption text-primary-50">👁 앱 노출</span>
@@ -1194,29 +1197,28 @@ function DesignCard({ design }: { design: Design }) {
               비공개
             </span>
           )}
-          {d.ai_analysis_status === 'done' ? (
-            d.visibility === 'active' ? (
-              <button
-                onClick={() => publish.mutate('hidden')}
-                disabled={publish.isPending}
-                className="rounded-md border border-neutral-300 px-3 py-1.5 text-caption font-semibold text-primary-50 hover:bg-neutral-50 disabled:opacity-50"
-              >
-                {publish.isPending ? '처리 중…' : '비공개로 전환'}
-              </button>
-            ) : (
-              <button
-                onClick={() => publish.mutate('active')}
-                disabled={publish.isPending}
-                className="rounded-md bg-secondary px-3 py-1.5 text-caption font-semibold text-white disabled:opacity-50"
-              >
-                {publish.isPending ? '처리 중…' : '앱에 공개'}
-              </button>
-            )
+          {d.visibility === 'active' ? (
+            <button
+              onClick={() => publish.mutate('hidden')}
+              disabled={publish.isPending}
+              className="rounded-md border border-neutral-300 px-3 py-1.5 text-caption font-semibold text-primary-50 hover:bg-neutral-50 disabled:opacity-50"
+            >
+              {publish.isPending ? '처리 중…' : '비공개로 전환'}
+            </button>
           ) : (
-            <span className="text-caption text-primary-50">AI 분석 완료 후 공개할 수 있어요</span>
+            <button
+              onClick={() => publish.mutate('active')}
+              disabled={publish.isPending}
+              className="rounded-md bg-secondary px-3 py-1.5 text-caption font-semibold text-white disabled:opacity-50"
+            >
+              {publish.isPending ? '처리 중…' : '앱에 공개'}
+            </button>
           )}
-          {d.visibility !== 'active' && d.ai_analysis_status === 'done' && (
+          {d.visibility !== 'active' && (
             <span className="text-caption text-primary-50">· 샵도 공개 상태여야 앱에 노출돼요</span>
+          )}
+          {(d.ai_analysis_status === 'pending' || d.ai_analysis_status === 'in_progress') && (
+            <span className="text-caption text-primary-50">· AI 분석 중(공개엔 영향 없어요)</span>
           )}
         </div>
       )}

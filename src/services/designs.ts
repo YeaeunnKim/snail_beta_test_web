@@ -56,8 +56,9 @@ export async function reanalyze(designId: string) {
 
 /**
  * 디자인 공개 상태 변경.
- * 공개 조건: owner.verification_status=approved, shop.visibility=active,
- *            design.visibility=active, design.ai_analysis_status=done
+ * 앱 노출(피드) 조건: owner.verification_status=approved, shop.visibility=active,
+ *   design.visibility=active. (ai_analysis_status와 무관 — 백엔드가 노출을 AI에서 분리했다.
+ *   AI는 백그라운드로 돌며 완료 시 검색 랭킹만 보강.)
  */
 export async function changeVisibility(designId: string, body: DesignVisibilityUpdate) {
   return apiClient.post('/api/v1/shops/me/designs/{design_id}/visibility', {
