@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * 베타 모바일 셸 — 하단 탭 2개(디자인 등록 / 일정 관리) + 진입 가드.
+ * 베타 모바일 셸 — 하단 탭(디자인 / 일정 / 샵 / 문의 / 알림) + 진입 가드.
  *
  * 가드 순서:
  *  - 미인증          → /login
@@ -19,6 +19,7 @@ const TABS = [
   { href: '/dashboard/designs', label: '디자인', icon: '🎨' },
   { href: '/dashboard/schedule', label: '일정', icon: '🗓️' },
   { href: '/dashboard/shop', label: '샵', icon: '🏠' },
+  { href: '/dashboard/inquiries', label: '문의', icon: '💬' },
   { href: '/dashboard/notifications', label: '알림', icon: '🔔' },
 ];
 
