@@ -418,16 +418,27 @@ function FolderDesigns({ view, onBack }: { view: FolderView; onBack: () => void 
   // 이 폴더의 백그라운드 정렬 작업 진행상황 — stores/sort-jobs (탭 이동해도 유지됨).
   const job = useSortJobs((s) => (view.folderId ? s.jobs[view.folderId] : undefined));
   const clearJob = useSortJobs((s) => s.clearJob);
+  const markDone = useSortJobs((s) => s.markDone);
+  const jobActive = job?.status === 'uploading' || job?.status === 'processing';
   const q = useQuery({
     queryKey: ['designs', view.unfiled ? 'unfiled' : 'folder', view.folderId ?? 'none'],
     queryFn: () =>
       collectAll<Design>((cursor) =>
         designsApi.listDesigns({ folder_id: view.folderId, unfiled: view.unfiled, limit: 50, cursor }),
       ),
-    // 정렬 처리 중이면 새로 생성되는 디자인이 실시간으로 보이도록 주기적으로 갱신.
-    refetchInterval: job?.status === 'processing' ? 2000 : false,
+    // 업로드/정렬 처리 중이면 새로 생성되는 디자인이 실시간으로 보이도록 주기적으로 갱신.
+    refetchInterval: jobActive ? 2000 : false,
   });
   const designs = q.data ?? [];
+
+  // 정렬 진행률: 폴더에 늘어난 디자인 수로 계산(백엔드가 백그라운드로 생성).
+  const sortProduced = job ? Math.max(0, designs.length - job.baseCount) : 0;
+  const sortDone = job ? Math.min(job.total, sortProduced) : 0;
+  useEffect(() => {
+    if (job?.status === 'processing' && job.total > 0 && sortDone >= job.total && view.folderId) {
+      markDone(view.folderId);
+    }
+  }, [job?.status, job?.total, sortDone, view.folderId, markDone]);
 
   const designersQuery = useQuery({ queryKey: ['designers'], queryFn: () => designersApi.listDesigners() });
   const [bulkFiles, setBulkFiles] = useState<File[] | null>(null); // 비어있지 않으면 일괄 모달 오픈
@@ -453,14 +464,18 @@ function FolderDesigns({ view, onBack }: { view: FolderView; onBack: () => void 
         <span className="text-body-sm text-primary-50">{designs.length}개</span>
       </div>
 
-      {/* 디자인 정렬 진행상황 배너 (백그라운드 처리 중이거나 방금 끝났을 때) */}
+      {/* 디자인 정렬 진행상황 배너 */}
       {job && (
         <div
           className={`flex items-center gap-3 rounded-lg border p-4 ${
-            job.status === 'processing' ? 'border-secondary/40 bg-secondary/5' : 'border-neutral-200 bg-white'
+            job.status === 'error'
+              ? 'border-danger/40 bg-danger-bg'
+              : jobActive
+                ? 'border-secondary/40 bg-secondary/5'
+                : 'border-neutral-200 bg-white'
           }`}
         >
-          {job.status === 'processing' ? (
+          {jobActive ? (
             // TODO: 사장님이 제공할 로딩 PNG로 교체하세요.
             //   예: <img src="/loading-snail.png" alt="정렬 처리 중" className="h-9 w-9 shrink-0 animate-spin" />
             //   지금은 자리표시용 원형 스피너입니다(회전 애니메이션 동일).
@@ -469,24 +484,32 @@ function FolderDesigns({ view, onBack }: { view: FolderView; onBack: () => void 
               role="status"
               aria-label="정렬 처리 중"
             />
+          ) : job.status === 'error' ? (
+            <span className="text-2xl">⚠️</span>
           ) : (
             <span className="text-2xl">✅</span>
           )}
           <div className="min-w-0 flex-1">
             <p className="text-body-sm font-semibold text-primary">
-              {job.status === 'processing'
-                ? `정렬 처리 중… ${job.done}/${job.total}`
-                : `정렬 완료 · ${job.done - job.failures.length}/${job.total} 등록`}
+              {job.status === 'uploading'
+                ? `사진 올리는 중… ${job.uploaded}/${job.total}`
+                : job.status === 'processing'
+                  ? `정렬 처리 중… ${sortDone}/${job.total}`
+                  : job.status === 'error'
+                    ? '정렬을 시작하지 못했어요'
+                    : `정렬 완료 · ${sortDone}/${job.total}`}
             </p>
             <p className="text-caption text-primary-50">
-              {job.status === 'processing'
-                ? '사진 한 장당 약 1분 걸릴 수 있어요. 이 화면을 떠나도 계속 처리돼요.'
-                : job.failures.length > 0
-                  ? `${job.failures.length}개는 실패했어요.`
-                  : '모두 폴더에 등록됐어요.'}
+              {job.status === 'uploading'
+                ? '원본 사진을 올리고 있어요.'
+                : job.status === 'processing'
+                  ? '사진 한 장당 약 1분 걸릴 수 있어요. 이 화면을 떠나도 계속 처리돼요. 완료되면 여기에 나타나요.'
+                  : job.status === 'error'
+                    ? (job.error ?? '잠시 후 다시 시도해 주세요.')
+                    : '정렬된 디자인이 폴더에 등록됐어요.'}
             </p>
           </div>
-          {job.status !== 'processing' && (
+          {(job.status === 'done' || job.status === 'error') && (
             <button
               type="button"
               onClick={() => view.folderId && clearJob(view.folderId)}
