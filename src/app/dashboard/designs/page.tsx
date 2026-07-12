@@ -12,7 +12,7 @@
  *
  * 목록: 카드별 AI 분석 상태 배지(pending/in_progress면 폴링), failed 시 재분석.
  */
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { designersApi, designsApi, uploadsApi } from '@/services';
@@ -20,6 +20,20 @@ import type { Design, Designer, DesignFolder } from '@/services';
 import { collectAll } from '@/lib/api-client';
 import { toUserMessage } from '@/lib/error-messages';
 import { useMyShop } from '@/hooks/use-my-shop';
+// 설정 입력 관련 상수·타입·헬퍼·컴포넌트는 ./design-settings 로 추출해
+// 새 디자인/대량 등록/수정/정렬 화면이 ★완전히 동일하게★ 재사용한다.
+import {
+  OPTION_KINDS,
+  clampDuration,
+  createOptionsFor,
+  defaultBulkSettings,
+  loadBulkSettings,
+  saveBulkSettings,
+  nextDesignNumber,
+  DesignSettingsFields,
+} from './design-settings';
+import type { OptionRow, OptionKind, DesignSettings } from './design-settings';
+import { useSortJobs } from '@/stores/sort-jobs';
 
 interface PhotoItem {
   id: string;
@@ -44,57 +58,6 @@ const DEFAULT_FOLDERS = ['7월의 아트', '8월의 아트'];
 
 const MAX_DETAIL_PHOTOS = 5;
 const MAX_EDIT_PHOTOS = 6; // 수정 시 대표 1 + 상세 5
-const MAX_OWNER_TAGS = 10;
-const TAG_MAXLEN = 40;
-const DURATION_MIN = 30;
-const DURATION_MAX = 600;
-const DURATION_STEP = 10;
-const PRICE_STEP = 5000; // 디자이너별 가격 · 추가옵션 가격 +/- 단위(원)
-const OPTION_PRICE_DEFAULT = 50000; // 추가옵션 기본 추가금액(원)
-
-/** 추가옵션 종류. 백엔드 DesignOptionKind(extend/removal/care)와 1:1. */
-const OPTION_KINDS = [
-  { value: 'extend', label: '연장' },
-  { value: 'removal', label: '제거' },
-  { value: 'care', label: '케어' },
-] as const;
-type OptionKind = (typeof OPTION_KINDS)[number]['value'];
-
-/** 폼에서 편집하는 추가옵션 한 줄. id가 있으면 기존(수정 대상) 옵션. */
-interface OptionRow {
-  uid: string;
-  id?: string;
-  kind: OptionKind;
-  name: string;
-  priceDelta: number;
-}
-
-/** 새 디자인/폴더 첫 등록 시 기본으로 깔아두는 3줄(연장·제거·케어, 각 5만원). */
-function defaultOptionRows(): OptionRow[] {
-  return OPTION_KINDS.map((k) => ({
-    uid: crypto.randomUUID(),
-    kind: k.value,
-    name: k.label,
-    priceDelta: OPTION_PRICE_DEFAULT,
-  }));
-}
-
-/** 디자인에 추가옵션들을 순서대로 생성한다(이름 빈 줄은 건너뜀). */
-async function createOptionsFor(designId: string, rows: OptionRow[]) {
-  for (let i = 0; i < rows.length; i += 1) {
-    const r = rows[i];
-    if (!r.name.trim()) continue;
-    await designsApi.createOption(designId, {
-      kind: r.kind,
-      name: r.name.trim(),
-      price_delta: Math.max(0, Math.round(r.priceDelta) || 0),
-      sort_order: i,
-    });
-  }
-}
-
-const clampDuration = (n: number) => Math.max(DURATION_MIN, Math.min(DURATION_MAX, n));
-const clampPrice = (n: number) => Math.max(0, Math.round(n));
 const formatWon = (n: number) => `${n.toLocaleString('ko-KR')}원`;
 
 type FolderView = { label: string; folderId?: string; unfiled?: boolean };
@@ -115,8 +78,22 @@ export default function DesignsPage() {
       collectAll<Design>((cursor) => designsApi.listDesigns({ unfiled: true, limit: 50, cursor })),
   });
 
-  const folders = foldersQuery.data ?? [];
+  const folders = useMemo(() => foldersQuery.data ?? [], [foldersQuery.data]);
   const unfiledCount = unfiledQuery.data?.length ?? 0;
+
+  // "디자인 정렬"에서 /dashboard/designs?folder=<id> 로 넘어오면 그 폴더를 자동으로 연다.
+  const [pendingFolder, setPendingFolder] = useState<string | null>(null);
+  useEffect(() => {
+    setPendingFolder(new URLSearchParams(window.location.search).get('folder'));
+  }, []);
+  useEffect(() => {
+    if (!pendingFolder) return;
+    const f = folders.find((x) => x.id === pendingFolder);
+    if (!f) return; // 폴더 목록이 아직 안 왔으면 다음 렌더에서 다시 시도
+    setOpen({ label: f.name, folderId: f.id });
+    setPendingFolder(null);
+    window.history.replaceState(null, '', '/dashboard/designs'); // URL 정리(뒤로가기 정상화)
+  }, [pendingFolder, folders]);
 
   // 기본 폴더(7월의 아트·8월의 아트)가 없으면 자동 생성 (샵마다 1회)
   const { data: shop } = useMyShop();
@@ -155,17 +132,25 @@ export default function DesignsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-start justify-between">
         <div>
           <h1 className="text-heading-lg font-bold">디자인 관리</h1>
           <p className="mt-1 text-body-sm text-primary-50">폴더로 정리하고, 폴더를 열어 디자인을 관리합니다.</p>
         </div>
-        <button
-          onClick={() => setShowCreate((v) => !v)}
-          className="rounded-md bg-secondary px-4 py-2 text-body-sm font-semibold text-white"
-        >
-          {showCreate ? '닫기' : '+ 새 디자인'}
-        </button>
+        <div className="flex flex-col items-stretch gap-2">
+          <button
+            onClick={() => setShowCreate((v) => !v)}
+            className="rounded-md bg-secondary px-4 py-2 text-body-sm font-semibold text-white"
+          >
+            {showCreate ? '닫기' : '+ 새 디자인'}
+          </button>
+          <Link
+            href="/dashboard/designs/sort"
+            className="rounded-md border border-secondary px-4 py-2 text-center text-body-sm font-semibold text-secondary hover:bg-secondary/5"
+          >
+            디자인 정렬
+          </Link>
+        </div>
       </div>
 
       {showCreate && (
@@ -267,6 +252,22 @@ function EditableFolderCard({ folder, onOpen }: { folder: DesignFolder; onOpen: 
     onError: (e) => setError(toUserMessage(e)),
   });
 
+  const del = useMutation({
+    mutationFn: () => designsApi.deleteFolder(folder.id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['design-folders'] });
+      qc.invalidateQueries({ queryKey: ['designs'] });
+    },
+    onError: (e) => setError(toUserMessage(e)),
+  });
+  const onDelete = () => {
+    const msg =
+      folder.design_count > 0
+        ? `「${folder.name}」 폴더를 삭제할까요? 폴더 안에 디자인 ${folder.design_count}개가 있어요.`
+        : `「${folder.name}」 폴더를 삭제할까요?`;
+    if (window.confirm(msg)) del.mutate();
+  };
+
   return (
     <div className="flex flex-col rounded-xl border border-neutral-200 bg-white p-4 transition hover:border-secondary hover:shadow-sm">
       <button onClick={onOpen} className="flex flex-col text-left">
@@ -309,13 +310,23 @@ function EditableFolderCard({ folder, onOpen }: { folder: DesignFolder; onOpen: 
           {error && <p className="text-caption text-danger">{error}</p>}
         </div>
       ) : (
-        <button
-          onClick={() => setEditing(true)}
-          className="mt-1 text-left text-caption text-primary-50 underline hover:text-secondary"
-        >
-          {folder.featured_month ? '진행월 변경' : '이달의 아트 지정'}
-        </button>
+        <div className="mt-1 flex items-center justify-between gap-2">
+          <button
+            onClick={() => setEditing(true)}
+            className="text-left text-caption text-primary-50 underline hover:text-secondary"
+          >
+            {folder.featured_month ? '진행월 변경' : '이달의 아트 지정'}
+          </button>
+          <button
+            onClick={onDelete}
+            disabled={del.isPending}
+            className="text-caption text-danger/80 hover:text-danger disabled:opacity-50"
+          >
+            {del.isPending ? '삭제 중…' : '삭제'}
+          </button>
+        </div>
       )}
+      {error && !editing && <p className="mt-1 text-caption text-danger">{error}</p>}
     </div>
   );
 }
@@ -404,12 +415,17 @@ function NewFolderCard() {
 
 function FolderDesigns({ view, onBack }: { view: FolderView; onBack: () => void }) {
   const qc = useQueryClient();
+  // 이 폴더의 백그라운드 정렬 작업 진행상황 — stores/sort-jobs (탭 이동해도 유지됨).
+  const job = useSortJobs((s) => (view.folderId ? s.jobs[view.folderId] : undefined));
+  const clearJob = useSortJobs((s) => s.clearJob);
   const q = useQuery({
     queryKey: ['designs', view.unfiled ? 'unfiled' : 'folder', view.folderId ?? 'none'],
     queryFn: () =>
       collectAll<Design>((cursor) =>
         designsApi.listDesigns({ folder_id: view.folderId, unfiled: view.unfiled, limit: 50, cursor }),
       ),
+    // 정렬 처리 중이면 새로 생성되는 디자인이 실시간으로 보이도록 주기적으로 갱신.
+    refetchInterval: job?.status === 'processing' ? 2000 : false,
   });
   const designs = q.data ?? [];
 
@@ -436,6 +452,51 @@ function FolderDesigns({ view, onBack }: { view: FolderView; onBack: () => void 
         <h2 className="text-heading-md font-bold">{view.label}</h2>
         <span className="text-body-sm text-primary-50">{designs.length}개</span>
       </div>
+
+      {/* 디자인 정렬 진행상황 배너 (백그라운드 처리 중이거나 방금 끝났을 때) */}
+      {job && (
+        <div
+          className={`flex items-center gap-3 rounded-lg border p-4 ${
+            job.status === 'processing' ? 'border-secondary/40 bg-secondary/5' : 'border-neutral-200 bg-white'
+          }`}
+        >
+          {job.status === 'processing' ? (
+            // TODO: 사장님이 제공할 로딩 PNG로 교체하세요.
+            //   예: <img src="/loading-snail.png" alt="정렬 처리 중" className="h-9 w-9 shrink-0 animate-spin" />
+            //   지금은 자리표시용 원형 스피너입니다(회전 애니메이션 동일).
+            <div
+              className="h-9 w-9 shrink-0 animate-spin rounded-full border-4 border-secondary/20 border-t-secondary"
+              role="status"
+              aria-label="정렬 처리 중"
+            />
+          ) : (
+            <span className="text-2xl">✅</span>
+          )}
+          <div className="min-w-0 flex-1">
+            <p className="text-body-sm font-semibold text-primary">
+              {job.status === 'processing'
+                ? `정렬 처리 중… ${job.done}/${job.total}`
+                : `정렬 완료 · ${job.done - job.failures.length}/${job.total} 등록`}
+            </p>
+            <p className="text-caption text-primary-50">
+              {job.status === 'processing'
+                ? '사진 한 장당 약 1분 걸릴 수 있어요. 이 화면을 떠나도 계속 처리돼요.'
+                : job.failures.length > 0
+                  ? `${job.failures.length}개는 실패했어요.`
+                  : '모두 폴더에 등록됐어요.'}
+            </p>
+          </div>
+          {job.status !== 'processing' && (
+            <button
+              type="button"
+              onClick={() => view.folderId && clearJob(view.folderId)}
+              className="shrink-0 text-caption font-semibold text-primary-50 hover:text-primary"
+            >
+              닫기
+            </button>
+          )}
+        </div>
+      )}
 
       {canBulk && (
         <>
@@ -830,134 +891,6 @@ function FolderField({ value, onChange }: { value: string; onChange: (v: string)
   );
 }
 
-/* ───────────── 태그 입력(칩) ───────────── */
-
-function TagInput({ tags, onChange }: { tags: string[]; onChange: (next: string[]) => void }) {
-  const [draft, setDraft] = useState('');
-
-  const add = () => {
-    const v = draft.trim().replace(/^#/, '').slice(0, TAG_MAXLEN);
-    if (!v) return;
-    if (tags.includes(v)) {
-      setDraft('');
-      return;
-    }
-    if (tags.length >= MAX_OWNER_TAGS) return;
-    onChange([...tags, v]);
-    setDraft('');
-  };
-  const remove = (t: string) => onChange(tags.filter((x) => x !== t));
-
-  return (
-    <div className="rounded-md border border-neutral-300 p-2 focus-within:border-secondary">
-      <div className="flex flex-wrap items-center gap-1.5">
-        {tags.map((t) => (
-          <span
-            key={t}
-            className="inline-flex items-center gap-1 rounded-full bg-secondary/10 py-1 pl-2.5 pr-1 text-caption text-secondary"
-          >
-            #{t}
-            <button
-              type="button"
-              onClick={() => remove(t)}
-              aria-label={`${t} 삭제`}
-              className="grid h-4 w-4 place-items-center rounded-full text-secondary/70 hover:bg-secondary/20"
-            >
-              ×
-            </button>
-          </span>
-        ))}
-        {tags.length < MAX_OWNER_TAGS && (
-          <input
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ',') {
-                e.preventDefault();
-                add();
-              } else if (e.key === 'Backspace' && !draft && tags.length > 0) {
-                remove(tags[tags.length - 1]);
-              }
-            }}
-            onBlur={add}
-            placeholder={tags.length === 0 ? '단어 입력 후 Enter (예: 심플)' : ''}
-            maxLength={TAG_MAXLEN}
-            className="min-w-[8rem] flex-1 bg-transparent px-1 py-1 text-body-sm outline-none"
-          />
-        )}
-      </div>
-      <p className="mt-1 px-1 text-caption text-primary-50">
-        {tags.length}/{MAX_OWNER_TAGS} · Enter로 등록, X로 삭제
-      </p>
-    </div>
-  );
-}
-
-/* ───────────── +/- 스텝퍼 ───────────── */
-
-function Stepper({
-  value,
-  onChange,
-  suffix,
-  step = DURATION_STEP,
-  ariaLabel = '직접 입력',
-}: {
-  value: number;
-  onChange: (v: number) => void;
-  suffix?: string;
-  step?: number;
-  ariaLabel?: string;
-}) {
-  // 직접 입력용 로컬 문자열 상태. +/- 또는 외부 값 변경 시 동기화하고, 입력은 blur/Enter에 확정한다.
-  const [text, setText] = useState(String(value));
-  useEffect(() => setText(String(value)), [value]);
-
-  const commit = () => {
-    const n = parseInt(text, 10);
-    if (Number.isFinite(n)) onChange(n);
-    else setText(String(value));
-  };
-
-  return (
-    <div className="flex items-center rounded-md border border-neutral-300">
-      <button
-        type="button"
-        onClick={() => onChange(value - step)}
-        className="grid h-8 w-8 place-items-center text-primary-50 hover:bg-neutral-100"
-        aria-label="감소"
-      >
-        −
-      </button>
-      <div className="flex items-center">
-        <input
-          type="text"
-          inputMode="numeric"
-          value={text}
-          onChange={(e) => setText(e.target.value.replace(/[^0-9]/g, ''))}
-          onBlur={commit}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              commit();
-              (e.target as HTMLInputElement).blur();
-            }
-          }}
-          className="w-16 bg-transparent text-center text-body-sm tabular-nums outline-none"
-          aria-label={ariaLabel}
-        />
-        {suffix && <span className="pr-1.5 text-body-sm text-primary-50">{suffix}</span>}
-      </div>
-      <button
-        type="button"
-        onClick={() => onChange(value + step)}
-        className="grid h-8 w-8 place-items-center text-primary-50 hover:bg-neutral-100"
-        aria-label="증가"
-      >
-        +
-      </button>
-    </div>
-  );
-}
 
 /* ───────────── 사진 타일 ───────────── */
 
@@ -1364,32 +1297,6 @@ function DesignCard({ design }: { design: Design }) {
   );
 }
 
-/* ───────────── 공통: 설정 필드(수정폼·일괄등록이 함께 사용) ───────────── */
-
-/** 디자인의 공통 설정값(제목·사진 제외). 수정폼과 일괄등록 모달이 동일하게 사용한다. */
-interface DesignSettings {
-  price: string;
-  introPrice: string;
-  duration: number;
-  description: string;
-  tags: string[];
-  picked: Record<string, number>; // designerId → 소요시간(분). 다인샵에서 선택된 디자이너.
-  pickedPrice: Record<string, number>; // designerId → 가격(원). picked와 같은 키를 유지.
-  options: OptionRow[]; // 추가옵션(연장/제거/케어 등)
-}
-
-function defaultBulkSettings(): DesignSettings {
-  return {
-    price: '',
-    introPrice: '',
-    duration: 120,
-    description: '',
-    tags: [],
-    picked: {},
-    pickedPrice: {},
-    options: defaultOptionRows(),
-  };
-}
 
 /** 이미지 URL에서 업로드 object_key를 역추출(버킷명 무관). 기존 사진 보존용. */
 function urlToObjectKey(url: string): string {
@@ -1400,275 +1307,6 @@ function urlToObjectKey(url: string): string {
   }
 }
 
-function loadBulkSettings(key: string, designers: Designer[]): DesignSettings | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    const raw = window.localStorage.getItem(key);
-    if (!raw) return null;
-    const s = JSON.parse(raw) as DesignSettings;
-    const ids = new Set(designers.map((d) => d.id));
-    const picked: Record<string, number> = {};
-    for (const [k, v] of Object.entries(s.picked ?? {})) if (ids.has(k)) picked[k] = v;
-    const pickedPrice: Record<string, number> = {};
-    for (const [k, v] of Object.entries(s.pickedPrice ?? {})) if (ids.has(k)) pickedPrice[k] = v;
-    const options: OptionRow[] = Array.isArray(s.options)
-      ? s.options.map((o) => ({
-          uid: crypto.randomUUID(),
-          kind: (OPTION_KINDS.some((k) => k.value === o.kind) ? o.kind : 'extend') as OptionKind,
-          name: o.name ?? '',
-          priceDelta: Math.max(0, Math.round(o.priceDelta) || 0),
-        }))
-      : defaultOptionRows();
-    return {
-      price: s.price ?? '',
-      introPrice: s.introPrice ?? '',
-      duration: s.duration ?? 120,
-      description: s.description ?? '',
-      tags: s.tags ?? [],
-      picked,
-      pickedPrice,
-      options,
-    };
-  } catch {
-    return null;
-  }
-}
-
-function saveBulkSettings(key: string, s: DesignSettings) {
-  if (typeof window === 'undefined') return;
-  try {
-    window.localStorage.setItem(key, JSON.stringify(s));
-  } catch {
-    /* 무시 */
-  }
-}
-
-/** 폴더 내 기존 디자인 제목(폴더명_NNN)에서 다음 번호를 구한다. */
-function nextDesignNumber(folderName: string, designs: Design[]): number {
-  const esc = folderName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const re = new RegExp(`^${esc}_(\\d+)$`);
-  let max = 0;
-  for (const d of designs) {
-    const m = d.title?.match(re);
-    if (m) max = Math.max(max, parseInt(m[1], 10));
-  }
-  return max + 1;
-}
-
-/** 가격·디자이너/소요시간·설명·태그 필드. 제목/사진은 포함하지 않는다. */
-function DesignSettingsFields({
-  designers,
-  value,
-  onChange,
-}: {
-  designers: Designer[];
-  value: DesignSettings;
-  onChange: (patch: Partial<DesignSettings>) => void;
-}) {
-  const multiDesigner = designers.length >= 2;
-  const { price, introPrice, duration, description, tags, picked, pickedPrice, options } = value;
-  const basePrice = clampPrice(Number(price) || 0);
-  const introNum = Number(introPrice);
-  const introPct =
-    introPrice.trim() !== '' && basePrice > 0 && introNum > 0 && introNum < basePrice
-      ? Math.round((1 - introNum / basePrice) * 100)
-      : null;
-  const labelCls = 'mb-1 block text-caption font-semibold text-primary-50';
-  const fieldCls =
-    'w-full rounded-md border border-neutral-300 px-3 py-2 text-body-sm outline-none focus:border-secondary';
-
-  const toggleDesigner = (id: string) => {
-    const nextPicked = { ...picked };
-    const nextPrice = { ...pickedPrice };
-    if (id in nextPicked) {
-      delete nextPicked[id];
-      delete nextPrice[id];
-    } else {
-      nextPicked[id] = duration;
-      nextPrice[id] = basePrice;
-    }
-    onChange({ picked: nextPicked, pickedPrice: nextPrice });
-  };
-  const setDesignerDuration = (id: string, minutes: number) =>
-    onChange({ picked: { ...picked, [id]: clampDuration(minutes) } });
-  const setDesignerPrice = (id: string, won: number) =>
-    onChange({ pickedPrice: { ...pickedPrice, [id]: Math.max(0, won) } });
-
-  return (
-    <>
-      <div className={multiDesigner ? '' : 'flex flex-wrap gap-3'}>
-        <div className={multiDesigner ? '' : 'min-w-[8rem] flex-1'}>
-          <label className={labelCls}>정상가(원)</label>
-          <input
-            type="number"
-            value={price}
-            onChange={(e) => onChange({ price: e.target.value })}
-            className={fieldCls}
-          />
-        </div>
-        <div className={multiDesigner ? 'mt-3' : 'min-w-[8rem] flex-1'}>
-          <label className={labelCls}>이달의 아트 인트로가(원)</label>
-          <input
-            type="number"
-            min={0}
-            value={introPrice}
-            onChange={(e) => onChange({ introPrice: e.target.value })}
-            placeholder="비우면 정상가"
-            className={fieldCls}
-          />
-          {introPct !== null && (
-            <p className="mt-1 text-caption font-semibold text-secondary">정상가 대비 {introPct}% 할인</p>
-          )}
-        </div>
-        {!multiDesigner && (
-          <div>
-            <label className={labelCls}>기본 소요시간</label>
-            <Stepper value={duration} onChange={(v) => onChange({ duration: clampDuration(v) })} suffix="분" />
-          </div>
-        )}
-      </div>
-
-      {multiDesigner && (
-        <div>
-          <label className={labelCls}>디자이너별 소요시간 · 가격</label>
-          <p className="mb-2 text-caption text-primary-50">
-            체크한 디자이너만 이 디자인을 할 수 있어요. 소요시간·가격을 디자이너별로 다르게 조정할 수 있어요. 미조정 시
-            기본값(소요시간 {duration}분 · 가격 {basePrice.toLocaleString('ko-KR')}원).
-          </p>
-          <div className="space-y-2">
-            {designers.map((dz) => {
-              const checked = dz.id in picked;
-              return (
-                <div
-                  key={dz.id}
-                  className={`flex flex-wrap items-center gap-3 rounded-md border p-2 ${
-                    checked ? 'border-secondary/40 bg-secondary/5' : 'border-neutral-200'
-                  }`}
-                >
-                  <label className="flex items-center gap-2 text-caption font-semibold">
-                    <input type="checkbox" checked={checked} onChange={() => toggleDesigner(dz.id)} />
-                    {dz.name}
-                  </label>
-                  {checked && (
-                    <div className="ml-auto flex flex-wrap items-center justify-end gap-x-3 gap-y-2">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-caption text-primary-50">시간</span>
-                        <Stepper
-                          value={picked[dz.id]}
-                          onChange={(v) => setDesignerDuration(dz.id, v)}
-                          suffix="분"
-                          ariaLabel="소요시간 직접 입력"
-                        />
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-caption text-primary-50">가격</span>
-                        <Stepper
-                          value={pickedPrice[dz.id] ?? basePrice}
-                          onChange={(v) => setDesignerPrice(dz.id, v)}
-                          step={PRICE_STEP}
-                          suffix="원"
-                          ariaLabel="가격 직접 입력"
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      <div>
-        <label className={labelCls}>설명 (앱 미노출 · 메모용)</label>
-        <textarea
-          rows={2}
-          value={description}
-          onChange={(e) => onChange({ description: e.target.value })}
-          className={fieldCls}
-        />
-      </div>
-
-      <div>
-        <label className={labelCls}>사장님 태그</label>
-        <TagInput tags={tags} onChange={(t) => onChange({ tags: t })} />
-      </div>
-
-      <OptionsField options={options} onChange={(next) => onChange({ options: next })} />
-    </>
-  );
-}
-
-/** 추가옵션 편집기: 연장/제거/케어 + 이름 + 추가금액을 줄 단위로 관리. 앱에서 옵션 선택 시 가격에 반영된다. */
-function OptionsField({ options, onChange }: { options: OptionRow[]; onChange: (next: OptionRow[]) => void }) {
-  const labelCls = 'mb-1 block text-caption font-semibold text-primary-50';
-  const update = (uid: string, patch: Partial<OptionRow>) =>
-    onChange(options.map((o) => (o.uid === uid ? { ...o, ...patch } : o)));
-  const remove = (uid: string) => onChange(options.filter((o) => o.uid !== uid));
-  const add = () =>
-    onChange([
-      ...options,
-      { uid: crypto.randomUUID(), kind: 'extend', name: '', priceDelta: OPTION_PRICE_DEFAULT },
-    ]);
-
-  return (
-    <div>
-      <label className={labelCls}>추가옵션</label>
-      <p className="mb-2 text-caption text-primary-50">
-        연장·제거·케어 등 추가 시술과 추가금액이에요. 고객이 앱에서 옵션을 고르면 그만큼 가격이 올라갑니다.
-      </p>
-      <div className="space-y-2">
-        {options.map((o) => (
-          <div key={o.uid} className="flex flex-wrap items-center gap-2 rounded-md border border-neutral-200 p-2">
-            <select
-              value={o.kind}
-              onChange={(e) => update(o.uid, { kind: e.target.value as OptionKind })}
-              className="rounded-md border border-neutral-300 px-2 py-2 text-body-sm outline-none focus:border-secondary"
-              aria-label="옵션 종류"
-            >
-              {OPTION_KINDS.map((k) => (
-                <option key={k.value} value={k.value}>
-                  {k.label}
-                </option>
-              ))}
-            </select>
-            <input
-              value={o.name}
-              onChange={(e) => update(o.uid, { name: e.target.value })}
-              placeholder="옵션 이름 (예: 길이 연장)"
-              className="min-w-[7rem] flex-1 rounded-md border border-neutral-300 px-3 py-2 text-body-sm outline-none focus:border-secondary"
-            />
-            <div className="flex items-center gap-1.5">
-              <span className="text-caption text-primary-50">+</span>
-              <Stepper
-                value={o.priceDelta}
-                onChange={(v) => update(o.uid, { priceDelta: Math.max(0, v) })}
-                step={PRICE_STEP}
-                suffix="원"
-                ariaLabel="추가금액 직접 입력"
-              />
-            </div>
-            <button
-              type="button"
-              onClick={() => remove(o.uid)}
-              className="grid h-8 w-8 shrink-0 place-items-center rounded-md border border-neutral-300 text-primary-50 hover:bg-neutral-50"
-              aria-label="옵션 삭제"
-            >
-              ×
-            </button>
-          </div>
-        ))}
-      </div>
-      <button
-        type="button"
-        onClick={add}
-        className="mt-2 rounded-md border border-secondary px-3 py-1.5 text-caption font-semibold text-secondary"
-      >
-        + 옵션 추가
-      </button>
-    </div>
-  );
-}
 
 /* ───────────── 일괄 등록 (드롭존 + 공통설정 모달) ───────────── */
 
