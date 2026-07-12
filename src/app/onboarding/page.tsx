@@ -18,10 +18,8 @@ import { useAuth } from '@/hooks/use-auth';
 import { isApiError } from '@/lib/api-error';
 import { toUserMessage } from '@/lib/error-messages';
 import { resolveAuthedHome } from '@/lib/auth-routing';
-import { WEEKDAYS } from '@/lib/weekday';
-
-const DEFAULT_OPEN = '09:00';
-const DEFAULT_CLOSE = '22:00';
+import { BusinessHoursField } from '@/components/business-hours-field';
+import { defaultBusinessHours, toEntries, type BusinessHoursValue } from '@/lib/business-hours';
 
 const onboardingSchema = z
   .object({
@@ -63,6 +61,7 @@ export default function OnboardingPage() {
   const { status, owner, isApproved } = useAuth();
   const [gate, setGate] = useState<'checking' | 'ready'>('checking');
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [hours, setHours] = useState<BusinessHoursValue>(defaultBusinessHours());
   const progressRef = useRef({ shopId: null as string | null, hoursDone: false, designersDone: false, foldersDone: false });
 
   const form = useForm<OnboardingForm>({
@@ -147,9 +146,7 @@ export default function OnboardingPage() {
         progressRef.current.shopId = shop.id;
       }
       if (!progressRef.current.hoursDone) {
-        await shopApi.setBusinessHours({
-          entries: WEEKDAYS.map((w) => ({ weekday: w.value, is_closed: false, open_time: DEFAULT_OPEN, close_time: DEFAULT_CLOSE })),
-        });
+        await shopApi.setBusinessHours({ entries: toEntries(hours) });
         progressRef.current.hoursDone = true;
       }
       if (!progressRef.current.designersDone) {
@@ -246,6 +243,12 @@ export default function OnboardingPage() {
                 </p>
               )}
             </div>
+          </div>
+
+          {/* 영업시간 */}
+          <div>
+            <label className="mb-1 block text-body-sm font-medium">영업시간</label>
+            <BusinessHoursField value={hours} onChange={setHours} />
           </div>
 
           {/* 결제 방식 */}

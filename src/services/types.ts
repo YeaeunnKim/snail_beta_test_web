@@ -19,6 +19,7 @@ export type ShopCreate = Schemas['ShopCreate'];
 export type ShopUpdate = Schemas['ShopUpdate'];
 export type ShopVisibilityUpdate = Schemas['ShopVisibilityUpdate'];
 export type BusinessHoursSet = Schemas['BusinessHoursSet'];
+export type BusinessHourEntry = Schemas['BusinessHourEntry'];
 export type ShopImage = Schemas['ShopImagePublic'];
 export type ShopImageCreate = Schemas['ShopImageCreate'];
 
