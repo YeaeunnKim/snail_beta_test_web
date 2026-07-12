@@ -20,6 +20,7 @@ const TABS = [
   { href: '/dashboard/schedule', label: '일정', icon: '🗓️' },
   { href: '/dashboard/shop', label: '샵', icon: '🏠' },
   { href: '/dashboard/inquiries', label: '문의', icon: '💬' },
+  { href: '/dashboard/chat', label: '채팅', icon: '📨' },
   { href: '/dashboard/notifications', label: '알림', icon: '🔔' },
 ];
 
@@ -40,7 +41,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   // 가드 2: 승인됐지만 샵이 없으면 온보딩
   useEffect(() => {
-    if (status === 'authenticated' && isApproved && shopQuery.isSuccess && shopQuery.data === null) {
+    if (
+      status === 'authenticated' &&
+      isApproved &&
+      shopQuery.isSuccess &&
+      shopQuery.data === null
+    ) {
       router.replace('/onboarding');
     }
   }, [status, isApproved, shopQuery.isSuccess, shopQuery.data, router]);
@@ -50,7 +56,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   if (booting || waitingShop) {
     return (
-      <div className="flex min-h-screen items-center justify-center text-body-sm text-primary-50">
+      <div className="text-body-sm text-primary-50 flex min-h-screen items-center justify-center">
         불러오는 중…
       </div>
     );
@@ -63,7 +69,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-md flex-col bg-white">
       {/* 헤더 */}
-      <header className="sticky top-0 z-20 flex items-center justify-between border-b border-primary-10 bg-white/95 px-4 py-3 backdrop-blur">
+      <header className="border-primary-10 sticky top-0 z-20 flex items-center justify-between border-b bg-white/95 px-4 py-3 backdrop-blur">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/snail-logo.png" alt="스네일" className="h-6 w-auto" />
         <button
@@ -71,24 +77,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             logout();
             router.replace('/login');
           }}
-          className="shrink-0 text-caption font-semibold text-primary-50 underline"
+          className="text-caption text-primary-50 shrink-0 font-semibold underline"
         >
           로그아웃
         </button>
       </header>
 
       {/* 본문 */}
-      <main className="flex-1 px-4 pb-24 pt-4">{children}</main>
+      <main className="flex-1 px-4 pt-4 pb-24">{children}</main>
 
       {/* 하단 탭바 */}
-      <nav className="fixed inset-x-0 bottom-0 z-20 mx-auto flex w-full max-w-md border-t border-primary-10 bg-white">
+      <nav className="border-primary-10 fixed inset-x-0 bottom-0 z-20 mx-auto flex w-full max-w-md border-t bg-white">
         {TABS.map((tab) => {
           const active = pathname.startsWith(tab.href);
           return (
             <Link
               key={tab.href}
               href={tab.href}
-              className={`flex flex-1 flex-col items-center gap-0.5 py-2.5 text-caption font-semibold ${
+              className={`text-caption flex flex-1 flex-col items-center gap-0.5 py-2.5 font-semibold ${
                 active ? 'text-secondary' : 'text-primary-50'
               }`}
             >
