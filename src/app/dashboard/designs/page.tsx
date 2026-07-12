@@ -1162,8 +1162,7 @@ function DesignCard({ design }: { design: Design }) {
     refetchInterval: (q) => {
       const s = q.state.data?.ai_analysis_status;
       // 신규 이미지 처리 상태도 진행 중이면 폴링(공개와 무관, 결과 검수용).
-      // TODO(types): Seam C 후 image_processing_status 캐스트 제거
-      const ip = (q.state.data as { image_processing_status?: string } | undefined)?.image_processing_status;
+      const ip = q.state.data?.image_processing_status;
       const active =
         s === 'pending' || s === 'in_progress' || ip === 'pending' || ip === 'in_progress';
       return active ? 3000 : false;
@@ -1227,9 +1226,7 @@ function DesignCard({ design }: { design: Design }) {
     onError: (e) => setActionError(toUserMessage(e)),
   });
 
-  // 신규 백엔드 필드/결과 — Seam C(openapi 재생성) 전까지 좁은 캐스트로 접근.
-  // TODO(types): Seam C 후 image_processing_status/error 캐스트 제거
-  const imageStatus = (d as { image_processing_status?: string }).image_processing_status;
+  const imageStatus = d.image_processing_status;
   const processedUrls = (d.images ?? [])
     .filter((i) => i.processed_url)
     .map((i) => i.processed_url as string);
@@ -1426,9 +1423,7 @@ function DesignCard({ design }: { design: Design }) {
           </div>
           {imageStatus === 'failed' && (
             <p className="mt-2 rounded-md bg-danger-bg p-2 text-caption text-danger">
-              {/* TODO(types): Seam C 후 image_processing_error 캐스트 제거 */}
-              {(d as { image_processing_error?: string }).image_processing_error ??
-                '이미지 처리에 실패했습니다.'}
+              {d.image_processing_error ?? '이미지 처리에 실패했습니다.'}
             </p>
           )}
           {imageStatus === 'done' && processedUrls.length > 0 && (

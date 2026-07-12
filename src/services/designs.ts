@@ -91,10 +91,9 @@ async function parseBody(res: Response): Promise<unknown> {
 /**
  * 디자인 이미지 자동 처리(크롭 원본 → 배경 제거/보정 등) 트리거.
  *
- * `POST /shops/me/designs/{id}/process`는 아직 생성된 OpenAPI 타입(src/types/api.d.ts)에 없다
- * (Seam C에서 백엔드 계약 동기화 후 openapi 재생성 예정). 타입드 apiClient로 이 경로를 부르면
- * PathsWithMethod에 없어 컴파일이 실패하므로, uploads.ts 스타일의 직접 fetch로 우회한다.
- * // TODO(types): Seam C(openapi 재생성) 후 apiClient.post('/api/v1/shops/me/designs/{design_id}/process', ...)로 이관
+ * `POST /shops/me/designs/{id}/process` 트리거. 멱등키·에러 정규화를 수동 처리하는
+ * uploads.ts 스타일의 직접 fetch를 쓴다(응답 body 없음). 타입드 apiClient로 이관해도 되지만
+ * uploads 패턴과 일관되게 유지한다.
  */
 export async function processDesign(designId: string, signal?: AbortSignal): Promise<void> {
   const token = getAccessToken();

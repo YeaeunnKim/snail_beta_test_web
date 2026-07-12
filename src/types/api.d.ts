@@ -1037,6 +1037,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/shops/me/designs/{design_id}/process": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 디자인 이미지 자동 처리 요청 */
+        post: operations["designs_request_image_processing"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/shops/me/designs/{design_id}/visibility": {
         parameters: {
             query?: never;
@@ -3117,6 +3134,19 @@ export interface components {
             /** Featured Month */
             featured_month?: string | null;
         };
+        /** DesignImageProcessingQueued */
+        DesignImageProcessingQueued: {
+            /**
+             * Design Id
+             * Format: uuid
+             */
+            design_id: string;
+            /**
+             * Queued At
+             * Format: date-time
+             */
+            queued_at: string;
+        };
         /** DesignImagePublic */
         DesignImagePublic: {
             /**
@@ -3163,6 +3193,7 @@ export interface components {
             thumbnail_url?: string | null;
             visibility: components["schemas"]["Visibility"];
             ai_analysis_status: components["schemas"]["AiAnalysisStatus"];
+            image_processing_status: components["schemas"]["ImageProcessingStatus"];
             /** Owner Tags */
             owner_tags: string[];
             /** Ai Tags */
@@ -3179,6 +3210,8 @@ export interface components {
             ai_error_code?: string | null;
             /** Ai Error Message */
             ai_error_message?: string | null;
+            /** Image Processing Error */
+            image_processing_error?: string | null;
             /** Ai Model Version */
             ai_model_version?: string | null;
             /** Search Indexed At */
@@ -3530,6 +3563,11 @@ export interface components {
             /** Redis */
             redis: string;
         };
+        /**
+         * ImageProcessingStatus
+         * @enum {string}
+         */
+        ImageProcessingStatus: "idle" | "pending" | "in_progress" | "done" | "failed";
         /**
          * ImageViewMode
          * @enum {string}
@@ -10961,6 +10999,89 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DesignReanalyzeQueued"];
+                };
+            };
+            /** @description UNAUTHORIZED */
+            401: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description NOT_FOUND */
+            404: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description CONFLICT */
+            409: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description VALIDATION_ERROR */
+            422: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    designs_request_image_processing: {
+        parameters: {
+            query?: never;
+            header: {
+                authorization?: string | null;
+                /** @description Required for mutating requests. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                design_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DesignImageProcessingQueued"];
                 };
             };
             /** @description UNAUTHORIZED */
