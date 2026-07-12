@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.5.0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Type check
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      # 빌드 게이트: 프로덕션 빌드가 실제로 컴파일/프리렌더되는지 검증한다.
+      # NEXT_PUBLIC_* 는 미설정 시 코드 기본값으로 폴백되므로 CI에 별도 env 주입 불필요
+      # (실제 값 주입은 Vercel 빌드에서 수행). 배포 전 컴파일 회귀를 여기서 잡는다.
+      - name: Build
+        run: pnpm build

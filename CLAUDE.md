@@ -1,7 +1,6 @@
-# Snail Beta Test Web — Cursor Instructions
+# Snail Beta Test Web — Claude Instructions
 
 이 repo의 에이전트 가이드 SSOT는 `AGENTS.md`입니다.
 
 - 프로젝트 정체, 실행/검증, 백엔드 계약, 실제 라우트/구조는 `AGENTS.md`를 참조하세요.
 - 이 repo는 `snail_owner_web`의 베타 테스트용 fork입니다.
-- 존재하지 않는 라우트나 예정 구조를 추정하지 말고 `src/app/` 실제 구조와 `AGENTS.md`를 기준으로 작업하세요.

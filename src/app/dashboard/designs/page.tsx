@@ -94,6 +94,8 @@ async function createOptionsFor(designId: string, rows: OptionRow[]) {
 }
 
 const clampDuration = (n: number) => Math.max(DURATION_MIN, Math.min(DURATION_MAX, n));
+const clampPrice = (n: number) => Math.max(0, Math.round(n));
+const formatWon = (n: number) => `${n.toLocaleString('ko-KR')}원`;
 
 type FolderView = { label: string; folderId?: string; unfiled?: boolean };
 
@@ -211,11 +213,10 @@ function FolderGrid({
   return (
     <div className="grid grid-cols-2 gap-3">
       {folders.map((f) => (
-        <FolderCard
+        <EditableFolderCard
           key={f.id}
-          name={f.name}
-          count={f.design_count}
-          onClick={() => onOpen({ label: f.name, folderId: f.id })}
+          folder={f}
+          onOpen={() => onOpen({ label: f.name, folderId: f.id })}
         />
       ))}
       {unfiledCount > 0 && (
@@ -249,16 +250,89 @@ function FolderCard({
   );
 }
 
+function EditableFolderCard({ folder, onOpen }: { folder: DesignFolder; onOpen: () => void }) {
+  const qc = useQueryClient();
+  const [editing, setEditing] = useState(false);
+  const [month, setMonth] = useState(folder.featured_month ?? '');
+  const [error, setError] = useState<string | null>(null);
+
+  const update = useMutation({
+    mutationFn: (body: { featured_month: string | null }) =>
+      designsApi.updateFolder(folder.id, body),
+    onSuccess: () => {
+      setEditing(false);
+      setError(null);
+      qc.invalidateQueries({ queryKey: ['design-folders'] });
+    },
+    onError: (e) => setError(toUserMessage(e)),
+  });
+
+  return (
+    <div className="flex flex-col rounded-xl border border-neutral-200 bg-white p-4 transition hover:border-secondary hover:shadow-sm">
+      <button onClick={onOpen} className="flex flex-col text-left">
+        <span className="text-2xl">📁</span>
+        <span className="mt-2 line-clamp-2 w-full break-keep font-semibold">{folder.name}</span>
+        <span className="mt-0.5 text-caption text-primary-50">디자인 {folder.design_count}개</span>
+      </button>
+      {folder.featured_month && !editing && (
+        <span className="mt-1 text-caption font-semibold text-secondary">
+          🗓 이달의 아트 {folder.featured_month}
+        </span>
+      )}
+      {editing ? (
+        <div className="mt-2 flex flex-col gap-1.5">
+          <input
+            type="month"
+            value={month}
+            onChange={(e) => setMonth(e.target.value)}
+            className="rounded-md border border-neutral-300 px-2 py-1 text-caption outline-none focus:border-secondary"
+          />
+          <div className="flex gap-1.5">
+            <button
+              onClick={() => update.mutate({ featured_month: month || null })}
+              disabled={update.isPending}
+              className="flex-1 rounded-md bg-secondary py-1 text-caption font-semibold text-white disabled:opacity-50"
+            >
+              저장
+            </button>
+            <button
+              onClick={() => {
+                setEditing(false);
+                setMonth(folder.featured_month ?? '');
+                setError(null);
+              }}
+              className="rounded-md border border-neutral-300 px-2 py-1 text-caption text-primary-50"
+            >
+              취소
+            </button>
+          </div>
+          {error && <p className="text-caption text-danger">{error}</p>}
+        </div>
+      ) : (
+        <button
+          onClick={() => setEditing(true)}
+          className="mt-1 text-left text-caption text-primary-50 underline hover:text-secondary"
+        >
+          {folder.featured_month ? '진행월 변경' : '이달의 아트 지정'}
+        </button>
+      )}
+    </div>
+  );
+}
+
 function NewFolderCard() {
   const qc = useQueryClient();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState('');
+  const [featuredMonth, setFeaturedMonth] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   const create = useMutation({
-    mutationFn: (n: string) => designsApi.createFolder({ name: n }),
+    mutationFn: (body: { name: string; featured_month: string | null }) =>
+      designsApi.createFolder(body),
     onSuccess: () => {
       setName('');
+      setFeaturedMonth('');
       setEditing(false);
       setError(null);
       qc.invalidateQueries({ queryKey: ['design-folders'] });
@@ -284,16 +358,26 @@ function NewFolderCard() {
         value={name}
         onChange={(e) => setName(e.target.value)}
         onKeyDown={(e) => {
-          if (e.key === 'Enter' && name.trim()) create.mutate(name.trim());
+          if (e.key === 'Enter' && name.trim())
+            create.mutate({ name: name.trim(), featured_month: featuredMonth || null });
           if (e.key === 'Escape') setEditing(false);
         }}
         placeholder="폴더 이름"
         maxLength={60}
         className="w-full rounded-md border border-neutral-300 px-2.5 py-1.5 text-body-sm outline-none focus:border-secondary"
       />
+      <input
+        type="month"
+        value={featuredMonth}
+        onChange={(e) => setFeaturedMonth(e.target.value)}
+        title="이달의 아트 진행월 (비우면 일반 폴더)"
+        className="mt-1.5 w-full rounded-md border border-neutral-300 px-2 py-1 text-caption outline-none focus:border-secondary"
+      />
       <div className="mt-2 flex gap-1.5">
         <button
-          onClick={() => name.trim() && create.mutate(name.trim())}
+          onClick={() =>
+            name.trim() && create.mutate({ name: name.trim(), featured_month: featuredMonth || null })
+          }
           disabled={create.isPending || !name.trim()}
           className="flex-1 rounded-md bg-secondary py-1.5 text-caption font-semibold text-white disabled:opacity-50"
         >
@@ -303,6 +387,7 @@ function NewFolderCard() {
           onClick={() => {
             setEditing(false);
             setName('');
+            setFeaturedMonth('');
             setError(null);
           }}
           className="rounded-md border border-neutral-300 px-2 py-1.5 text-caption font-semibold text-primary-50"
@@ -511,6 +596,7 @@ function CreateForm({
         title: title.trim(),
         description: settings.description.trim() || null,
         base_price: price,
+        intro_price: settings.introPrice.trim() ? Number(settings.introPrice) : null,
         duration_minutes: clampDuration(settings.duration),
         designer_ids: designerIds,
         designer_durations: designerDurations,
@@ -641,6 +727,7 @@ function FolderField({ value, onChange }: { value: string; onChange: (v: string)
   const qc = useQueryClient();
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState('');
+  const [featuredMonth, setFeaturedMonth] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   const foldersQuery = useQuery({
@@ -650,10 +737,12 @@ function FolderField({ value, onChange }: { value: string; onChange: (v: string)
   const folders: DesignFolder[] = foldersQuery.data ?? [];
 
   const create = useMutation({
-    mutationFn: (n: string) => designsApi.createFolder({ name: n }),
+    mutationFn: (body: { name: string; featured_month: string | null }) =>
+      designsApi.createFolder(body),
     onSuccess: (folder) => {
       setError(null);
       setName('');
+      setFeaturedMonth('');
       setCreating(false);
       qc.invalidateQueries({ queryKey: ['design-folders'] });
       onChange(folder.id);
@@ -667,34 +756,50 @@ function FolderField({ value, onChange }: { value: string; onChange: (v: string)
         폴더 <span className="text-caption text-primary-50">선택</span>
       </label>
       {creating ? (
-        <div className="flex items-center gap-2">
-          <input
-            autoFocus
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="예: 7월 이달의 아트"
-            maxLength={60}
-            className={inputCls}
-          />
-          <button
-            type="button"
-            onClick={() => name.trim() && create.mutate(name.trim())}
-            disabled={create.isPending || !name.trim()}
-            className="shrink-0 rounded-md border border-secondary px-3 py-2 text-body-sm font-semibold text-secondary disabled:opacity-50"
-          >
-            만들기
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setCreating(false);
-              setName('');
-              setError(null);
-            }}
-            className="shrink-0 rounded-md border border-neutral-300 px-3 py-2 text-body-sm text-primary-50"
-          >
-            취소
-          </button>
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <input
+              autoFocus
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="예: 7월 이달의 아트"
+              maxLength={60}
+              className={inputCls}
+            />
+            <button
+              type="button"
+              onClick={() =>
+                name.trim() &&
+                create.mutate({ name: name.trim(), featured_month: featuredMonth || null })
+              }
+              disabled={create.isPending || !name.trim()}
+              className="shrink-0 rounded-md border border-secondary px-3 py-2 text-body-sm font-semibold text-secondary disabled:opacity-50"
+            >
+              만들기
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setCreating(false);
+                setName('');
+                setFeaturedMonth('');
+                setError(null);
+              }}
+              className="shrink-0 rounded-md border border-neutral-300 px-3 py-2 text-body-sm text-primary-50"
+            >
+              취소
+            </button>
+          </div>
+          <label className="flex items-center gap-2 text-caption text-primary-50">
+            <span className="shrink-0">이달의 아트 진행월</span>
+            <input
+              type="month"
+              value={featuredMonth}
+              onChange={(e) => setFeaturedMonth(e.target.value)}
+              className={`${inputCls} max-w-[12rem]`}
+            />
+            <span className="shrink-0">비우면 일반 폴더</span>
+          </label>
         </div>
       ) : (
         <div className="flex items-center gap-2">
@@ -706,7 +811,8 @@ function FolderField({ value, onChange }: { value: string; onChange: (v: string)
             <option value="">폴더 없음</option>
             {folders.map((f) => (
               <option key={f.id} value={f.id}>
-                {f.name} ({f.design_count})
+                {f.name}
+                {f.featured_month ? ` · 이달의 아트 ${f.featured_month}` : ''} ({f.design_count})
               </option>
             ))}
           </select>
@@ -1104,7 +1210,15 @@ function DesignCard({ design }: { design: Design }) {
           <div className="min-w-0">
             <p className="truncate font-medium">{d.title}</p>
             <p className="mt-0.5 text-body-sm text-primary-50">
-              {d.base_price.toLocaleString('ko-KR')}원 · 기본 {d.duration_minutes}분
+              {d.intro_price != null && d.intro_price < d.base_price ? (
+                <>
+                  <span className="line-through">{formatWon(d.base_price)}</span>{' '}
+                  <span className="font-semibold text-secondary">{formatWon(d.intro_price)}</span>
+                </>
+              ) : (
+                formatWon(d.base_price)
+              )}{' '}
+              · 기본 {d.duration_minutes}분
             </p>
             {d.owner_tags.length > 0 && (
               <div className="mt-2 flex flex-wrap gap-1">
@@ -1255,6 +1369,7 @@ function DesignCard({ design }: { design: Design }) {
 /** 디자인의 공통 설정값(제목·사진 제외). 수정폼과 일괄등록 모달이 동일하게 사용한다. */
 interface DesignSettings {
   price: string;
+  introPrice: string;
   duration: number;
   description: string;
   tags: string[];
@@ -1264,7 +1379,16 @@ interface DesignSettings {
 }
 
 function defaultBulkSettings(): DesignSettings {
-  return { price: '', duration: 120, description: '', tags: [], picked: {}, pickedPrice: {}, options: defaultOptionRows() };
+  return {
+    price: '',
+    introPrice: '',
+    duration: 120,
+    description: '',
+    tags: [],
+    picked: {},
+    pickedPrice: {},
+    options: defaultOptionRows(),
+  };
 }
 
 /** 이미지 URL에서 업로드 object_key를 역추출(버킷명 무관). 기존 사진 보존용. */
@@ -1297,6 +1421,7 @@ function loadBulkSettings(key: string, designers: Designer[]): DesignSettings | 
       : defaultOptionRows();
     return {
       price: s.price ?? '',
+      introPrice: s.introPrice ?? '',
       duration: s.duration ?? 120,
       description: s.description ?? '',
       tags: s.tags ?? [],
@@ -1341,8 +1466,13 @@ function DesignSettingsFields({
   onChange: (patch: Partial<DesignSettings>) => void;
 }) {
   const multiDesigner = designers.length >= 2;
-  const { price, duration, description, tags, picked, pickedPrice, options } = value;
-  const basePrice = Math.max(0, Number(price) || 0);
+  const { price, introPrice, duration, description, tags, picked, pickedPrice, options } = value;
+  const basePrice = clampPrice(Number(price) || 0);
+  const introNum = Number(introPrice);
+  const introPct =
+    introPrice.trim() !== '' && basePrice > 0 && introNum > 0 && introNum < basePrice
+      ? Math.round((1 - introNum / basePrice) * 100)
+      : null;
   const labelCls = 'mb-1 block text-caption font-semibold text-primary-50';
   const fieldCls =
     'w-full rounded-md border border-neutral-300 px-3 py-2 text-body-sm outline-none focus:border-secondary';
@@ -1368,13 +1498,27 @@ function DesignSettingsFields({
     <>
       <div className={multiDesigner ? '' : 'flex flex-wrap gap-3'}>
         <div className={multiDesigner ? '' : 'min-w-[8rem] flex-1'}>
-          <label className={labelCls}>가격(원)</label>
+          <label className={labelCls}>정상가(원)</label>
           <input
             type="number"
             value={price}
             onChange={(e) => onChange({ price: e.target.value })}
             className={fieldCls}
           />
+        </div>
+        <div className={multiDesigner ? 'mt-3' : 'min-w-[8rem] flex-1'}>
+          <label className={labelCls}>이달의 아트 인트로가(원)</label>
+          <input
+            type="number"
+            min={0}
+            value={introPrice}
+            onChange={(e) => onChange({ introPrice: e.target.value })}
+            placeholder="비우면 정상가"
+            className={fieldCls}
+          />
+          {introPct !== null && (
+            <p className="mt-1 text-caption font-semibold text-secondary">정상가 대비 {introPct}% 할인</p>
+          )}
         </div>
         {!multiDesigner && (
           <div>
@@ -1656,6 +1800,7 @@ function BulkAddModal({
           title,
           description: s.description.trim() || null,
           base_price: price,
+          intro_price: s.introPrice.trim() ? Number(s.introPrice) : null,
           duration_minutes: clampDuration(s.duration),
           designer_ids: designerIds,
           designer_durations: designerDurations,
@@ -1795,6 +1940,7 @@ function DesignEditForm({ design: d, onClose }: { design: Design; onClose: () =>
   const [title, setTitle] = useState(d.title);
   const [description, setDescription] = useState(d.description ?? '');
   const [price, setPrice] = useState(String(d.base_price));
+  const [introPrice, setIntroPrice] = useState(d.intro_price != null ? String(d.intro_price) : '');
   const [duration, setDuration] = useState(clampDuration(d.duration_minutes));
   const [tags, setTags] = useState<string[]>(d.owner_tags ?? []);
   const [err, setErr] = useState<string | null>(null);
@@ -1893,6 +2039,7 @@ function DesignEditForm({ design: d, onClose }: { design: Design; onClose: () =>
         title: title.trim(),
         description: description.trim() || null,
         base_price: basePriceNum,
+        intro_price: introPrice.trim() ? Number(introPrice) : null,
         duration_minutes: clampDuration(duration),
         owner_tags: tags,
         // 사진을 바꿨을 때만 전체 세트를 전송(백엔드는 image_upload_keys를 통째로 교체).
@@ -2040,9 +2187,10 @@ function DesignEditForm({ design: d, onClose }: { design: Design; onClose: () =>
       {/* 가격·디자이너·소요시간·설명·태그 (등록/일괄과 동일한 필드) */}
       <DesignSettingsFields
         designers={designers}
-        value={{ price, duration, description, tags, picked, pickedPrice, options }}
+        value={{ price, introPrice, duration, description, tags, picked, pickedPrice, options }}
         onChange={(p) => {
           if (p.price !== undefined) setPrice(p.price);
+          if (p.introPrice !== undefined) setIntroPrice(p.introPrice);
           if (p.duration !== undefined) setDuration(p.duration);
           if (p.description !== undefined) setDescription(p.description);
           if (p.tags !== undefined) setTags(p.tags);
