@@ -26,6 +26,16 @@ pnpm build
 - 브라우저 런타임 검증이 필요하면 `.claude/skills/verify/`의 approved-owner 세션 주입 Playwright 하네스를 우선 확인한다(owner 웹에서 이식한 코드 정독본 — 첫 구동 시 셀렉터 대조 필요).
 - `package.json`의 의존성/스크립트는 work-order가 명시하지 않으면 바꾸지 않는다.
 
+## 1.1 배포 규칙
+
+- Production 배포는 `main` merge 후 `pnpm deploy:main`만 사용한다.
+- 작업자 로컬 트리, feature 브랜치, 미커밋 변경을 `vercel --prod`로 직접 배포하지 않는다.
+- `scripts/deploy-main.ps1`은 원격 GitHub `main`을 임시 clone하고 고정 Vercel org/project id로 배포한다.
+- 배포 전 점검은 `powershell -ExecutionPolicy Bypass -File scripts/deploy-main.ps1 -DryRun`.
+- 배포 후 `pnpm verify:deploy-target`로 production URL, 번들 API base, 백엔드 health, CORS를 확인한다.
+- canonical production URL은 `https://snailbetatestweb.vercel.app`, API base는 `https://api.snail-nail.com/api/v1`이다.
+- `https://snail-beta-test-web.vercel.app`는 현재 프로젝트 alias가 아니므로 사용하지 않는다.
+
 ## 2. 백엔드 계약
 
 API 계약은 아래 순서로 읽는다.

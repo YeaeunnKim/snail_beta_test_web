@@ -1,8 +1,9 @@
 # Vercel 배포 가이드 (베타 테스트 웹)
 
 베타 테스트용 웹으로, 운영자(admin)·사장님(owner) 웹과 **분리된 별도 Vercel 프로젝트**로
-배포한다. Next.js 15 App Router라 Vercel zero-config로 동작하며, 배포는 **Git 연동
-(푸시-투-디플로이)** 방식으로 확립한다.
+배포한다. Next.js 15 App Router라 Vercel zero-config로 동작한다. 이 프로젝트는 현재
+GitHub App 권한 제약 때문에 production 배포를 **고정 Vercel 프로젝트로 향하는 안전 CLI 스크립트**
+로 수행한다.
 
 - GitHub: `YeaeunnKim/snail_beta_test_web`
 - 프레임워크: Next.js (Vercel 자동 감지), 패키지 매니저: pnpm(lockfile 자동 감지)
@@ -11,18 +12,29 @@
 
 ---
 
-## 1. 배포 모델 (Git 연동)
+## 1. 배포 모델 (고정 main 배포 스크립트)
 
-Vercel 프로젝트를 GitHub 레포에 연결하면 아래가 **자동**으로 일어난다. 별도 CI 배포
-스크립트나 GitHub secret이 필요 없다.
+Production 배포는 작업자 로컬 트리나 현재 브랜치를 직접 올리지 않는다. `scripts/deploy-main.ps1`이
+GitHub 원격 `main`을 임시 폴더에 shallow clone하고, Vercel org/project id를 고정한 뒤
+`snail8/snail_beta_test_web`으로 배포한다.
 
 | 트리거 | 결과 | URL |
 |---|---|---|
-| `main`에 push/merge | **Production 배포** | 프로덕션 도메인 (예: `snailbetatestweb.vercel.app` 또는 커스텀) |
-| PR 생성/갱신, 비-main 브랜치 push | **Preview 배포** | 배포마다 고유한 프리뷰 URL |
+| `main`에 merge 후 `pnpm deploy:main` | **Production 배포** | `https://snailbetatestweb.vercel.app` |
+| `pnpm deploy:main -- -Preview` | **Preview 배포** | 배포마다 고유한 프리뷰 URL |
+| `powershell -ExecutionPolicy Bypass -File scripts/deploy-main.ps1 -DryRun` | **배포 전 점검** | 배포 없음 |
 
 > 품질 게이트: `.github/workflows/ci.yml`가 PR·main push에서 `typecheck → lint → build`를
 > 돌린다. main 머지 전 CI 통과를 required check으로 두는 것을 권장.
+
+### Production 배포 규칙
+- **Production 배포는 `main` merge 후 `pnpm deploy:main`만 사용한다.**
+- 작업자 개인 PC에서 `vercel --prod`를 직접 치지 않는다. 반드시 `scripts/deploy-main.ps1`을 통해
+  원격 `main`의 깨끗한 소스만 고정 Vercel 프로젝트로 배포한다.
+- 배포 후 `pnpm verify:deploy-target`를 실행해 production URL, JS 번들의 API base, 백엔드 health,
+  CORS preflight를 확인한다.
+- `NEXT_PUBLIC_*` 값은 빌드타임에 번들로 박히므로 Vercel env를 수정하면 반드시 Git 배포 또는
+  `pnpm deploy:main`으로 새 번들을 만든다.
 
 ### 베타 테스트 특성상 고려사항
 - **접근 제한**: 일반 공개가 아니라면 Vercel → Settings → **Deployment Protection**
@@ -34,20 +46,19 @@ Vercel 프로젝트를 GitHub 레포에 연결하면 아래가 **자동**으로 
 
 ## 2. Vercel 프로젝트 생성 (최초 1회)
 
-1. Vercel → **Add New… → Project** → `YeaeunnKim/snail_beta_test_web` **Import**.
-2. 설정(대부분 자동):
+1. Vercel → **Add New… → Project** → `YeaeunnKim/snail_beta_test_web` **Import** 또는 빈 프로젝트 생성 후
+   `snail8/snail_beta_test_web` 프로젝트 id(`prj_zOnsvz7NMAHL7mSvCKwKk8NDMGLi`)를 확정한다.
+2. 설정:
    - Framework Preset: **Next.js**
    - Root Directory: `./` (레포 루트)
    - Build / Install / Output Command: **기본값 그대로** (pnpm 자동 감지)
-   - Production Branch: **`main`**
+   - Production Branch: **`main`** (Git 연결이 가능할 때만 의미 있음)
 3. 아래 **§3 환경변수**를 넣고 **Deploy**.
 
-> CLI 대안: `npm i -g vercel && vercel link && vercel --prod`
+> CLI 배포는 `vercel --prod` 직접 실행이 아니라 `pnpm deploy:main`만 사용한다.
 >
-> 기존 Vercel 프로젝트가 다른 repo에 연결돼 있으면 Git 연결을 `YeaeunnKim/snail_beta_test_web`으로
-> 교체한다. `vercel git connect`가 `Failed to connect ... Make sure ... you have access`로
-> 실패하면, Vercel GitHub App이 이 private repo에 설치/허용되지 않은 상태다. Vercel 대시보드의
-> Git 연결 화면에서 GitHub App 권한에 `YeaeunnKim/snail_beta_test_web`을 추가한 뒤 다시 Connect한다.
+> Git 연결이 가능해지면 production branch를 `main`으로 고정해도 된다. 그 전까지 production은
+> `scripts/deploy-main.ps1`의 고정 org/project id 경로가 단일 배포 경로다.
 
 ---
 
@@ -73,7 +84,9 @@ Vercel 프로젝트를 GitHub 레포에 연결하면 아래가 **자동**으로 
 없으면 **모든 API 호출이 브라우저에서 차단**된다.
 
 1. `CORS_ORIGINS`에 이 웹의 운영/프리뷰 도메인 추가
-   (예: `https://snailbetatestweb.vercel.app`, `https://snail-beta-test-web.vercel.app`).
+   (운영 canonical: `https://snailbetatestweb.vercel.app`).
+   `https://snail-beta-test-web.vercel.app`는 현재 `snail8/snail_beta_test_web` 프로젝트의
+   alias가 아니며, 예전 배포 번들이 폐기된 Cloud Run API를 가리키므로 사용하지 않는다.
 2. 스테이징 백엔드를 쓸 경우 해당 백엔드에 등록.
 3. 등록 후 백엔드 리로드.
 
@@ -100,4 +113,5 @@ Vercel 프로젝트를 GitHub 레포에 연결하면 아래가 **자동**으로 
 - **API URL 규약**: `NEXT_PUBLIC_API_BASE_URL`에 `/api/v1`까지 포함(전체 경로).
 - **`NEXT_PUBLIC_*` 빌드타임 인라인** → 값 변경 시 Redeploy.
 - **`DEV_AUTOLOGIN=1` 프로덕션 금지**.
+- 배포 후 `pnpm verify:deploy-target`가 실패하면 alias/env/API drift로 보고 production URL을 안내하지 않는다.
 - 베타 테스트 웹이 공개되면 안 되면 **Deployment Protection** 필수.

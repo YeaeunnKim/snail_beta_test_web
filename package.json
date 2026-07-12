@@ -18,7 +18,9 @@
     "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\"",
     "generate:types": "openapi-typescript ./backend-context/openapi.json --default-non-nullable false -o ./src/types/api.d.ts",
     "generate:types:remote": "openapi-typescript https://poi82999.github.io/snail_backend_specification/openapi.json --default-non-nullable false -o ./src/types/api.d.ts",
-    "verify:backend": "node scripts/e2e-check.mjs"
+    "verify:backend": "node scripts/e2e-check.mjs",
+    "verify:deploy-target": "node scripts/check-deploy-target.mjs",
+    "deploy:main": "powershell -ExecutionPolicy Bypass -File scripts/deploy-main.ps1"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
