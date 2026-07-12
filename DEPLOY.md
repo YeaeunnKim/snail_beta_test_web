@@ -18,7 +18,7 @@ Vercel 프로젝트를 GitHub 레포에 연결하면 아래가 **자동**으로 
 
 | 트리거 | 결과 | URL |
 |---|---|---|
-| `main`에 push/merge | **Production 배포** | 프로덕션 도메인 (예: `snail-beta-test-web.vercel.app` 또는 커스텀) |
+| `main`에 push/merge | **Production 배포** | 프로덕션 도메인 (예: `snailbetatestweb.vercel.app` 또는 커스텀) |
 | PR 생성/갱신, 비-main 브랜치 push | **Preview 배포** | 배포마다 고유한 프리뷰 URL |
 
 > 품질 게이트: `.github/workflows/ci.yml`가 PR·main push에서 `typecheck → lint → build`를
@@ -73,7 +73,7 @@ Vercel 프로젝트를 GitHub 레포에 연결하면 아래가 **자동**으로 
 없으면 **모든 API 호출이 브라우저에서 차단**된다.
 
 1. `CORS_ORIGINS`에 이 웹의 운영/프리뷰 도메인 추가
-   (예: `https://snail-beta-test-web.vercel.app`).
+   (예: `https://snailbetatestweb.vercel.app`, `https://snail-beta-test-web.vercel.app`).
 2. 스테이징 백엔드를 쓸 경우 해당 백엔드에 등록.
 3. 등록 후 백엔드 리로드.
 

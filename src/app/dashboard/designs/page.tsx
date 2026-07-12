@@ -8,7 +8,7 @@
  *  - 제목(사장님 관리용, 고객 미노출) · 설명(앱 미노출 메모)
  *  - 폴더(만들기/선택)로 정리 — 예: "7월 이달의 아트"
  *  - 사장님 태그: 단어 입력→등록(엔터), X로 삭제, 최대 10개
- *  - 디자이너 선택 시 디자이너별 소요시간을 +/-로 조정(미조정 시 기본 소요시간)
+ *  - 디자이너 선택 시 디자이너별 가격/소요시간을 +/-로 조정(미조정 시 기본값)
  *
  * 목록: 카드별 AI 분석 상태 배지(pending/in_progress면 폴링), failed 시 재분석.
  */
@@ -42,6 +42,7 @@ const TAG_MAXLEN = 40;
 const DURATION_MIN = 30;
 const DURATION_MAX = 600;
 const DURATION_STEP = 10;
+const PRICE_STEP = 1000;
 
 const createSchema = z.object({
   title: z.string().min(1, '제목을 입력해주세요.'),
@@ -56,6 +57,13 @@ const createSchema = z.object({
 type CreateFormValues = z.infer<typeof createSchema>;
 
 const clampDuration = (n: number) => Math.max(DURATION_MIN, Math.min(DURATION_MAX, n));
+const clampPrice = (n: number) => Math.max(0, Math.round(n));
+const formatWon = (n: number) => `${n.toLocaleString('ko-KR')}원`;
+
+type DesignerOverrideDraft = {
+  base_price: number;
+  duration_minutes: number;
+};
 
 type FolderView = { label: string; folderId?: string; unfiled?: boolean };
 
@@ -323,8 +331,8 @@ function CreateForm({ designers, onCreated }: { designers: Designer[]; onCreated
   const [details, setDetails] = useState<PhotoItem[]>([]);
   const [tags, setTags] = useState<string[]>([]);
   const [folderId, setFolderId] = useState<string>(''); // '' = 폴더 없음
-  // designerId → 소요시간(분). 체크된 디자이너만 들어있다.
-  const [picked, setPicked] = useState<Record<string, number>>({});
+  // designerId → 가격/소요시간. 체크된 디자이너만 들어있다.
+  const [picked, setPicked] = useState<Record<string, DesignerOverrideDraft>>({});
   const [formError, setFormError] = useState<string | null>(null);
 
   const {
@@ -337,6 +345,7 @@ function CreateForm({ designers, onCreated }: { designers: Designer[]; onCreated
     defaultValues: { duration_minutes: 120 },
   });
   const baseDuration = clampDuration(Number(watch('duration_minutes')) || DURATION_MIN);
+  const basePrice = clampPrice(Number(watch('base_price')) || 0);
 
   const uploading =
     thumbnail?.status === 'uploading' || details.some((p) => p.status === 'uploading');
@@ -380,11 +389,19 @@ function CreateForm({ designers, onCreated }: { designers: Designer[]; onCreated
     setPicked((prev) => {
       const next = { ...prev };
       if (id in next) delete next[id];
-      else next[id] = baseDuration; // 선택 시 기본 소요시간으로 시작
+      else next[id] = { base_price: basePrice, duration_minutes: baseDuration };
       return next;
     });
   const setDesignerDuration = (id: string, minutes: number) =>
-    setPicked((prev) => ({ ...prev, [id]: clampDuration(minutes) }));
+    setPicked((prev) => {
+      const current = prev[id] ?? { base_price: basePrice, duration_minutes: baseDuration };
+      return { ...prev, [id]: { ...current, duration_minutes: clampDuration(minutes) } };
+    });
+  const setDesignerPrice = (id: string, price: number) =>
+    setPicked((prev) => {
+      const current = prev[id] ?? { base_price: basePrice, duration_minutes: baseDuration };
+      return { ...prev, [id]: { ...current, base_price: clampPrice(price) } };
+    });
 
   const onSubmit = async (values: CreateFormValues) => {
     setFormError(null);
@@ -404,8 +421,11 @@ function CreateForm({ designers, onCreated }: { designers: Designer[]; onCreated
 
     // 기본값과 다른 디자이너만 오버라이드로 전송(나머지는 기본 소요시간 사용).
     const designerDurations = designerIds
-      .filter((id) => picked[id] !== values.duration_minutes)
-      .map((id) => ({ designer_id: id, duration_minutes: picked[id] }));
+      .filter((id) => picked[id].duration_minutes !== values.duration_minutes)
+      .map((id) => ({ designer_id: id, duration_minutes: picked[id].duration_minutes }));
+    const designerPrices = designerIds
+      .filter((id) => picked[id].base_price !== values.base_price)
+      .map((id) => ({ designer_id: id, base_price: picked[id].base_price }));
 
     try {
       await designsApi.createDesign({
@@ -415,6 +435,7 @@ function CreateForm({ designers, onCreated }: { designers: Designer[]; onCreated
         duration_minutes: values.duration_minutes,
         designer_ids: designerIds,
         designer_durations: designerDurations,
+        designer_prices: designerPrices,
         folder_id: folderId || null,
         image_upload_keys: imageKeys,
         owner_tags: tags,
@@ -513,7 +534,7 @@ function CreateForm({ designers, onCreated }: { designers: Designer[]; onCreated
           가능한 디자이너<span className="ml-0.5 text-danger">*</span>
         </label>
         <p className="mb-2 text-caption text-primary-50">
-          선택하면 디자이너별 소요시간을 조정할 수 있어요. 미조정 시 기본 소요시간({baseDuration}분)을 사용합니다.
+          선택하면 디자이너별 가격과 소요시간을 조정할 수 있어요. 미조정 시 기본 가격({formatWon(basePrice)})과 기본 소요시간({baseDuration}분)을 사용합니다.
         </p>
         {designers.length === 0 ? (
           <p className="text-caption text-primary-50">
@@ -527,6 +548,7 @@ function CreateForm({ designers, onCreated }: { designers: Designer[]; onCreated
           <div className="space-y-2">
             {designers.map((d) => {
               const checked = d.id in picked;
+              const value = picked[d.id];
               return (
                 <div
                   key={d.id}
@@ -538,17 +560,33 @@ function CreateForm({ designers, onCreated }: { designers: Designer[]; onCreated
                     <input type="checkbox" checked={checked} onChange={() => toggleDesigner(d.id)} />
                     {d.name}
                   </label>
-                  {checked && (
-                    <div className="ml-auto flex items-center gap-2">
-                      <span className="text-caption text-primary-50">소요시간</span>
-                      <Stepper
-                        value={picked[d.id]}
-                        onChange={(v) => setDesignerDuration(d.id, v)}
-                        suffix="분"
-                      />
-                      {picked[d.id] !== baseDuration && (
-                        <span className="text-caption font-semibold text-secondary">조정됨</span>
-                      )}
+                  {checked && value && (
+                    <div className="ml-auto grid w-full gap-2 sm:w-auto sm:grid-cols-2">
+                      <div className="flex items-center justify-between gap-2 sm:justify-end">
+                        <span className="text-caption text-primary-50">가격</span>
+                        <Stepper
+                          value={value.base_price}
+                          onChange={(v) => setDesignerPrice(d.id, v)}
+                          suffix="원"
+                          step={PRICE_STEP}
+                          inputClassName="w-16"
+                          ariaLabel="가격 직접 입력"
+                        />
+                        {value.base_price !== basePrice && (
+                          <span className="text-caption font-semibold text-secondary">조정됨</span>
+                        )}
+                      </div>
+                      <div className="flex items-center justify-between gap-2 sm:justify-end">
+                        <span className="text-caption text-primary-50">소요시간</span>
+                        <Stepper
+                          value={value.duration_minutes}
+                          onChange={(v) => setDesignerDuration(d.id, v)}
+                          suffix="분"
+                        />
+                        {value.duration_minutes !== baseDuration && (
+                          <span className="text-caption font-semibold text-secondary">조정됨</span>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -737,10 +775,16 @@ function Stepper({
   value,
   onChange,
   suffix,
+  step = DURATION_STEP,
+  inputClassName = 'w-10',
+  ariaLabel = '숫자 직접 입력',
 }: {
   value: number;
   onChange: (v: number) => void;
   suffix?: string;
+  step?: number;
+  inputClassName?: string;
+  ariaLabel?: string;
 }) {
   // 직접 입력용 로컬 문자열 상태. +/- 또는 외부 값 변경 시 동기화하고, 입력은 blur/Enter에 확정한다.
   const [text, setText] = useState(String(value));
@@ -756,7 +800,7 @@ function Stepper({
     <div className="flex items-center rounded-md border border-neutral-300">
       <button
         type="button"
-        onClick={() => onChange(value - DURATION_STEP)}
+        onClick={() => onChange(value - step)}
         className="grid h-8 w-8 place-items-center text-primary-50 hover:bg-neutral-100"
         aria-label="감소"
       >
@@ -776,14 +820,14 @@ function Stepper({
               (e.target as HTMLInputElement).blur();
             }
           }}
-          className="w-10 bg-transparent text-center text-body-sm tabular-nums outline-none"
-          aria-label="소요시간 직접 입력"
+          className={`${inputClassName} bg-transparent text-center text-body-sm tabular-nums outline-none`}
+          aria-label={ariaLabel}
         />
         {suffix && <span className="pr-1.5 text-body-sm text-primary-50">{suffix}</span>}
       </div>
       <button
         type="button"
-        onClick={() => onChange(value + DURATION_STEP)}
+        onClick={() => onChange(value + step)}
         className="grid h-8 w-8 place-items-center text-primary-50 hover:bg-neutral-100"
         aria-label="증가"
       >
@@ -895,6 +939,7 @@ function DesignCard({ design }: { design: Design }) {
 
   const images = d.images ?? [];
   const photoCount = images.length || (d.thumbnail_url ? 1 : 0);
+  const designerSummaries = d.designers ?? [];
 
   return (
     <li className="rounded-lg border border-neutral-200 bg-white p-4">
@@ -923,6 +968,15 @@ function DesignCard({ design }: { design: Design }) {
             <p className="mt-0.5 text-body-sm text-primary-50">
               {d.base_price.toLocaleString('ko-KR')}원 · 기본 {d.duration_minutes}분
             </p>
+            {designerSummaries.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {designerSummaries.map((dz) => (
+                  <span key={dz.id} className="rounded-md bg-neutral-100 px-2 py-0.5 text-caption text-primary-50">
+                    {dz.name} {formatWon(dz.base_price)} · {dz.duration_minutes}분
+                  </span>
+                ))}
+              </div>
+            )}
             {d.owner_tags.length > 0 && (
               <div className="mt-2 flex flex-wrap gap-1">
                 {d.owner_tags.map((t) => (
@@ -1037,37 +1091,58 @@ function DesignEditForm({ design: d, onClose }: { design: Design; onClose: () =>
   const designersQuery = useQuery({ queryKey: ['designers'], queryFn: () => designersApi.listDesigners() });
   const designers = designersQuery.data ?? [];
   const multiDesigner = designers.length >= 2;
+  const basePrice = clampPrice(Number(price) || 0);
+  const baseDuration = clampDuration(duration);
 
-  // designerId → 소요시간(분). 현재 이 디자인을 담당하는 디자이너로 초기화한다(다인샵 전용).
-  const [picked, setPicked] = useState<Record<string, number>>(() =>
-    Object.fromEntries((d.designers ?? []).map((dz) => [dz.id, clampDuration(dz.duration_minutes)])),
+  // designerId → 가격/소요시간. 현재 이 디자인을 담당하는 디자이너로 초기화한다(다인샵 전용).
+  const [picked, setPicked] = useState<Record<string, DesignerOverrideDraft>>(() =>
+    Object.fromEntries(
+      (d.designers ?? []).map((dz) => [
+        dz.id,
+        {
+          base_price: clampPrice(dz.base_price ?? d.base_price),
+          duration_minutes: clampDuration(dz.duration_minutes),
+        },
+      ]),
+    ),
   );
 
   const toggleDesigner = (id: string) =>
     setPicked((prev) => {
       const next = { ...prev };
       if (id in next) delete next[id];
-      else next[id] = duration; // 선택 시 기본 소요시간으로 시작
+      else next[id] = { base_price: basePrice, duration_minutes: baseDuration };
       return next;
     });
   const setDesignerDuration = (id: string, minutes: number) =>
-    setPicked((prev) => ({ ...prev, [id]: clampDuration(minutes) }));
+    setPicked((prev) => {
+      const current = prev[id] ?? { base_price: basePrice, duration_minutes: baseDuration };
+      return { ...prev, [id]: { ...current, duration_minutes: clampDuration(minutes) } };
+    });
+  const setDesignerPrice = (id: string, nextPrice: number) =>
+    setPicked((prev) => {
+      const current = prev[id] ?? { base_price: basePrice, duration_minutes: baseDuration };
+      return { ...prev, [id]: { ...current, base_price: clampPrice(nextPrice) } };
+    });
 
   const save = useMutation({
     mutationFn: () => {
       const designerIds = Object.keys(picked);
       // 기본값과 다른 디자이너만 오버라이드로 전송(나머지는 기본 소요시간 사용) — 등록 폼과 동일한 규칙.
       const designerDurations = designerIds
-        .filter((id) => picked[id] !== duration)
-        .map((id) => ({ designer_id: id, duration_minutes: picked[id] }));
+        .filter((id) => picked[id].duration_minutes !== baseDuration)
+        .map((id) => ({ designer_id: id, duration_minutes: picked[id].duration_minutes }));
+      const designerPrices = designerIds
+        .filter((id) => picked[id].base_price !== basePrice)
+        .map((id) => ({ designer_id: id, base_price: picked[id].base_price }));
 
       return designsApi.updateDesign(d.id, {
         title: title.trim(),
         description: description.trim() || null,
-        base_price: Number(price) || 0,
-        duration_minutes: clampDuration(duration),
+        base_price: basePrice,
+        duration_minutes: baseDuration,
         owner_tags: tags,
-        ...(multiDesigner ? { designer_ids: designerIds, designer_durations: designerDurations } : {}),
+        ...(multiDesigner ? { designer_ids: designerIds, designer_durations: designerDurations, designer_prices: designerPrices } : {}),
       });
     },
     onSuccess: () => {
@@ -1116,16 +1191,17 @@ function DesignEditForm({ design: d, onClose }: { design: Design; onClose: () =>
         )}
       </div>
 
-      {/* 다인샵: 가격 아래로 줄바꿈해 디자이너별 소요시간을 노출/조정 */}
+      {/* 다인샵: 가격 아래로 줄바꿈해 디자이너별 가격/소요시간을 노출/조정 */}
       {multiDesigner && (
         <div>
-          <label className={labelCls}>디자이너별 소요시간</label>
+          <label className={labelCls}>디자이너별 가격/소요시간</label>
           <p className="mb-2 text-caption text-primary-50">
-            체크한 디자이너만 이 디자인을 할 수 있어요. 소요시간은 디자이너별로 다르게 조정할 수 있어요.
+            체크한 디자이너만 이 디자인을 할 수 있어요. 가격과 소요시간은 디자이너별로 다르게 조정할 수 있어요.
           </p>
           <div className="space-y-2">
             {designers.map((dz) => {
               const checked = dz.id in picked;
+              const value = picked[dz.id];
               return (
                 <div
                   key={dz.id}
@@ -1137,12 +1213,33 @@ function DesignEditForm({ design: d, onClose }: { design: Design; onClose: () =>
                     <input type="checkbox" checked={checked} onChange={() => toggleDesigner(dz.id)} />
                     {dz.name}
                   </label>
-                  {checked && (
-                    <div className="ml-auto flex items-center gap-2">
-                      <Stepper value={picked[dz.id]} onChange={(v) => setDesignerDuration(dz.id, v)} suffix="분" />
-                      {picked[dz.id] !== duration && (
-                        <span className="text-caption font-semibold text-secondary">조정됨</span>
-                      )}
+                  {checked && value && (
+                    <div className="ml-auto grid w-full gap-2 sm:w-auto sm:grid-cols-2">
+                      <div className="flex items-center justify-between gap-2 sm:justify-end">
+                        <span className="text-caption text-primary-50">가격</span>
+                        <Stepper
+                          value={value.base_price}
+                          onChange={(v) => setDesignerPrice(dz.id, v)}
+                          suffix="원"
+                          step={PRICE_STEP}
+                          inputClassName="w-16"
+                          ariaLabel="가격 직접 입력"
+                        />
+                        {value.base_price !== basePrice && (
+                          <span className="text-caption font-semibold text-secondary">조정됨</span>
+                        )}
+                      </div>
+                      <div className="flex items-center justify-between gap-2 sm:justify-end">
+                        <span className="text-caption text-primary-50">소요시간</span>
+                        <Stepper
+                          value={value.duration_minutes}
+                          onChange={(v) => setDesignerDuration(dz.id, v)}
+                          suffix="분"
+                        />
+                        {value.duration_minutes !== baseDuration && (
+                          <span className="text-caption font-semibold text-secondary">조정됨</span>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
