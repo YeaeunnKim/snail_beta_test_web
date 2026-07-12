@@ -10,7 +10,7 @@
  * 우리 앱 예약은 백엔드가 가용시간 계산 시 자동 제외한다. 스케줄/휴무는 조회 API가 없어
  * 선택 상태와 휴무 ID는 localStorage에 함께 보관한다(같은 기기 기준).
  */
-import type { ScheduleEntry, TimeOffCreate } from '@/services';
+import type { BusinessHourEntry, ScheduleEntry, TimeOffCreate } from '@/services';
 
 /** 베타 대상 날짜 (2026-08-01 ~ 2026-08-07) */
 export const BETA_DATES = [
@@ -77,6 +77,31 @@ export function localDateOf(iso: string): string {
 export function localMinOf(iso: string): number {
   const d = new Date(iso);
   return d.getHours() * 60 + d.getMinutes();
+}
+
+/**
+ * 샵 영업시간(business_hours) → 베타 7일의 기본 "예약 가능" 슬롯 집합.
+ * 각 날짜의 요일 영업시간(여는~닫는) 안의 30분 슬롯을 켠다. 휴무일/시간없음은 비운다.
+ * 아직 일정을 저장하지 않은 디자이너의 하얀칸 기본값으로 쓰인다. 반환 키 형식: `YYYY-MM-DD|slot`.
+ */
+export function businessHoursSeed(entries?: BusinessHourEntry[] | null): Set<string> {
+  const set = new Set<string>();
+  if (!entries || entries.length === 0) return set;
+  const byWeekday = new Map<number, BusinessHourEntry>();
+  for (const e of entries) byWeekday.set(e.weekday, e);
+  for (const date of BETA_DATES) {
+    const e = byWeekday.get(appWeekday(date));
+    if (!e || e.is_closed || !e.open_time || !e.close_time) continue;
+    // 백엔드는 "HH:MM:SS"로 줄 수 있어 앞 5자리("HH:MM")만 파싱한다.
+    const openMin = timeToMin(e.open_time.slice(0, 5));
+    const closeMin = timeToMin(e.close_time.slice(0, 5));
+    if (openMin === null || closeMin === null) continue;
+    for (let i = 0; i < SLOTS_PER_DAY; i += 1) {
+      const s = slotStartMin(i);
+      if (s >= openMin && s < closeMin) set.add(`${date}|${i}`);
+    }
+  }
+  return set;
 }
 
 /**

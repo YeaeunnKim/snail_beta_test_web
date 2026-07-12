@@ -11,6 +11,7 @@ import { isApiError } from '@/lib/api-error';
 import { toUserMessage } from '@/lib/error-messages';
 import { useMyShop } from '@/hooks/use-my-shop';
 import { useSetShopVisibility, type SetShopVisibility } from '@/hooks/use-set-shop-visibility';
+import { ShopEditModal } from '@/components/shop-edit-modal';
 
 type Notice = { type: 'ok' | 'err'; text: string; verification?: boolean };
 
@@ -61,14 +62,30 @@ export default function ShopPage() {
     );
   }
 
+  return <ShopManageView shop={shopQuery.data} />;
+}
+
+function ShopManageView({ shop }: { shop: Shop }) {
+  const [editing, setEditing] = useState(false);
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-heading-lg font-bold text-primary">샵 관리</h1>
-        <p className="mt-1 text-body-sm text-primary-50">샵 공개 상태를 관리합니다.</p>
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <h1 className="text-heading-lg font-bold text-primary">샵 관리</h1>
+          <p className="mt-1 text-body-sm text-primary-50">샵 공개 상태와 정보를 관리합니다.</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setEditing(true)}
+          className="shrink-0 rounded-lg border border-secondary px-3 py-1.5 text-caption font-semibold text-secondary"
+        >
+          정보 수정
+        </button>
       </div>
 
-      <VisibilityControl shop={shopQuery.data} />
+      <VisibilityControl shop={shop} />
+
+      {editing && <ShopEditModal shop={shop} onClose={() => setEditing(false)} />}
     </div>
   );
 }
