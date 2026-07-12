@@ -14,6 +14,7 @@ import { MY_SHOP_KEY } from '@/hooks/use-my-shop';
 import { toUserMessage } from '@/lib/error-messages';
 import { BusinessHoursField } from '@/components/business-hours-field';
 import { fromEntries, toEntries, type BusinessHoursValue } from '@/lib/business-hours';
+import { SHOP_REGIONS, isKnownRegion } from '@/lib/regions';
 
 type PaymentMethod = 'on_site' | 'bank_transfer_guide';
 type DesignerRow = { id?: string; name: string };
@@ -128,10 +129,21 @@ export function ShopEditModal({ shop, onClose }: { shop: Shop; onClose: () => vo
             <input className={inputCls} value={name} onChange={(e) => setName(e.target.value)} />
           </div>
 
-          {/* 지역 */}
+          {/* 지역 — 자유입력 불가, 아래 목록에서만 선택 */}
           <div>
             <label className={labelCls}>지역</label>
-            <input className={inputCls} value={region} onChange={(e) => setRegion(e.target.value)} placeholder="예: 서울 성수" />
+            <select
+              className={`${inputCls} bg-white`}
+              value={isKnownRegion(region) ? region : ''}
+              onChange={(e) => setRegion(e.target.value)}
+            >
+              <option value="">지역 선택</option>
+              {SHOP_REGIONS.map((r) => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* 영업시간 */}

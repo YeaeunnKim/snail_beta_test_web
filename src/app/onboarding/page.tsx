@@ -20,6 +20,7 @@ import { toUserMessage } from '@/lib/error-messages';
 import { resolveAuthedHome } from '@/lib/auth-routing';
 import { BusinessHoursField } from '@/components/business-hours-field';
 import { defaultBusinessHours, toEntries, type BusinessHoursValue } from '@/lib/business-hours';
+import { SHOP_REGIONS } from '@/lib/regions';
 
 const onboardingSchema = z
   .object({
@@ -58,7 +59,15 @@ type OnboardingForm = z.infer<typeof onboardingSchema>;
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const { status, owner, isApproved } = useAuth();
+  const { status, owner, isApproved, logout } = useAuth();
+
+  // 뒤로가기: 샵 설정을 중단하고 로그인 화면으로. (샵 미등록 상태라 그냥 이동하면
+  // 가드가 다시 온보딩으로 돌려보내므로 로그아웃 후 이동한다.)
+  const handleBack = () => {
+    if (!window.confirm('입력한 내용이 저장되지 않고 로그인 화면으로 돌아갑니다. 계속할까요?')) return;
+    logout();
+    router.replace('/login');
+  };
   const [gate, setGate] = useState<'checking' | 'ready'>('checking');
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [hours, setHours] = useState<BusinessHoursValue>(defaultBusinessHours());
@@ -180,6 +189,13 @@ export default function OnboardingPage() {
   return (
     <main className="min-h-screen bg-surface px-4 py-10">
       <div className="mx-auto w-full max-w-sm">
+        <button
+          type="button"
+          onClick={handleBack}
+          className="mb-2 flex items-center gap-1 text-body-sm font-semibold text-primary-50 hover:text-primary"
+        >
+          <span className="text-lg leading-none">←</span> 뒤로
+        </button>
         <h1 className="text-center text-heading-lg font-bold text-secondary">샵 설정</h1>
         <p className="mt-1 text-center text-caption text-primary-50">시작하려면 아래 정보를 입력해주세요.</p>
 
@@ -303,12 +319,19 @@ export default function OnboardingPage() {
             )}
           </div>
 
-          {/* 지역 */}
+          {/* 지역 — 자유입력 불가, 아래 목록에서만 선택 */}
           <div>
             <label className="mb-1 block text-body-sm font-medium">
               지역 <span className="text-primary-50">(선택)</span>
             </label>
-            <input className={inputCls} placeholder="예: 서울 성수" {...register('region')} />
+            <select className={`${inputCls} bg-white`} {...register('region')}>
+              <option value="">지역 선택</option>
+              {SHOP_REGIONS.map((r) => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
+              ))}
+            </select>
           </div>
 
           {submitError && (
