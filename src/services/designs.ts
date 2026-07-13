@@ -1,5 +1,8 @@
 /** 디자인 및 옵션 관리 API. 등록·AI 분석·옵션·공개 전환·폴더. */
 import { apiClient } from '@/lib/api-client';
+import { ApiError, NETWORK_ERROR_CODE } from '@/lib/api-error';
+import { config } from '@/lib/config';
+import { getAccessToken } from '@/lib/token';
 import type {
   DesignCreate,
   DesignFolderCreate,
@@ -75,6 +78,58 @@ export async function changeVisibility(designId: string, body: DesignVisibilityU
     params: { design_id: designId },
     body,
   });
+}
+
+// --- 이미지 자동 처리 트리거 ---
+
+/** uploads.ts와 동일한 멱등키 생성 방식(직접 fetch 경로 전용). */
+function idempotencyKey(): string {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID();
+  return `idem-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+async function parseBody(res: Response): Promise<unknown> {
+  const text = await res.text();
+  if (!text) return undefined;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text;
+  }
+}
+
+/**
+ * 디자인 이미지 자동 처리(크롭 원본 → 배경 제거/보정 등) 트리거.
+ *
+ * `POST /shops/me/designs/{id}/process` 트리거. 멱등키·에러 정규화를 수동 처리하는
+ * uploads.ts 스타일의 직접 fetch를 쓴다(응답 body 없음). 타입드 apiClient로 이관해도 되지만
+ * uploads 패턴과 일관되게 유지한다.
+ */
+export async function processDesign(designId: string, signal?: AbortSignal): Promise<void> {
+  const token = getAccessToken();
+  const path = `/api/v1/shops/me/designs/${encodeURIComponent(designId)}/process`;
+
+  let res: Response;
+  try {
+    res = await fetch(config.apiOrigin + path, {
+      method: 'POST',
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        'Idempotency-Key': idempotencyKey(),
+      },
+      signal,
+    });
+  } catch (e) {
+    if (e instanceof DOMException && e.name === 'AbortError') throw e;
+    throw new ApiError({
+      status: 0,
+      code: NETWORK_ERROR_CODE,
+      message: '서버에 연결할 수 없습니다. 네트워크를 확인해주세요.',
+    });
+  }
+
+  const body = await parseBody(res);
+  if (!res.ok) throw ApiError.fromResponse(res.status, body, res.headers.get('X-Request-Id'));
 }
 
 // --- 폴더 ---
