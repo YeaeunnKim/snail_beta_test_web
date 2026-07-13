@@ -1037,6 +1037,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/shops/me/designs/sort": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 디자인 정렬(업로드 원본 → VM 정렬 → 폴더에 디자인 일괄 생성) */
+        post: operations["designs_sort_designs"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/shops/me/designs/{design_id}/visibility": {
         parameters: {
             query?: never;
@@ -3352,6 +3369,47 @@ export interface components {
             region?: string | null;
             /** Thumbnail Url */
             thumbnail_url?: string | null;
+        };
+        /** DesignSortQueued */
+        DesignSortQueued: {
+            /**
+             * Folder Id
+             * Format: uuid
+             */
+            folder_id: string;
+            /** Count */
+            count: number;
+            /**
+             * Queued At
+             * Format: date-time
+             */
+            queued_at: string;
+        };
+        /**
+         * DesignSortRequest
+         * @description 디자인 정렬: 업로드한 원본들을 VM /process로 정렬 처리 후 폴더에 디자인 일괄 생성.
+         *
+         *     프론트가 원본을 먼저 업로드(→ object_key)하고, 대상 폴더/공통설정과 함께 이 요청을 보낸다.
+         *     실제 처리는 백그라운드 잡(이미지 1장당 1잡)에서 VM을 호출한다.
+         */
+        DesignSortRequest: {
+            /** Image Upload Keys */
+            image_upload_keys: string[];
+            /**
+             * Folder Id
+             * Format: uuid
+             */
+            folder_id: string;
+            /** Base Price */
+            base_price: number;
+            /** Intro Price */
+            intro_price?: number | null;
+            /** Duration Minutes */
+            duration_minutes?: number | null;
+            /** Designer Ids */
+            designer_ids: string[];
+            /** Owner Tags */
+            owner_tags?: string[];
         };
         /** DesignUpdate */
         DesignUpdate: {
@@ -10961,6 +11019,91 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DesignReanalyzeQueued"];
+                };
+            };
+            /** @description UNAUTHORIZED */
+            401: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description NOT_FOUND */
+            404: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description CONFLICT */
+            409: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description VALIDATION_ERROR */
+            422: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    designs_sort_designs: {
+        parameters: {
+            query?: never;
+            header: {
+                authorization?: string | null;
+                /** @description Required for mutating requests. */
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DesignSortRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DesignSortQueued"];
                 };
             };
             /** @description UNAUTHORIZED */

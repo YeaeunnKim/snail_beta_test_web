@@ -27,7 +27,6 @@ import { useSortJobs } from '@/stores/sort-jobs';
 import {
   defaultBulkSettings,
   loadBulkSettings,
-  nextDesignNumber,
   DesignSettingsFields,
   type DesignSettings,
 } from '../design-settings';
@@ -150,21 +149,21 @@ export default function DesignSortPage() {
     try {
       let folderId: string;
       let folderName: string;
-      let startNumber: number;
+      let baseCount: number; // 정렬 시작 시점 폴더의 디자인 수(진행률 계산 기준)
 
       if (mode === 'new') {
         const folder = await designsApi.createFolder({ name: newFolderName.trim() });
         folderId = folder.id;
         folderName = folder.name;
-        startNumber = 1;
+        baseCount = 0;
       } else {
         folderId = selectedFolderId;
         folderName = selectedFolder?.name ?? '폴더';
-        startNumber = nextDesignNumber(folderName, folderDesignsQuery.data ?? []);
+        baseCount = folderDesignsQuery.data?.length ?? 0;
       }
 
-      // 백그라운드 정렬 처리 시작(스토어가 들고 있어 탭 이동해도 계속됨) — await 하지 않는다.
-      void startJob({ folderId, folderName, startNumber, files, settings, designers });
+      // 원본 업로드 → 백엔드 정렬 요청. 스토어가 들고 있어 탭 이동해도 유지 — await 하지 않는다.
+      void startJob({ folderId, folderName, files, settings, designers, baseCount });
       qc.invalidateQueries({ queryKey: ['design-folders'] });
       router.push(`/dashboard/designs?folder=${folderId}`);
     } catch (e) {

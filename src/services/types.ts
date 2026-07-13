@@ -36,6 +36,7 @@ export type TimeOffCreate = Schemas['TimeOffCreate'];
 export type Design = Schemas['DesignMe'];
 export type DesignCreate = Schemas['DesignCreate'];
 export type DesignUpdate = Schemas['DesignUpdate'];
+export type DesignSortRequest = Schemas['DesignSortRequest'];
 export type DesignFolder = Schemas['DesignFolderPublic'];
 export type DesignFolderCreate = Schemas['DesignFolderCreate'];
 export type DesignFolderUpdate = Schemas['DesignFolderUpdate'];

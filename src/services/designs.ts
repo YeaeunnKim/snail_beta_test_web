@@ -6,6 +6,7 @@ import type {
   DesignFolderUpdate,
   DesignOptionCreate,
   DesignOptionUpdate,
+  DesignSortRequest,
   DesignUpdate,
   DesignVisibilityUpdate,
 } from './types';
@@ -30,6 +31,15 @@ export async function getDesign(designId: string) {
 /** 디자인 생성 (image_upload_keys는 업로드된 object key) */
 export async function createDesign(body: DesignCreate) {
   return apiClient.post('/api/v1/shops/me/designs', { body });
+}
+
+/**
+ * 디자인 정렬: 업로드한 원본(object key들)을 백엔드로 보내면, 백엔드가 VM /process로
+ * 정렬 처리 후 폴더에 디자인을 백그라운드로 생성한다. 응답은 큐잉 결과(count)뿐이라,
+ * 실제 디자인은 폴더를 폴링해 확인한다.
+ */
+export async function sortDesigns(body: DesignSortRequest) {
+  return apiClient.post('/api/v1/shops/me/designs/sort', { body });
 }
 
 /** 디자인 수정 */
