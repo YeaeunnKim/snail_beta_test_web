@@ -1,27 +1,42 @@
 /**
- * 베타 일정 헬퍼 — 8월 1~7일, 일/주 달력. 30분 단위 "예약 가능" 선택.
+ * 베타 일정 헬퍼 — 오늘부터 다음달 말까지, 일/주 달력. 30분 단위 "예약 가능" 선택.
  *
  * 모델(when2meet): 기본은 회색(예약 불가). 드래그로 하얗게 칠한 시간 = 예약 가능.
  *   - 하루의 가능 시간(연속 창) → 디자이너 주간 스케줄(ScheduleEntry) 근무 창
  *   - 근무 창 안의 비어 있는(회색) 구간 → 휴무(TimeOff) 블록
  *   - 하나도 안 칠한 날 → 휴무일
- * 8월 1~7일은 월~일 7요일이 하나씩이라 주간 스케줄과 1:1 대응된다.
+ * 오늘부터 다음달 말까지의 날짜 범위를 기준으로 일/주 달력을 관리한다.
  *
  * 우리 앱 예약은 백엔드가 가용시간 계산 시 자동 제외한다. 스케줄/휴무는 조회 API가 없어
  * 선택 상태와 휴무 ID는 localStorage에 함께 보관한다(같은 기기 기준).
  */
 import type { BusinessHourEntry, ScheduleEntry, TimeOffCreate } from '@/services';
+import { shiftLocalDate, todayLocalDate } from './date';
 
-/** 베타 대상 날짜 (2026-08-01 ~ 2026-08-07) */
-export const BETA_DATES = [
-  '2026-08-01',
-  '2026-08-02',
-  '2026-08-03',
-  '2026-08-04',
-  '2026-08-05',
-  '2026-08-06',
-  '2026-08-07',
-] as const;
+function dayDiff(start: string, end: string): number {
+  const [sy, sm, sd] = start.split('-').map(Number);
+  const [ey, em, ed] = end.split('-').map(Number);
+  const startDate = new Date(sy, sm - 1, sd);
+  const endDate = new Date(ey, em - 1, ed);
+  return Math.round((endDate.getTime() - startDate.getTime()) / 86400000);
+}
+
+export function endOfNextMonth(date: string = todayLocalDate()): string {
+  const [y, m] = date.split('-').map(Number);
+  return todayLocalDate(new Date(y, m + 1, 0));
+}
+
+export function buildScheduleDates(startDate: string = todayLocalDate()): string[] {
+  const endDate = endOfNextMonth(startDate);
+  return Array.from({ length: dayDiff(startDate, endDate) + 1 }, (_, i) => shiftLocalDate(startDate, i));
+}
+
+export function weekDatesFor(date: string): string[] {
+  return Array.from({ length: 7 }, (_, i) => shiftLocalDate(date, i));
+}
+
+/** 일정 관리 대상 날짜(오늘부터 다음달 말까지) */
+export const BETA_DATES = buildScheduleDates();
 
 export type BetaDate = (typeof BETA_DATES)[number];
 

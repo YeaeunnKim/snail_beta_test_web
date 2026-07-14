@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * 일정 관리 — 8월 1~7일. 보기 모드 + "예약 가능 시간 수정" 편집 모드.
+ * 일정 관리 — 오늘부터 7일. 보기 모드 + "예약 가능 시간 수정" 편집 모드.
  *
  *  - 평상시(보기): 예약 가능(하양)/불가(회색) 배경 위에 우리 앱 요청/예약이 뜬다.
  *    요청(테두리)·확정(채움)을 누르면 상세(디자인·사진·타임라인·요청사항+답변·액션)가 열린다.
@@ -30,11 +30,14 @@ import {
   availDayToScheduleAndTimeOff,
   businessHoursSeed,
   dateShortLabel,
+  endOfNextMonth,
   localDateOf,
   localMinOf,
   minToTime,
   slotStartMin,
+  weekDatesFor,
 } from '@/lib/beta-schedule';
+import { todayLocalDate, shiftLocalDate } from '@/lib/date';
 import { useMyShop } from '@/hooks/use-my-shop';
 
 const HOLDING: ReservationStatus[] = ['pending', 'payment_pending', 'confirmed', 'completed'];
@@ -97,7 +100,8 @@ function resBarsFor(reservations: Reservation[], designerId: string, date: strin
 }
 
 export default function SchedulePage() {
-  const [view, setView] = useState<'day' | 'week'>('day');
+  const [view, setView] = useState<'day' | 'week'>('week');
+  const [weekStartDate, setWeekStartDate] = useState(todayLocalDate());
   const [dayIdx, setDayIdx] = useState(0);
   const [weekDesignerId, setWeekDesignerId] = useState<string | null>(null);
   const [availBy, setAvailBy] = useState<Record<string, Set<string>>>({});
@@ -131,11 +135,16 @@ export default function SchedulePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [designers, seedSet]);
 
+  const visibleDates = useMemo(() => weekDatesFor(weekStartDate), [weekStartDate]);
+  const maxWeekStartDate = useMemo(() => shiftLocalDate(endOfNextMonth(todayLocalDate()), -6), []);
+  const canMovePrevWeek = weekStartDate > todayLocalDate();
+  const canMoveNextWeek = shiftLocalDate(weekStartDate, 7) <= maxWeekStartDate;
+
   const reservationsQuery = useQuery({
-    queryKey: ['reservations', 'beta-schedule'],
+    queryKey: ['reservations', 'beta-schedule', weekStartDate],
     queryFn: () =>
       collectAll<Reservation>((cursor) =>
-        reservationsApi.listReservations({ from: BETA_DATES[0], to: BETA_DATES[6], limit: 50, cursor }),
+        reservationsApi.listReservations({ from: visibleDates[0], to: visibleDates[visibleDates.length - 1], limit: 50, cursor }),
       ),
   });
   const reservations = useMemo(() => reservationsQuery.data ?? [], [reservationsQuery.data]);
@@ -250,8 +259,8 @@ export default function SchedulePage() {
 
   const columns: { designerId: string; date: string; label: string; danger?: boolean }[] =
     view === 'day'
-      ? designers.map((d) => ({ designerId: d.id, date: BETA_DATES[dayIdx], label: d.name }))
-      : BETA_DATES.map((date) => ({
+      ? designers.map((d) => ({ designerId: d.id, date: visibleDates[dayIdx], label: d.name }))
+      : visibleDates.map((date) => ({
           designerId: weekDesignerId ?? designers[0].id,
           date,
           label: dateShortLabel(date),
@@ -283,29 +292,52 @@ export default function SchedulePage() {
         </div>
       </div>
 
-      {view === 'day' ? (
-        <div className="flex items-center justify-center gap-3">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center justify-center gap-2">
           <button
-            onClick={() => setDayIdx((i) => Math.max(0, i - 1))}
-            disabled={dayIdx === 0}
+            onClick={() => setWeekStartDate((d) => shiftLocalDate(d, -7))}
+            disabled={!canMovePrevWeek}
             className="grid h-8 w-8 place-items-center rounded-lg border border-neutral-200 text-primary-50 disabled:opacity-30"
+            title="이전 주"
           >
-            ‹
+            «
           </button>
-          <div className="min-w-[110px] text-center text-body-sm font-bold text-primary">
-            {dateShortLabel(BETA_DATES[dayIdx])}
-          </div>
+          {view === 'day' ? (
+            <>
+              <button
+                onClick={() => setDayIdx((i) => Math.max(0, i - 1))}
+                disabled={dayIdx === 0}
+                className="grid h-8 w-8 place-items-center rounded-lg border border-neutral-200 text-primary-50 disabled:opacity-30"
+              >
+                ‹
+              </button>
+              <div className="min-w-[140px] text-center text-body-sm font-bold text-primary">
+                {`${dateShortLabel(visibleDates[dayIdx])} · ${dateShortLabel(visibleDates[0])}~${dateShortLabel(visibleDates[visibleDates.length - 1])}`}
+              </div>
+              <button
+                onClick={() => setDayIdx((i) => Math.min(visibleDates.length - 1, i + 1))}
+                disabled={dayIdx === visibleDates.length - 1}
+                className="grid h-8 w-8 place-items-center rounded-lg border border-neutral-200 text-primary-50 disabled:opacity-30"
+              >
+                ›
+              </button>
+            </>
+          ) : (
+            <div className="min-w-[160px] text-center text-body-sm font-bold text-primary">
+              {`${dateShortLabel(visibleDates[0])}~${dateShortLabel(visibleDates[visibleDates.length - 1])}`}
+            </div>
+          )}
           <button
-            onClick={() => setDayIdx((i) => Math.min(BETA_DATES.length - 1, i + 1))}
-            disabled={dayIdx === BETA_DATES.length - 1}
+            onClick={() => setWeekStartDate((d) => shiftLocalDate(d, 7))}
+            disabled={!canMoveNextWeek}
             className="grid h-8 w-8 place-items-center rounded-lg border border-neutral-200 text-primary-50 disabled:opacity-30"
+            title="다음 주"
           >
-            ›
+            »
           </button>
         </div>
-      ) : (
-        designers.length > 1 && (
-          <div className="flex flex-wrap gap-1.5">
+        {view === 'week' && designers.length > 1 && (
+          <div className="flex flex-wrap justify-end gap-1.5">
             {designers.map((d) => (
               <button
                 key={d.id}
@@ -318,8 +350,8 @@ export default function SchedulePage() {
               </button>
             ))}
           </div>
-        )
-      )}
+        )}
+      </div>
 
       {/* 범례 + 수정 버튼 */}
       <div className="flex items-center justify-between gap-2">
