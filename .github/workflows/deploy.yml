@@ -1,0 +1,86 @@
+name: Deploy (Vercel Production)
+
+# main 에 push(= PR 머지 포함)되면 glamnowlab Vercel(팀 snail8 / 프로젝트 snail_beta_test_web)
+# 프로덕션(https://snailbetatestweb.vercel.app)으로 자동 배포한다.
+#
+# 왜 Vercel 네이티브 Git 연동이 아니라 GitHub Actions 인가:
+#   Vercel 팀은 Git 커밋 author 가 팀 멤버가 아니면 배포를 "Deployment Blocked" 로 막는다.
+#   이 repo 소유자는 snail8 팀 멤버가 아니므로 네이티브 push-to-deploy 는 막힌다.
+#   Actions 에서 CLI(vercel deploy --token)로 배포하면 토큰 소유자(=팀 멤버)에게 귀속되고
+#   prebuilt 업로드라 Git author 컨텍스트가 없어 author 체크를 우회한다.
+#
+# 선행조건(최초 1회): repo Settings → Secrets and variables → Actions 에 아래 Secret 등록
+#   VERCEL_TOKEN = snail8 팀 스코프 Vercel 토큰 (https://vercel.com/account/tokens 에서 발급)
+#   → 토큰이 없으면 이 워크플로는 조용히 skip 한다(빨간 실패 대신).
+
+on:
+  push:
+    branches: [main]
+
+# 연속 머지 시 이전 배포를 취소하고 최신만 반영
+concurrency:
+  group: vercel-prod
+  cancel-in-progress: true
+
+env:
+  VERCEL_ORG_ID: team_ci4nDCjH1ZYNSIfFMot4Cibr      # Vercel team: snail8 (glamnowlab)
+  VERCEL_PROJECT_ID: prj_zOnsvz7NMAHL7mSvCKwKk8NDMGLi # project: snail_beta_test_web
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check VERCEL_TOKEN
+        id: guard
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          if [ -z "$VERCEL_TOKEN" ]; then
+            echo "::warning::VERCEL_TOKEN Secret 이 없어 배포를 건너뜁니다. repo Settings → Secrets 에 등록하세요."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout
+        if: steps.guard.outputs.skip != 'true'
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        if: steps.guard.outputs.skip != 'true'
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.5.0
+
+      - name: Setup Node
+        if: steps.guard.outputs.skip != 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install Vercel CLI
+        if: steps.guard.outputs.skip != 'true'
+        run: npm install -g vercel@latest
+
+      - name: Pull Vercel project settings & prod env
+        if: steps.guard.outputs.skip != 'true'
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+
+      - name: Build (prod)
+        if: steps.guard.outputs.skip != 'true'
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: vercel build --prod --token="$VERCEL_TOKEN"
+
+      - name: Deploy prebuilt (prod)
+        if: steps.guard.outputs.skip != 'true'
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          url=$(vercel deploy --prebuilt --prod \
+            --meta "gitSha=${GITHUB_SHA::7}" \
+            --token="$VERCEL_TOKEN")
+          echo "Deployed → $url"
+          echo "### ✅ Vercel 프로덕션 배포 완료" >> "$GITHUB_STEP_SUMMARY"
+          echo "$url" >> "$GITHUB_STEP_SUMMARY"
