@@ -29,9 +29,9 @@ import {
   HOURS,
   SLOTS_PER_DAY,
   appWeekday,
-  availToWeeklyScheduleAndTimeOff,
+  availToBusinessScheduleAndTimeOff,
   businessHoursSeed,
-  serverToAvailSet,
+  seedMinusTimeOffs,
   dateShortLabel,
   endOfNextMonth,
   localDateOf,
@@ -54,12 +54,12 @@ const SCHEDULE_RANGE = { from: BETA_DATES[0], to: BETA_DATES[BETA_DATES.length -
 
 const clampMin = (m: number) => Math.min(DAY_END_MIN, Math.max(DAY_START_MIN, m));
 
-function availRanges(set: Set<string>, date: string): { startMin: number; endMin: number }[] {
-  const on = Array.from({ length: SLOTS_PER_DAY }, (_, i) => set.has(cell(date, i)));
+/** 슬롯 i가 켜졌는지(on) 판정하는 술어로부터 연속 구간(분 단위)들을 만든다. */
+function rangesFrom(on: (i: number) => boolean): { startMin: number; endMin: number }[] {
   const out: { startMin: number; endMin: number }[] = [];
   let s: number | null = null;
   for (let i = 0; i <= SLOTS_PER_DAY; i += 1) {
-    if (i < SLOTS_PER_DAY && on[i]) {
+    if (i < SLOTS_PER_DAY && on(i)) {
       if (s === null) s = i;
     } else if (s !== null) {
       out.push({ startMin: slotStartMin(s), endMin: slotStartMin(i) });
@@ -127,16 +127,14 @@ export default function SchedulePage() {
     if (!weekDesignerId && designers.length > 0) setWeekDesignerId(designers[0].id);
   }, [designers, weekDesignerId]);
 
-  // 서버 스케줄이 있으면 재구성, 없으면(미저장) 영업시간 기본값(seed).
+  // 예약 가능 기본값 = 영업시간(seed). 서버 휴무(TimeOff)만 빼서 현재 상태를 재구성한다.
+  // (스케줄 근무창은 영업시간과 같게 저장하므로, 표시 기준은 항상 "영업시간 − 휴무".)
   const reloadAvail = useCallback(() => {
     const server = scheduleQuery.data;
     const map: Record<string, Set<string>> = {};
     for (const d of designers) {
       const entry = server?.[d.id];
-      map[d.id] =
-        entry && entry.schedule.length > 0
-          ? serverToAvailSet(BETA_DATES, entry.schedule, entry.timeOffs)
-          : new Set(seedSet);
+      map[d.id] = seedMinusTimeOffs(seedSet, BETA_DATES, entry?.timeOffs ?? []);
     }
     setAvailBy(map);
   }, [designers, scheduleQuery.data, seedSet]);
@@ -183,8 +181,12 @@ export default function SchedulePage() {
     const next = new Set(snapshot);
     for (let i = lo; i <= hi; i += 1) {
       const k = cell(date, i);
-      if (mode === 'paint') next.add(k);
-      else if (!reserved?.has(i)) next.delete(k); // 예약된 슬롯은 지우지 않음(항상 예약가능 유지)
+      // paint = 휴무 해제(예약 가능으로 되돌리기) — 영업시간 안에서만 가능(영업 외는 애초에 예약 불가).
+      if (mode === 'paint') {
+        if (seedSet.has(k)) next.add(k);
+      } else if (!reserved?.has(i)) {
+        next.delete(k); // erase = 휴무로 막기. 단 이미 예약된 슬롯은 유지(막지 않음).
+      }
     }
     setAvailBy((prev) => ({ ...prev, [designerId]: next }));
   };
@@ -223,9 +225,11 @@ export default function SchedulePage() {
     try {
       for (const d of designers) {
         const set = availBy[d.id] ?? new Set<string>();
-        // 날짜별 선택을 요일별 주간 스케줄 7건 + 날짜별 휴무로 집계(백엔드 계약: entries 요일별 7건).
-        const { entries, timeOffs } = availToWeeklyScheduleAndTimeOff(BETA_DATES, (date, slot) =>
-          set.has(cell(date, slot)),
+        // 요일 스케줄 = 영업시간, 날짜별 휴무 = 드래그로 막은 구간(백엔드 계약: entries 요일별 7건).
+        const { entries, timeOffs } = availToBusinessScheduleAndTimeOff(
+          BETA_DATES,
+          shopQuery.data?.business_hours,
+          (date, slot) => set.has(cell(date, slot)),
         );
 
         // 1) 관리 범위(BETA_DATES) 안의 기존 휴무를 서버에서 조회해 삭제(범위 밖 휴무는 보존).
@@ -279,7 +283,9 @@ export default function SchedulePage() {
         <div>
           <h1 className="text-heading-lg font-bold text-primary">일정 관리</h1>
           <p className="mt-1 text-body-sm text-primary-50">
-            {editing ? '세로로 드래그해 예약 가능 시간을 켜고 끄세요.' : '요청·예약을 누르면 상세가 열려요.'}
+            {editing
+              ? '영업시간 안은 기본 예약 가능이에요. 세로로 드래그해 쉬는 시간(휴무)을 칠하세요.'
+              : '요청·예약을 누르면 상세가 열려요.'}
           </p>
         </div>
         <div className="flex gap-1 rounded-lg bg-neutral-100 p-1">
@@ -365,7 +371,10 @@ export default function SchedulePage() {
             <span className="h-2.5 w-2.5 rounded-sm border border-neutral-300 bg-white" /> 가능
           </span>
           <span className="inline-flex items-center gap-1">
-            <span className="h-2.5 w-2.5 rounded-sm bg-neutral-400" /> 불가
+            <span className="h-2.5 w-2.5 rounded-sm bg-neutral-400" /> 휴무
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <span className="h-2.5 w-2.5 rounded-sm bg-neutral-200" /> 영업 외
           </span>
           <span className="inline-flex items-center gap-1">
             <span className="h-2.5 w-2.5 rounded-sm border border-warning bg-warning-bg" /> 요청
@@ -391,6 +400,12 @@ export default function SchedulePage() {
           }`}
         >
           {message.text}
+        </p>
+      )}
+
+      {editing && seedSet.size === 0 && (
+        <p className="rounded-md bg-warning-bg px-3 py-2 text-caption text-warning">
+          샵 영업시간이 설정돼 있지 않아 예약 가능한 시간이 없어요. 먼저 샵 설정에서 영업시간을 입력해주세요.
         </p>
       )}
 
@@ -425,21 +440,33 @@ export default function SchedulePage() {
 
             {columns.map((c, i) => {
               const set = availBy[c.designerId] ?? new Set<string>();
-              const ranges = availRanges(set, c.date);
+              // 영업시간(seed) 안에서 예약 가능(하양) / 휴무로 막힌 구간(진회색)을 나눈다. 영업 외는 컬럼 배경.
+              const availR = rangesFrom((s) => set.has(cell(c.date, s)));
+              const blockedR = rangesFrom((s) => seedSet.has(cell(c.date, s)) && !set.has(cell(c.date, s)));
               const bars = resBarsFor(reservations, c.designerId, c.date);
               return (
                 <div
                   key={`${c.designerId}-${c.date}-${i}`}
-                  className={`relative flex-1 border-r border-neutral-100 bg-neutral-400 last:border-r-0 ${editing ? 'touch-pan-x cursor-pointer' : ''}`}
+                  className={`relative flex-1 border-r border-neutral-100 bg-neutral-200 last:border-r-0 ${editing ? 'touch-pan-x cursor-pointer' : ''}`}
                   style={{ height: GRID_H, minWidth: colMinW }}
                   onPointerDown={editing ? onDown(c.designerId, c.date) : undefined}
                   onPointerMove={editing ? onMove : undefined}
                   onPointerUp={editing ? onUp : undefined}
                 >
-                  {ranges.map((r) => (
+                  {availR.map((r) => (
                     <div
-                      key={r.startMin}
+                      key={`a${r.startMin}`}
                       className="pointer-events-none absolute inset-x-0 bg-white"
+                      style={{
+                        top: `${((r.startMin - DAY_START_MIN) / DAY_MINUTES) * 100}%`,
+                        height: `${((r.endMin - r.startMin) / DAY_MINUTES) * 100}%`,
+                      }}
+                    />
+                  ))}
+                  {blockedR.map((r) => (
+                    <div
+                      key={`b${r.startMin}`}
+                      className="pointer-events-none absolute inset-x-0 bg-neutral-400"
                       style={{
                         top: `${((r.startMin - DAY_START_MIN) / DAY_MINUTES) * 100}%`,
                         height: `${((r.endMin - r.startMin) / DAY_MINUTES) * 100}%`,
@@ -473,7 +500,7 @@ export default function SchedulePage() {
 
       <p className="text-caption text-primary-50">
         {editing
-          ? '드래그로 켠 하얀 시간이 저장 후 snail 앱 예약 가능 시간으로 노출됩니다.'
+          ? '영업시간 안에서 휴무로 칠하지 않은 하얀 시간이 저장 후 snail 앱 예약 가능 시간으로 노출됩니다.'
           : '요청이 들어오면 가능 시간 위에 테두리로 떠요. 눌러서 확정하면 초록으로 채워집니다.'}
       </p>
 
