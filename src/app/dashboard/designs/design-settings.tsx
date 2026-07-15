@@ -19,6 +19,7 @@ export const DURATION_MIN = 30;
 export const DURATION_MAX = 600;
 export const DURATION_STEP = 10;
 export const PRICE_STEP = 5000; // 디자이너별 가격 · 추가옵션 가격 +/- 단위(원)
+export const PRICE_INPUT_STEP = 1000; // 정상가 · 인트로가 입력칸 화살표 +/- 단위(원)
 export const OPTION_PRICE_DEFAULT = 50000; // 추가옵션 기본 추가금액(원)
 
 /** 추가옵션 종류. 백엔드 DesignOptionKind(extend/removal/care)와 1:1. */
@@ -305,6 +306,15 @@ export function DesignSettingsFields({
     }
     onChange({ picked: nextPicked, pickedPrice: nextPrice });
   };
+  // 정상가를 바꾸면 인트로가도 같은 값으로 따라 채운다.
+  // 단 인트로가가 정상가와 다르게 들어가 있으면(사장님이 할인가를 직접 넣은 상태) 건드리지 않는다.
+  // "손댔는지"를 별도 플래그로 들고 있지 않고 현재 값만으로 판정하므로,
+  // 이전 설정 불러오기로 할인가가 채워진 경우에도 자동으로 보존된다.
+  const setPrice = (next: string) => {
+    const introFollowsPrice = introPrice.trim() === '' || introPrice === price;
+    onChange(introFollowsPrice ? { price: next, introPrice: next } : { price: next });
+  };
+
   const setDesignerDuration = (id: string, minutes: number) =>
     onChange({ picked: { ...picked, [id]: clampDuration(minutes) } });
   const setDesignerPrice = (id: string, won: number) =>
@@ -314,11 +324,15 @@ export function DesignSettingsFields({
     <>
       <div className={multiDesigner ? '' : 'flex flex-wrap gap-3'}>
         <div className={multiDesigner ? '' : 'min-w-[8rem] flex-1'}>
-          <label className={labelCls}>정상가(원)</label>
+          <label className={labelCls}>
+            정상가(원) <span className="text-danger">*</span>
+          </label>
           <input
             type="number"
+            min={0}
+            step={PRICE_INPUT_STEP}
             value={price}
-            onChange={(e) => onChange({ price: e.target.value })}
+            onChange={(e) => setPrice(e.target.value)}
             className={fieldCls}
           />
         </div>
@@ -327,6 +341,7 @@ export function DesignSettingsFields({
           <input
             type="number"
             min={0}
+            step={PRICE_INPUT_STEP}
             value={introPrice}
             onChange={(e) => onChange({ introPrice: e.target.value })}
             placeholder="비우면 정상가"
@@ -346,7 +361,9 @@ export function DesignSettingsFields({
 
       {multiDesigner && (
         <div>
-          <label className={labelCls}>디자이너별 소요시간 · 가격</label>
+          <label className={labelCls}>
+            디자이너별 소요시간 · 가격 <span className="text-danger">*</span>
+          </label>
           <p className="mb-2 text-caption text-primary-50">
             체크한 디자이너만 이 디자인을 할 수 있어요. 소요시간·가격을 디자이너별로 다르게 조정할 수 있어요. 미조정 시
             기본값(소요시간 {duration}분 · 가격 {basePrice.toLocaleString('ko-KR')}원).

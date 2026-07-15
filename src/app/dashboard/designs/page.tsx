@@ -604,8 +604,10 @@ function CreateForm({
   const [thumbnail, setThumbnail] = useState<PhotoItem | null>(null);
   const [details, setDetails] = useState<PhotoItem[]>([]);
   const [cropFile, setCropFile] = useState<File | null>(null); // 대표 사진 선택 직후 크롭 대기 중인 원본 파일
-  const [folderId, setFolderId] = useState<string>(defaultFolderId); // '' = 폴더 없음
+  const [folderId, setFolderId] = useState<string>(defaultFolderId); // '' = 미선택(필수)
   const [title, setTitle] = useState('');
+  // 제목을 사장님이 직접 고쳤는지. 고친 뒤에는 폴더를 바꿔도 자동제목으로 덮어쓰지 않는다.
+  const [titleTouched, setTitleTouched] = useState(false);
   const [settings, setSettings] = useState<DesignSettings>(() => defaultBulkSettings());
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -625,6 +627,26 @@ function CreateForm({
     }
     setFolderPreset(loadBulkSettings(`snail_bulk_settings:${folderId}`, designers));
   }, [folderId, designers]);
+
+  // 제목 자동생성: 선택한 폴더의 기존 디자인에서 다음 순번을 구해 "폴더명_001" 형식으로 채운다.
+  // 폴더 안 일괄 업로드(BulkForm)와 동일한 규칙이라 순번이 폴더 기준으로 누적된다.
+  const foldersQuery = useQuery({ queryKey: ['design-folders'], queryFn: () => designsApi.listFolders() });
+  const selectedFolder = (foldersQuery.data ?? []).find((f) => f.id === folderId);
+  const folderDesignsQuery = useQuery({
+    queryKey: ['designs', 'folder', folderId || 'none', 'for-title'],
+    queryFn: () =>
+      collectAll<Design>((cursor) => designsApi.listDesigns({ folder_id: folderId, limit: 50, cursor })),
+    enabled: !!folderId,
+  });
+  const autoTitle =
+    selectedFolder && folderDesignsQuery.data
+      ? `${selectedFolder.name}_${String(nextDesignNumber(selectedFolder.name, folderDesignsQuery.data)).padStart(3, '0')}`
+      : '';
+
+  // 사장님이 제목을 직접 고치기 전까지는 자동제목을 따라간다.
+  useEffect(() => {
+    if (!titleTouched) setTitle(autoTitle);
+  }, [autoTitle, titleTouched]);
 
   // --- 사진 업로드 헬퍼 ---
   const startUpload = (file: File, onDone: (item: PhotoItem) => void) => {
@@ -673,10 +695,17 @@ function CreateForm({
   };
   const removeDetail = (id: string) => setDetails((list) => list.filter((it) => it.id !== id));
 
+  // 제목은 비워두면 자동제목으로 등록된다(필수 아님).
+  const effectiveTitle = title.trim() || autoTitle;
+
   const onSubmit = async () => {
     setFormError(null);
-    if (!title.trim()) {
-      setFormError('제목을 입력해주세요.');
+    if (!folderId) {
+      setFormError('폴더를 선택하거나 새로 만들어주세요.');
+      return;
+    }
+    if (!effectiveTitle) {
+      setFormError('제목을 불러오는 중이에요. 잠시 후 다시 시도해주세요.');
       return;
     }
     if (!thumbnail || thumbnail.status !== 'done' || !thumbnail.objectKey) {
@@ -726,7 +755,7 @@ function CreateForm({
       let designId = createdIdRef.current;
       if (!designId) {
         const created = await designsApi.createDesign({
-          title: title.trim(),
+          title: effectiveTitle,
           description: settings.description.trim() || null,
           base_price: price,
           intro_price: settings.introPrice.trim() ? Number(settings.introPrice) : null,
@@ -835,8 +864,19 @@ function CreateForm({
       </div>
 
       {/* 제목 (관리용) */}
-      <Field label="제목 (관리용)" required hint="사장님 관리용 이름입니다. 고객에게는 노출되지 않습니다.">
-        <input className={inputCls} value={title} onChange={(e) => setTitle(e.target.value)} />
+      <Field
+        label="제목 (관리용)"
+        hint="폴더를 고르면 자동으로 지어집니다. 직접 고쳐도 되고, 비우면 자동 제목으로 등록돼요. 사장님 관리용 이름이라 고객에게는 노출되지 않습니다."
+      >
+        <input
+          className={inputCls}
+          value={title}
+          onChange={(e) => {
+            setTitleTouched(true);
+            setTitle(e.target.value);
+          }}
+          placeholder={autoTitle || '폴더를 먼저 선택하세요'}
+        />
       </Field>
 
       {/* 폴더 */}
@@ -1187,7 +1227,7 @@ function FolderField({ value, onChange }: { value: string; onChange: (v: string)
   return (
     <div>
       <label className="mb-1 block text-body-sm font-medium">
-        폴더 <span className="text-caption text-primary-50">선택</span>
+        폴더 <span className="text-danger">*</span>
       </label>
       {creating ? (
         <div className="flex flex-col gap-2">
@@ -1242,7 +1282,7 @@ function FolderField({ value, onChange }: { value: string; onChange: (v: string)
             onChange={(e) => onChange(e.target.value)}
             className={`${inputCls} bg-white`}
           >
-            <option value="">폴더 없음</option>
+            <option value="">폴더를 선택하세요</option>
             {folders.map((f) => (
               <option key={f.id} value={f.id}>
                 {f.name}
