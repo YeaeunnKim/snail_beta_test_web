@@ -31,7 +31,7 @@ export default function ChatListPage() {
 
   return (
     <div className="flex flex-col gap-3">
-      <h1 className="text-heading-lg text-primary">채팅</h1>
+      <h1 className="text-heading-lg font-bold text-primary">채팅</h1>
 
       {isLoading ? (
         <p className="text-body-sm text-primary-50 py-10 text-center">불러오는 중…</p>

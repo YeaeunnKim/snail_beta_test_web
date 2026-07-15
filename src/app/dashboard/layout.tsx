@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * 베타 모바일 셸 — 하단 탭(디자인 / 일정 / 샵 / 문의 / 알림) + 진입 가드.
+ * 베타 모바일 셸 — 하단 탭(디자인 / 예약 / 문의 / 채팅 / 일정 / 샵) + 진입 가드.
  *
  * 가드 순서:
  *  - 미인증          → /login
@@ -17,11 +17,11 @@ import { useMyShop } from '@/hooks/use-my-shop';
 
 const TABS = [
   { href: '/dashboard/designs', label: '디자인', icon: '🎨' },
-  { href: '/dashboard/schedule', label: '일정', icon: '🗓️' },
-  { href: '/dashboard/shop', label: '샵', icon: '🏠' },
+  { href: '/dashboard/notifications', label: '예약', icon: '🔔' },
   { href: '/dashboard/inquiries', label: '문의', icon: '💬' },
   { href: '/dashboard/chat', label: '채팅', icon: '📨' },
-  { href: '/dashboard/notifications', label: '알림', icon: '🔔' },
+  { href: '/dashboard/schedule', label: '일정', icon: '🗓️' },
+  { href: '/dashboard/shop', label: '샵', icon: '🏠' },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {

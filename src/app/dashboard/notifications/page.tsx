@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * 알림 — 예약 요청/방문 관리 (모바일).
+ * 예약 — 예약 요청/방문 관리 (모바일). 경로는 /notifications 유지(북마크·링크 호환).
  *
  * 세그먼트 3개:
  *  - 요청     : pending(수락/거절) · payment_pending(입금 확인만 — 취소는 409라 버튼 없음)
@@ -91,7 +91,7 @@ export default function NotificationsPage() {
   return (
     <div className="space-y-3">
       <div>
-        <h1 className="text-heading-lg font-bold text-primary">알림</h1>
+        <h1 className="text-heading-lg font-bold text-primary">예약</h1>
         <p className="mt-1 text-body-sm text-primary-50">들어온 예약을 수락하고 방문을 관리하세요.</p>
       </div>
 
