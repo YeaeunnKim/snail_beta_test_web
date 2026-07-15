@@ -1,14 +1,15 @@
 /**
- * 베타 일정 헬퍼 — 오늘부터 다음달 말까지, 일/주 달력. 30분 단위 "예약 가능" 선택.
+ * 베타 일정 헬퍼 — 오늘부터 다음달 말까지, 일/주 달력. 30분 단위.
  *
- * 모델(when2meet): 기본은 회색(예약 불가). 드래그로 하얗게 칠한 시간 = 예약 가능.
- *   - 하루의 가능 시간(연속 창) → 디자이너 주간 스케줄(ScheduleEntry) 근무 창
- *   - 근무 창 안의 비어 있는(회색) 구간 → 휴무(TimeOff) 블록
- *   - 하나도 안 칠한 날 → 휴무일
+ * 모델(영업시간 기본 + 휴무 차감): **예약 가능의 기본값 = 샵 영업시간**이다.
+ * 영업시간 안에서 예약이 안 잡혀 있으면 기본 예약 가능(하양). 드래그는 그 위에 **휴무(예약 불가)**를 칠한다.
+ *   - 요일 스케줄(ScheduleEntry) = 샵 영업시간(영업하는 요일 → 시작~종료, 닫는 요일 → is_day_off).
+ *   - 드래그로 막은(예약 불가로 칠한) 영업시간 안 구간 → 그 날짜의 휴무(TimeOff).
+ *   - 영업시간 밖은 애초에 예약 불가(달력에서 '영업 외'). 아무것도 안 막은 날은 영업시간 전체 예약 가능.
  * 오늘부터 다음달 말까지의 날짜 범위를 기준으로 일/주 달력을 관리한다.
  *
- * 우리 앱 예약은 백엔드가 가용시간 계산 시 자동 제외한다. 스케줄/휴무는 조회 API가 없어
- * 선택 상태와 휴무 ID는 localStorage에 함께 보관한다(같은 기기 기준).
+ * 우리 앱 예약은 백엔드가 가용시간 계산 시 자동 제외한다. 현재 상태(스케줄/휴무)는 서버에서
+ * 불러와 재구성하므로 기기가 달라도 일관된다.
  */
 import type { BusinessHourEntry, ScheduleEntry, TimeOff, TimeOffCreate } from '@/services';
 import { shiftLocalDate, todayLocalDate } from './date';
@@ -120,21 +121,37 @@ export function businessHoursSeed(entries?: BusinessHourEntry[] | null): Set<str
 }
 
 /**
- * 서버의 요일별 스케줄 + 날짜별 휴무 → 날짜/슬롯 "예약 가능" 집합(하양칸).
- * availToWeeklyScheduleAndTimeOff 의 역변환. 슬롯 예약가능 =
- *   (요일 근무창 안) AND (그 날짜 휴무 구간에 안 걸림).
- * 종일 휴무(시작/종료 null)나 시간 파싱 실패는 그 날짜 전체를 불가로 본다.
+ * 요일별 영업시간(business_hours) → 그 요일의 예약 가능 근무창(분 단위, 그리드 09:00~22:00로 클램프).
+ * 닫힌 요일 / 시간 없음 / 파싱 실패 / 범위 밖이면 null(=영업 안 함).
+ * seed(businessHoursSeed)의 슬롯 포함 규칙과 동일한 창을 만든다.
+ */
+function businessWindowMin(
+  byWeekday: Map<number, BusinessHourEntry>,
+  weekday: number,
+): { startMin: number; endMin: number } | null {
+  const e = byWeekday.get(weekday);
+  if (!e || e.is_closed || !e.open_time || !e.close_time) return null;
+  const open = timeToMin(e.open_time.slice(0, 5));
+  const close = timeToMin(e.close_time.slice(0, 5));
+  if (open === null || close === null) return null;
+  const startMin = Math.max(open, DAY_START_MIN);
+  const endMin = Math.min(close, DAY_END_MIN);
+  if (startMin >= endMin) return null;
+  return { startMin, endMin };
+}
+
+/**
+ * (새 모델) 예약 가능 기본값 = 영업시간. 드래그는 "휴무"를 칠한다.
+ * 영업시간 seed에서 서버 휴무(TimeOff) 구간을 빼서 현재 "예약 가능" 집합을 재구성한다.
+ * 종일 휴무(시작/종료 null)나 시간 파싱 실패는 그 날짜 전체를 휴무로 본다.
  * 반환 키 형식: `YYYY-MM-DD|slot`.
  */
-export function serverToAvailSet(
+export function seedMinusTimeOffs(
+  seed: Set<string>,
   dates: readonly string[],
-  schedule: ScheduleEntry[],
-  timeOffs: TimeOff[],
+  timeOffs: readonly TimeOff[],
 ): Set<string> {
-  const set = new Set<string>();
-  const byWeekday = new Map<number, ScheduleEntry>();
-  for (const e of schedule) byWeekday.set(e.weekday, e);
-
+  const set = new Set(seed);
   const offByDate = new Map<string, { startMin: number; endMin: number }[]>();
   for (const t of timeOffs) {
     const s = t.start_time != null ? timeToMin(t.start_time.slice(0, 5)) : null;
@@ -145,94 +162,82 @@ export function serverToAvailSet(
     if (list) list.push(range);
     else offByDate.set(t.off_date, [range]);
   }
-
   for (const date of dates) {
-    const entry = byWeekday.get(appWeekday(date));
-    if (!entry || entry.is_day_off || !entry.start_time || !entry.end_time) continue;
-    const winStart = timeToMin(entry.start_time.slice(0, 5));
-    const winEnd = timeToMin(entry.end_time.slice(0, 5));
-    if (winStart === null || winEnd === null) continue;
-    const offs = offByDate.get(date) ?? [];
+    const offs = offByDate.get(date);
+    if (!offs) continue;
     for (let i = 0; i < SLOTS_PER_DAY; i += 1) {
       const s = slotStartMin(i);
-      if (s < winStart || s >= winEnd) continue; // 근무창 밖
-      if (offs.some((o) => s >= o.startMin && s < o.endMin)) continue; // 휴무에 걸림
-      set.add(`${date}|${i}`);
+      if (offs.some((o) => s >= o.startMin && s < o.endMin)) set.delete(`${date}|${i}`);
     }
   }
   return set;
 }
 
 /**
- * 여러 날짜의 "예약 가능" 슬롯 → 요일별 주간 스케줄 7건 + 날짜별 휴무 블록.
+ * (새 모델) 날짜별 "예약 가능" 슬롯 → 요일별 주간 스케줄 7건 + 날짜별 휴무 블록.
  *
- * 주간 스케줄은 요일 반복 패턴이라(백엔드 계약: 요일별 7건, entries maxItems=7),
- * 같은 요일의 여러 날짜를 하나의 근무창으로 합쳐야 한다. 휴무(TimeOff)는 근무창에서
- * 빼기만 가능하므로:
- *   - 요일 근무창 = 그 요일 모든 날짜에서 켠 슬롯의 합집합 외곽(가장 이른 시작~가장 늦은 끝).
- *     (어느 날짜든 켠 슬롯은 반드시 이 창 안에 들어와야 TimeOff로 되돌릴 수 있다)
- *   - 각 날짜: 근무창 안에서 그날 안 켠 연속 구간 → 휴무(TimeOff).
- *   - 그 요일 어떤 날짜에서도 하나도 안 켰으면 → 요일 휴무(is_day_off).
- *
- * dates 는 대상 날짜들(중복 요일 포함 가능), hasSlot(date, slot) 은 해당 날짜/슬롯의 예약가능 여부.
- * 반환 entries 는 항상 월(0)~일(6) 7건이다.
+ * 예약 가능의 기본 뼈대는 "샵 영업시간"이다(요일 스케줄 = 영업시간). 사장님이 드래그로
+ * 막은 시간(영업시간 안에서 예약 불가로 칠한 구간)만 그 날짜의 휴무(TimeOff)로 내려보낸다.
+ *   - 요일 스케줄: 영업하는 요일 → 영업 시작~종료(그리드 클램프), 닫는 요일 → is_day_off.
+ *   - 날짜별 휴무: 그 날짜 영업시간 창 안에서 예약 불가(hasSlot=false)로 칠한 연속 구간.
+ * 영업시간 밖은 애초에 예약 불가라 별도 휴무가 필요 없다. 아무것도 안 막은 날짜는 휴무 0건
+ * (= 영업시간 전체 예약 가능). 반환 entries 는 항상 월(0)~일(6) 7건이다.
  */
-export function availToWeeklyScheduleAndTimeOff(
+export function availToBusinessScheduleAndTimeOff(
   dates: readonly string[],
+  businessHours: BusinessHourEntry[] | null | undefined,
   hasSlot: (date: string, slot: number) => boolean,
 ): { entries: ScheduleEntry[]; timeOffs: TimeOffCreate[] } {
-  // 1) 요일별 근무창 외곽(첫 슬롯 first ~ 마지막 슬롯 last) 계산
-  const windowByWeekday = new Map<number, { first: number; last: number }>();
-  for (const date of dates) {
-    const wd = appWeekday(date);
-    for (let i = 0; i < SLOTS_PER_DAY; i += 1) {
-      if (!hasSlot(date, i)) continue;
-      const cur = windowByWeekday.get(wd);
-      if (!cur) windowByWeekday.set(wd, { first: i, last: i });
-      else if (i < cur.first) cur.first = i;
-      else if (i > cur.last) cur.last = i;
-    }
-  }
+  const byWeekday = new Map<number, BusinessHourEntry>();
+  for (const e of businessHours ?? []) byWeekday.set(e.weekday, e);
 
-  // 2) 요일별 스케줄 7건 (월=0 … 일=6)
+  // 1) 요일별 스케줄 7건 = 영업시간(닫는 요일은 휴무).
   const entries: ScheduleEntry[] = [];
+  const winByWeekday = new Map<number, { startMin: number; endMin: number }>();
   for (let wd = 0; wd < 7; wd += 1) {
-    const w = windowByWeekday.get(wd);
-    entries.push(
-      w
-        ? {
-            weekday: wd,
-            is_day_off: false,
-            start_time: minToTime(slotStartMin(w.first)),
-            end_time: minToTime(slotStartMin(w.last) + SLOT_MIN),
-            break_start_time: null,
-            break_end_time: null,
-          }
-        : { weekday: wd, is_day_off: true, start_time: null, end_time: null, break_start_time: null, break_end_time: null },
-    );
+    const win = businessWindowMin(byWeekday, wd);
+    if (!win) {
+      entries.push({ weekday: wd, is_day_off: true, start_time: null, end_time: null, break_start_time: null, break_end_time: null });
+      continue;
+    }
+    winByWeekday.set(wd, win);
+    entries.push({
+      weekday: wd,
+      is_day_off: false,
+      start_time: minToTime(win.startMin),
+      end_time: minToTime(win.endMin),
+      break_start_time: null,
+      break_end_time: null,
+    });
   }
 
-  // 3) 날짜별 휴무: 요일 근무창 안에서 그날 안 켠 연속 구간(전부 안 켠 날 → 창 전체가 휴무)
+  // 2) 날짜별 휴무: 영업시간 창 안에서 예약 불가(hasSlot=false)로 칠한 연속 구간.
   const timeOffs: TimeOffCreate[] = [];
   for (const date of dates) {
-    const w = windowByWeekday.get(appWeekday(date));
-    if (!w) continue; // 요일 자체가 휴무 → 근무창 없음, 별도 휴무 블록 불필요
-    let gapStart: number | null = null;
+    const win = winByWeekday.get(appWeekday(date));
+    if (!win) continue; // 영업 안 하는 요일 → 창 없음, 휴무 불필요
+    let blockStart: number | null = null;
     const flush = (endSlot: number) => {
-      if (gapStart === null) return;
+      if (blockStart === null) return;
       timeOffs.push({
         off_date: date,
-        start_time: minToTime(slotStartMin(gapStart)),
+        start_time: minToTime(slotStartMin(blockStart)),
         end_time: minToTime(slotStartMin(endSlot)),
         reason: '예약 불가',
       });
-      gapStart = null;
+      blockStart = null;
     };
-    for (let i = w.first; i <= w.last; i += 1) {
-      if (hasSlot(date, i)) flush(i);
-      else if (gapStart === null) gapStart = i;
+    for (let i = 0; i < SLOTS_PER_DAY; i += 1) {
+      const s = slotStartMin(i);
+      const inBiz = s >= win.startMin && s < win.endMin;
+      if (!inBiz) {
+        flush(i); // 영업시간 밖 → 열린 휴무 블록 마감
+        continue;
+      }
+      if (hasSlot(date, i)) flush(i); // 예약 가능 → 블록 마감
+      else if (blockStart === null) blockStart = i; // 예약 불가(휴무) 시작
     }
-    flush(w.last + 1); // 근무창 끝까지 이어진 빈 구간 마무리
+    flush(SLOTS_PER_DAY); // 영업시간이 그리드 끝(22:00)까지면 마지막 블록 마무리
   }
 
   return { entries, timeOffs };
