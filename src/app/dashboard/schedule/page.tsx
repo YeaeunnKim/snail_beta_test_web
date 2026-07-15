@@ -1,22 +1,23 @@
 'use client';
 
 /**
- * 일정 관리 — 오늘부터 7일. 보기 모드 + "예약 가능 시간 수정" 편집 모드.
+ * 일정 관리 — 오늘부터 다음달 말까지, 7일 단위 보기. 보기 모드 + "예약 가능 시간 수정" 편집 모드.
  *
  *  - 평상시(보기): 예약 가능(하양)/불가(회색) 배경 위에 우리 앱 요청/예약이 뜬다.
  *    요청(테두리)·확정(채움)을 누르면 상세(디자인·사진·타임라인·요청사항+답변·액션)가 열린다.
  *  - "예약 가능 시간 수정"을 누르면 편집 모드: 세로로 드래그해 가능 시간을 켜고 끈다. 저장 시 반영.
  *  - 일별은 디자이너 여러 명을 나란히, 주별은 한 명의 7일.
  *
- * 저장: 하루 가능창 → 스케줄 근무창, 창 안 빈틈 → 휴무(TimeOff), 빈 날 → 휴무일.
- * 스케줄/휴무는 조회 API가 없어 선택 상태·휴무 ID는 localStorage에 보관(같은 기기 기준).
- * 최초에는 10:00~22:00을 기본으로 채워 보여준다(저장 눌러야 snail 앱에 반영).
+ * 저장: 날짜별 선택을 요일별 주간 스케줄 7건으로 집계(요일 근무창=그 요일 켠 시간의 합집합 외곽),
+ *   근무창 안 빈틈·빈 날 → 날짜별 휴무(TimeOff)로 내려보낸다(백엔드 스케줄은 요일 반복 패턴).
+ * 현재 상태는 서버(스케줄·휴무 조회 API)에서 불러와 재구성하므로 기기가 달라도 일관된다.
+ * 서버에 저장 이력이 없으면 샵 영업시간을 기본으로 채워 보여준다(저장 눌러야 snail 앱에 반영).
  */
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { designersApi, reservationsApi } from '@/services';
-import type { Reservation, ReservationStatus, ScheduleEntry, TimeOffCreate } from '@/services';
-import { collectAll } from '@/lib/api-client';
+import type { Reservation, ReservationStatus, ScheduleEntry, TimeOff } from '@/services';
+import { collectAll, pooledMap } from '@/lib/api-client';
 import { toUserMessage } from '@/lib/error-messages';
 import { ReservationDetail } from '@/components/reservation-detail';
 import {
@@ -27,8 +28,9 @@ import {
   HOURS,
   SLOTS_PER_DAY,
   appWeekday,
-  availDayToScheduleAndTimeOff,
+  availToWeeklyScheduleAndTimeOff,
   businessHoursSeed,
+  serverToAvailSet,
   dateShortLabel,
   endOfNextMonth,
   localDateOf,
@@ -41,35 +43,13 @@ import { todayLocalDate, shiftLocalDate } from '@/lib/date';
 import { useMyShop } from '@/hooks/use-my-shop';
 
 const HOLDING: ReservationStatus[] = ['pending', 'payment_pending', 'confirmed', 'completed'];
+/** 저장 시 휴무 생성/삭제 동시 실행 상한(서버 과부하 방지) */
+const WRITE_POOL = 6;
 const ROW_H = 36;
 const GRID_H = (DAY_MINUTES / 60) * ROW_H;
 
-const availKey = (id: string) => `snail_beta_avail:${id}`;
-const tidKey = (id: string) => `snail_beta_tid:${id}`;
 const cell = (date: string, slot: number) => `${date}|${slot}`;
-
-/**
- * localStorage에서 디자이너 가용시간 로드. 저장한 적 없으면 null을 반환해
- * 호출부가 영업시간 기본값(seed)으로 채우게 한다.
- */
-function loadAvail(id: string): Set<string> | null {
-  if (typeof window === 'undefined') return null;
-  const raw = window.localStorage.getItem(availKey(id));
-  if (raw === null) return null;
-  try {
-    return new Set(JSON.parse(raw) as string[]);
-  } catch {
-    return new Set();
-  }
-}
-function loadIds(id: string): string[] {
-  if (typeof window === 'undefined') return [];
-  try {
-    return JSON.parse(window.localStorage.getItem(tidKey(id)) ?? '[]') as string[];
-  } catch {
-    return [];
-  }
-}
+const SCHEDULE_RANGE = { from: BETA_DATES[0], to: BETA_DATES[BETA_DATES.length - 1] };
 
 const clampMin = (m: number) => Math.min(DAY_END_MIN, Math.max(DAY_START_MIN, m));
 
@@ -111,8 +91,10 @@ export default function SchedulePage() {
   const [detailRes, setDetailRes] = useState<Reservation | null>(null);
   const drag = useRef<{ el: HTMLElement; designerId: string; date: string; anchor: number; mode: 'paint' | 'erase'; snapshot: Set<string> } | null>(null);
 
+  const qc = useQueryClient();
   const designersQuery = useQuery({ queryKey: ['designers'], queryFn: () => designersApi.listDesigners() });
   const designers = useMemo(() => designersQuery.data ?? [], [designersQuery.data]);
+  const designerIds = useMemo(() => designers.map((d) => d.id).join(','), [designers]);
 
   // 샵 영업시간 → 저장 이력이 없는 디자이너의 하얀칸 기본값(seed).
   const shopQuery = useMyShop();
@@ -121,19 +103,47 @@ export default function SchedulePage() {
     [shopQuery.data?.business_hours],
   );
 
+  // 서버의 현재 스케줄·휴무를 디자이너별로 조회(기기 무관 일관성). 캐시 삭제 걱정 없음.
+  const scheduleQuery = useQuery({
+    queryKey: ['designer-schedules', designerIds],
+    enabled: designers.length > 0,
+    queryFn: async () => {
+      const map: Record<string, { schedule: ScheduleEntry[]; timeOffs: TimeOff[] }> = {};
+      await Promise.all(
+        designers.map(async (d) => {
+          const [schedule, timeOffs] = await Promise.all([
+            designersApi.getSchedule(d.id),
+            designersApi.listTimeOff(d.id, SCHEDULE_RANGE),
+          ]);
+          map[d.id] = { schedule, timeOffs };
+        }),
+      );
+      return map;
+    },
+  });
+
   useEffect(() => {
     if (!weekDesignerId && designers.length > 0) setWeekDesignerId(designers[0].id);
   }, [designers, weekDesignerId]);
 
-  const reloadAvail = () => {
+  // 서버 스케줄이 있으면 재구성, 없으면(미저장) 영업시간 기본값(seed).
+  const reloadAvail = useCallback(() => {
+    const server = scheduleQuery.data;
     const map: Record<string, Set<string>> = {};
-    for (const d of designers) map[d.id] = loadAvail(d.id) ?? new Set(seedSet);
+    for (const d of designers) {
+      const entry = server?.[d.id];
+      map[d.id] =
+        entry && entry.schedule.length > 0
+          ? serverToAvailSet(BETA_DATES, entry.schedule, entry.timeOffs)
+          : new Set(seedSet);
+    }
     setAvailBy(map);
-  };
+  }, [designers, scheduleQuery.data, seedSet]);
+
+  // 편집 중에는 서버 재조회가 사용자의 미저장 편집을 덮어쓰지 않도록 막는다.
   useEffect(() => {
-    if (designers.length > 0) reloadAvail();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [designers, seedSet]);
+    if (designers.length > 0 && !editing) reloadAvail();
+  }, [reloadAvail, designers.length, editing]);
 
   const visibleDates = useMemo(() => weekDatesFor(weekStartDate), [weekStartDate]);
   const maxWeekStartDate = useMemo(() => shiftLocalDate(endOfNextMonth(todayLocalDate()), -6), []);
@@ -212,32 +222,26 @@ export default function SchedulePage() {
     try {
       for (const d of designers) {
         const set = availBy[d.id] ?? new Set<string>();
-        const entries: ScheduleEntry[] = [];
-        const timeOffPayloads: TimeOffCreate[] = [];
-        for (const date of BETA_DATES) {
-          const slots = new Set<number>();
-          for (let i = 0; i < SLOTS_PER_DAY; i += 1) if (set.has(cell(date, i))) slots.add(i);
-          const { entry, timeOffs } = availDayToScheduleAndTimeOff(date, slots);
-          entries.push(entry);
-          timeOffPayloads.push(...timeOffs);
-        }
-        for (const id of loadIds(d.id)) {
-          try {
-            await designersApi.deleteTimeOff(d.id, id);
-          } catch {
-            /* 무시 */
-          }
-        }
+        // 날짜별 선택을 요일별 주간 스케줄 7건 + 날짜별 휴무로 집계(백엔드 계약: entries 요일별 7건).
+        const { entries, timeOffs } = availToWeeklyScheduleAndTimeOff(BETA_DATES, (date, slot) =>
+          set.has(cell(date, slot)),
+        );
+
+        // 1) 관리 범위(BETA_DATES) 안의 기존 휴무를 서버에서 조회해 삭제(범위 밖 휴무는 보존).
+        //    localStorage 대신 서버가 출처라, 부분 실패로 남은 고아 휴무도 다음 저장 때 함께 정리된다.
+        const existing = await designersApi.listTimeOff(d.id, SCHEDULE_RANGE);
+        await pooledMap(existing, WRITE_POOL, (t) =>
+          designersApi.deleteTimeOff(d.id, t.id).catch(() => undefined),
+        );
+
+        // 2) 주간 스케줄 설정(요일별 7건).
         await designersApi.setSchedule(d.id, { entries });
-        const newIds: string[] = [];
-        for (const p of timeOffPayloads) {
-          const created = await designersApi.addTimeOff(d.id, p);
-          if (created?.id) newIds.push(created.id);
-        }
-        window.localStorage.setItem(availKey(d.id), JSON.stringify([...set]));
-        window.localStorage.setItem(tidKey(d.id), JSON.stringify(newIds));
+
+        // 3) 새 휴무 추가 — 동시성 제한 병렬.
+        await pooledMap(timeOffs, WRITE_POOL, (p) => designersApi.addTimeOff(d.id, p));
       }
       setEditing(false);
+      await qc.invalidateQueries({ queryKey: ['designer-schedules'] });
       setMessage({ type: 'ok', text: '저장했어요. 하얀 시간이 snail 앱에 예약 가능 시간으로 노출됩니다.' });
     } catch (e) {
       setMessage({ type: 'err', text: toUserMessage(e) });

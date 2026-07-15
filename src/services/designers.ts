@@ -35,6 +35,21 @@ export async function setSchedule(designerId: string, body: DesignerScheduleSet)
   });
 }
 
+/** 디자이너 주간 스케줄 조회 (요일 오름차순, 미설정이면 빈 배열) */
+export async function getSchedule(designerId: string) {
+  return apiClient.get('/api/v1/shops/me/designers/{designer_id}/schedule', {
+    params: { designer_id: designerId },
+  });
+}
+
+/** 디자이너 휴무 조회 (from/to로 기간 필터, 날짜 오름차순) */
+export async function listTimeOff(designerId: string, query?: { from?: string; to?: string }) {
+  return apiClient.get('/api/v1/shops/me/designers/{designer_id}/time-off', {
+    params: { designer_id: designerId },
+    query,
+  });
+}
+
 /** 디자이너 휴무 추가 */
 export async function addTimeOff(designerId: string, body: TimeOffCreate) {
   return apiClient.post('/api/v1/shops/me/designers/{designer_id}/time-off', {

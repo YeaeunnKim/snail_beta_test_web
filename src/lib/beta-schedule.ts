@@ -10,7 +10,7 @@
  * 우리 앱 예약은 백엔드가 가용시간 계산 시 자동 제외한다. 스케줄/휴무는 조회 API가 없어
  * 선택 상태와 휴무 ID는 localStorage에 함께 보관한다(같은 기기 기준).
  */
-import type { BusinessHourEntry, ScheduleEntry, TimeOffCreate } from '@/services';
+import type { BusinessHourEntry, ScheduleEntry, TimeOff, TimeOffCreate } from '@/services';
 import { shiftLocalDate, todayLocalDate } from './date';
 
 function dayDiff(start: string, end: string): number {
@@ -120,50 +120,120 @@ export function businessHoursSeed(entries?: BusinessHourEntry[] | null): Set<str
 }
 
 /**
- * 하루의 "예약 가능" 슬롯 집합 → 스케줄 1칸 + 휴무 블록들.
- * available: 그날 예약 가능으로 칠한 슬롯 인덱스 집합.
+ * 서버의 요일별 스케줄 + 날짜별 휴무 → 날짜/슬롯 "예약 가능" 집합(하양칸).
+ * availToWeeklyScheduleAndTimeOff 의 역변환. 슬롯 예약가능 =
+ *   (요일 근무창 안) AND (그 날짜 휴무 구간에 안 걸림).
+ * 종일 휴무(시작/종료 null)나 시간 파싱 실패는 그 날짜 전체를 불가로 본다.
+ * 반환 키 형식: `YYYY-MM-DD|slot`.
  */
-export function availDayToScheduleAndTimeOff(
-  date: string,
-  available: Set<number>,
-): { entry: ScheduleEntry; timeOffs: TimeOffCreate[] } {
-  const weekday = appWeekday(date);
-  const slots = [...available].sort((a, b) => a - b);
+export function serverToAvailSet(
+  dates: readonly string[],
+  schedule: ScheduleEntry[],
+  timeOffs: TimeOff[],
+): Set<string> {
+  const set = new Set<string>();
+  const byWeekday = new Map<number, ScheduleEntry>();
+  for (const e of schedule) byWeekday.set(e.weekday, e);
 
-  if (slots.length === 0) {
-    return {
-      entry: { weekday, is_day_off: true, start_time: null, end_time: null, break_start_time: null, break_end_time: null },
-      timeOffs: [],
-    };
+  const offByDate = new Map<string, { startMin: number; endMin: number }[]>();
+  for (const t of timeOffs) {
+    const s = t.start_time != null ? timeToMin(t.start_time.slice(0, 5)) : null;
+    const e = t.end_time != null ? timeToMin(t.end_time.slice(0, 5)) : null;
+    // 종일 휴무 또는 파싱 실패 → 하루 전체 범위로 간주.
+    const range = s !== null && e !== null ? { startMin: s, endMin: e } : { startMin: DAY_START_MIN, endMin: DAY_END_MIN };
+    const list = offByDate.get(t.off_date);
+    if (list) list.push(range);
+    else offByDate.set(t.off_date, [range]);
   }
 
-  const first = slots[0];
-  const last = slots[slots.length - 1];
-  const entry: ScheduleEntry = {
-    weekday,
-    is_day_off: false,
-    start_time: minToTime(slotStartMin(first)),
-    end_time: minToTime(slotStartMin(last) + SLOT_MIN),
-    break_start_time: null,
-    break_end_time: null,
-  };
+  for (const date of dates) {
+    const entry = byWeekday.get(appWeekday(date));
+    if (!entry || entry.is_day_off || !entry.start_time || !entry.end_time) continue;
+    const winStart = timeToMin(entry.start_time.slice(0, 5));
+    const winEnd = timeToMin(entry.end_time.slice(0, 5));
+    if (winStart === null || winEnd === null) continue;
+    const offs = offByDate.get(date) ?? [];
+    for (let i = 0; i < SLOTS_PER_DAY; i += 1) {
+      const s = slotStartMin(i);
+      if (s < winStart || s >= winEnd) continue; // 근무창 밖
+      if (offs.some((o) => s >= o.startMin && s < o.endMin)) continue; // 휴무에 걸림
+      set.add(`${date}|${i}`);
+    }
+  }
+  return set;
+}
 
-  // 근무 창 [first, last] 안의 비어 있는 연속 구간 → 휴무 블록
-  const timeOffs: TimeOffCreate[] = [];
-  let gapStart: number | null = null;
-  for (let i = first; i <= last; i += 1) {
-    const on = available.has(i);
-    if (!on && gapStart === null) gapStart = i;
-    if (on && gapStart !== null) {
-      timeOffs.push({
-        off_date: date,
-        start_time: minToTime(slotStartMin(gapStart)),
-        end_time: minToTime(slotStartMin(i)),
-        reason: '예약 불가',
-      });
-      gapStart = null;
+/**
+ * 여러 날짜의 "예약 가능" 슬롯 → 요일별 주간 스케줄 7건 + 날짜별 휴무 블록.
+ *
+ * 주간 스케줄은 요일 반복 패턴이라(백엔드 계약: 요일별 7건, entries maxItems=7),
+ * 같은 요일의 여러 날짜를 하나의 근무창으로 합쳐야 한다. 휴무(TimeOff)는 근무창에서
+ * 빼기만 가능하므로:
+ *   - 요일 근무창 = 그 요일 모든 날짜에서 켠 슬롯의 합집합 외곽(가장 이른 시작~가장 늦은 끝).
+ *     (어느 날짜든 켠 슬롯은 반드시 이 창 안에 들어와야 TimeOff로 되돌릴 수 있다)
+ *   - 각 날짜: 근무창 안에서 그날 안 켠 연속 구간 → 휴무(TimeOff).
+ *   - 그 요일 어떤 날짜에서도 하나도 안 켰으면 → 요일 휴무(is_day_off).
+ *
+ * dates 는 대상 날짜들(중복 요일 포함 가능), hasSlot(date, slot) 은 해당 날짜/슬롯의 예약가능 여부.
+ * 반환 entries 는 항상 월(0)~일(6) 7건이다.
+ */
+export function availToWeeklyScheduleAndTimeOff(
+  dates: readonly string[],
+  hasSlot: (date: string, slot: number) => boolean,
+): { entries: ScheduleEntry[]; timeOffs: TimeOffCreate[] } {
+  // 1) 요일별 근무창 외곽(첫 슬롯 first ~ 마지막 슬롯 last) 계산
+  const windowByWeekday = new Map<number, { first: number; last: number }>();
+  for (const date of dates) {
+    const wd = appWeekday(date);
+    for (let i = 0; i < SLOTS_PER_DAY; i += 1) {
+      if (!hasSlot(date, i)) continue;
+      const cur = windowByWeekday.get(wd);
+      if (!cur) windowByWeekday.set(wd, { first: i, last: i });
+      else if (i < cur.first) cur.first = i;
+      else if (i > cur.last) cur.last = i;
     }
   }
 
-  return { entry, timeOffs };
+  // 2) 요일별 스케줄 7건 (월=0 … 일=6)
+  const entries: ScheduleEntry[] = [];
+  for (let wd = 0; wd < 7; wd += 1) {
+    const w = windowByWeekday.get(wd);
+    entries.push(
+      w
+        ? {
+            weekday: wd,
+            is_day_off: false,
+            start_time: minToTime(slotStartMin(w.first)),
+            end_time: minToTime(slotStartMin(w.last) + SLOT_MIN),
+            break_start_time: null,
+            break_end_time: null,
+          }
+        : { weekday: wd, is_day_off: true, start_time: null, end_time: null, break_start_time: null, break_end_time: null },
+    );
+  }
+
+  // 3) 날짜별 휴무: 요일 근무창 안에서 그날 안 켠 연속 구간(전부 안 켠 날 → 창 전체가 휴무)
+  const timeOffs: TimeOffCreate[] = [];
+  for (const date of dates) {
+    const w = windowByWeekday.get(appWeekday(date));
+    if (!w) continue; // 요일 자체가 휴무 → 근무창 없음, 별도 휴무 블록 불필요
+    let gapStart: number | null = null;
+    const flush = (endSlot: number) => {
+      if (gapStart === null) return;
+      timeOffs.push({
+        off_date: date,
+        start_time: minToTime(slotStartMin(gapStart)),
+        end_time: minToTime(slotStartMin(endSlot)),
+        reason: '예약 불가',
+      });
+      gapStart = null;
+    };
+    for (let i = w.first; i <= w.last; i += 1) {
+      if (hasSlot(date, i)) flush(i);
+      else if (gapStart === null) gapStart = i;
+    }
+    flush(w.last + 1); // 근무창 끝까지 이어진 빈 구간 마무리
+  }
+
+  return { entries, timeOffs };
 }
