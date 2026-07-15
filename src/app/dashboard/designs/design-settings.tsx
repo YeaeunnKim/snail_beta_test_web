@@ -9,7 +9,7 @@
  * 필드 구성·UX·유효성은 기존과 100% 동일하다(이달의 아트 인트로가 포함).
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { designsApi } from '@/services';
 import type { Design, Designer } from '@/services';
 
@@ -21,6 +21,14 @@ export const DURATION_STEP = 10;
 export const PRICE_STEP = 5000; // 디자이너별 가격 · 추가옵션 가격 +/- 단위(원)
 export const PRICE_INPUT_STEP = 1000; // 정상가 · 인트로가 입력칸 화살표 +/- 단위(원)
 export const OPTION_PRICE_DEFAULT = 50000; // 추가옵션 기본 추가금액(원)
+export const OPTION_DURATION_DEFAULT = 30; // 추가옵션 기본 추가시간(분)
+export const OPTION_DURATION_STEP = 30; // 추가옵션 시간 +/- 단위(분)
+export const OPTION_DURATION_MAX = 600; // 추가옵션 추가시간 상한(분)
+
+// 옵션의 시간은 기본 소요시간에 "더해지는" 값(가격이 price_delta인 것과 같다).
+// 그래서 최소 30분인 clampDuration을 쓰면 안 되고 0분(추가시간 없음)을 허용해야 한다.
+export const clampOptionDuration = (n: number) =>
+  Math.max(0, Math.min(OPTION_DURATION_MAX, Math.round(n) || 0));
 
 /** 추가옵션 종류. 백엔드 DesignOptionKind(extend/removal/care)와 1:1. */
 export const OPTION_KINDS = [
@@ -37,16 +45,29 @@ export interface OptionRow {
   kind: OptionKind;
   name: string;
   priceDelta: number;
+  durationDelta: number; // 기본 소요시간에 더해지는 시간(분)
 }
 
-/** 새 디자인/폴더 첫 등록 시 기본으로 깔아두는 3줄(연장·제거·케어, 각 5만원). */
+/** 새 디자인/폴더 첫 등록 시 기본으로 깔아두는 3줄(연장·제거·케어, 각 5만원 · 30분). */
 export function defaultOptionRows(): OptionRow[] {
   return OPTION_KINDS.map((k) => ({
     uid: crypto.randomUUID(),
     kind: k.value,
     name: k.label,
     priceDelta: OPTION_PRICE_DEFAULT,
+    durationDelta: OPTION_DURATION_DEFAULT,
   }));
+}
+
+/** OptionRow → 백엔드 옵션 페이로드. 생성/수정이 같은 형태라 한 곳에서 만든다. */
+export function toOptionBody(r: OptionRow, sortOrder: number) {
+  return {
+    kind: r.kind,
+    name: r.name.trim(),
+    price_delta: Math.max(0, Math.round(r.priceDelta) || 0),
+    duration_delta_min: clampOptionDuration(r.durationDelta),
+    sort_order: sortOrder,
+  };
 }
 
 /** 디자인에 추가옵션들을 순서대로 생성한다(이름 빈 줄은 건너뜀). */
@@ -54,12 +75,7 @@ export async function createOptionsFor(designId: string, rows: OptionRow[]) {
   for (let i = 0; i < rows.length; i += 1) {
     const r = rows[i];
     if (!r.name.trim()) continue;
-    await designsApi.createOption(designId, {
-      kind: r.kind,
-      name: r.name.trim(),
-      price_delta: Math.max(0, Math.round(r.priceDelta) || 0),
-      sort_order: i,
-    });
+    await designsApi.createOption(designId, toOptionBody(r, i));
   }
 }
 
@@ -107,6 +123,9 @@ export function loadBulkSettings(key: string, designers: Designer[]): DesignSett
           kind: (OPTION_KINDS.some((k) => k.value === o.kind) ? o.kind : 'extend') as OptionKind,
           name: o.name ?? '',
           priceDelta: Math.max(0, Math.round(o.priceDelta) || 0),
+          // 시간 항목이 생기기 전에 저장된 설정에는 durationDelta가 없다 → 0분(추가시간 없음).
+          // 그때 실제로 만들어진 옵션도 0분이라 값이 서로 맞는다.
+          durationDelta: clampOptionDuration(o.durationDelta ?? 0),
         }))
       : defaultOptionRows();
     return {
@@ -432,63 +451,152 @@ export function DesignSettingsFields({
   );
 }
 
-/** 추가옵션 편집기: 연장/제거/케어 + 이름 + 추가금액을 줄 단위로 관리. 앱에서 옵션 선택 시 가격에 반영된다. */
+/** 배열에서 한 항목을 다른 자리로 옮긴 새 배열. */
+function moveItem<T>(arr: T[], from: number, to: number): T[] {
+  const next = arr.slice();
+  const [item] = next.splice(from, 1);
+  next.splice(to, 0, item);
+  return next;
+}
+
+/**
+ * 추가옵션 편집기: 연장/제거/케어 + 이름 + 추가금액 + 추가시간을 줄 단위로 관리.
+ * 앱에서 옵션을 고르면 그만큼 가격과 소요시간이 올라간다. 줄 순서는 sort_order로 저장된다.
+ *
+ * 순서 변경은 ⋮⋮ 핸들을 잡고 끄는 방식이다. Pointer Events라 노트북(클릭한 채 끌기)과
+ * 모바일(꾹 누르고 끌기)이 같은 코드로 동작한다. 핸들에만 걸어 둔 이유는 이름 입력칸을
+ * 드래그로 오인식하지 않게 하기 위해서다.
+ */
 export function OptionsField({ options, onChange }: { options: OptionRow[]; onChange: (next: OptionRow[]) => void }) {
   const labelCls = 'mb-1 block text-caption font-semibold text-primary-50';
+  const [dragUid, setDragUid] = useState<string | null>(null);
+  const rowRefs = useRef(new Map<string, HTMLDivElement>());
+
   const update = (uid: string, patch: Partial<OptionRow>) =>
     onChange(options.map((o) => (o.uid === uid ? { ...o, ...patch } : o)));
   const remove = (uid: string) => onChange(options.filter((o) => o.uid !== uid));
   const add = () =>
     onChange([
       ...options,
-      { uid: crypto.randomUUID(), kind: 'extend', name: '', priceDelta: OPTION_PRICE_DEFAULT },
+      {
+        uid: crypto.randomUUID(),
+        kind: 'extend',
+        name: '',
+        priceDelta: OPTION_PRICE_DEFAULT,
+        durationDelta: OPTION_DURATION_DEFAULT,
+      },
     ]);
+
+  const startDrag = (e: React.PointerEvent, uid: string) => {
+    e.preventDefault(); // 드래그 중 텍스트 선택/스크롤 방지
+    e.currentTarget.setPointerCapture(e.pointerId);
+    setDragUid(uid);
+  };
+  const endDrag = () => setDragUid(null);
+
+  // 끌고 있는 줄이 이웃 줄의 중간선을 넘어가면 그 자리와 맞바꾼다.
+  const onDragMove = (e: React.PointerEvent, uid: string) => {
+    if (dragUid !== uid) return;
+    const from = options.findIndex((o) => o.uid === uid);
+    if (from < 0) return;
+    for (let i = 0; i < options.length; i += 1) {
+      if (i === from) continue;
+      const el = rowRefs.current.get(options[i].uid);
+      if (!el) continue;
+      const box = el.getBoundingClientRect();
+      const middle = box.top + box.height / 2;
+      const passedDown = i > from && e.clientY > middle;
+      const passedUp = i < from && e.clientY < middle;
+      if (passedDown || passedUp) {
+        onChange(moveItem(options, from, i));
+        return;
+      }
+    }
+  };
 
   return (
     <div>
       <label className={labelCls}>추가옵션</label>
       <p className="mb-2 text-caption text-primary-50">
-        연장·제거·케어 등 추가 시술과 추가금액이에요. 고객이 앱에서 옵션을 고르면 그만큼 가격이 올라갑니다.
+        연장·제거·케어 등 추가 시술이에요. 고객이 앱에서 옵션을 고르면 그만큼 가격과 소요시간이 올라갑니다. ⋮⋮ 를 잡고
+        끌어 순서를 바꿀 수 있어요.
       </p>
       <div className="space-y-2">
         {options.map((o) => (
-          <div key={o.uid} className="flex flex-wrap items-center gap-2 rounded-md border border-neutral-200 p-2">
-            <select
-              value={o.kind}
-              onChange={(e) => update(o.uid, { kind: e.target.value as OptionKind })}
-              className="rounded-md border border-neutral-300 px-2 py-2 text-body-sm outline-none focus:border-secondary"
-              aria-label="옵션 종류"
-            >
-              {OPTION_KINDS.map((k) => (
-                <option key={k.value} value={k.value}>
-                  {k.label}
-                </option>
-              ))}
-            </select>
-            <input
-              value={o.name}
-              onChange={(e) => update(o.uid, { name: e.target.value })}
-              placeholder="옵션 이름 (예: 길이 연장)"
-              className="min-w-[7rem] flex-1 rounded-md border border-neutral-300 px-3 py-2 text-body-sm outline-none focus:border-secondary"
-            />
-            <div className="flex items-center gap-1.5">
-              <span className="text-caption text-primary-50">+</span>
-              <Stepper
-                value={o.priceDelta}
-                onChange={(v) => update(o.uid, { priceDelta: Math.max(0, v) })}
-                step={PRICE_STEP}
-                suffix="원"
-                ariaLabel="추가금액 직접 입력"
+          <div
+            key={o.uid}
+            ref={(el) => {
+              if (el) rowRefs.current.set(o.uid, el);
+              else rowRefs.current.delete(o.uid);
+            }}
+            className={`rounded-md border p-2 ${
+              dragUid === o.uid ? 'border-secondary bg-secondary/5' : 'border-neutral-200'
+            }`}
+          >
+            {/* 윗줄: 순서 핸들 · 종류 · 이름 · 삭제 */}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onPointerDown={(e) => startDrag(e, o.uid)}
+                onPointerMove={(e) => onDragMove(e, o.uid)}
+                onPointerUp={endDrag}
+                onPointerCancel={endDrag}
+                className="grid h-8 w-5 shrink-0 cursor-grab touch-none select-none place-items-center rounded text-primary-50 hover:bg-neutral-100 active:cursor-grabbing"
+                aria-label="옵션 순서 변경 — 잡고 위아래로 끌기"
+                title="잡고 위아래로 끌어 순서를 바꿔요"
+              >
+                ⋮⋮
+              </button>
+              <select
+                value={o.kind}
+                onChange={(e) => update(o.uid, { kind: e.target.value as OptionKind })}
+                className="rounded-md border border-neutral-300 px-2 py-2 text-body-sm outline-none focus:border-secondary"
+                aria-label="옵션 종류"
+              >
+                {OPTION_KINDS.map((k) => (
+                  <option key={k.value} value={k.value}>
+                    {k.label}
+                  </option>
+                ))}
+              </select>
+              <input
+                value={o.name}
+                onChange={(e) => update(o.uid, { name: e.target.value })}
+                placeholder="옵션 이름 (예: 길이 연장)"
+                className="min-w-[5rem] flex-1 rounded-md border border-neutral-300 px-3 py-2 text-body-sm outline-none focus:border-secondary"
               />
+              <button
+                type="button"
+                onClick={() => remove(o.uid)}
+                className="grid h-8 w-8 shrink-0 place-items-center rounded-md border border-neutral-300 text-primary-50 hover:bg-neutral-50"
+                aria-label="옵션 삭제"
+              >
+                ×
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() => remove(o.uid)}
-              className="grid h-8 w-8 shrink-0 place-items-center rounded-md border border-neutral-300 text-primary-50 hover:bg-neutral-50"
-              aria-label="옵션 삭제"
-            >
-              ×
-            </button>
+            {/* 아랫줄: 추가금액 · 추가시간 (핸들 너비만큼 들여쓴다) */}
+            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2 pl-7">
+              <div className="flex items-center gap-1.5">
+                <span className="shrink-0 text-caption text-primary-50">추가금액 +</span>
+                <Stepper
+                  value={o.priceDelta}
+                  onChange={(v) => update(o.uid, { priceDelta: Math.max(0, v) })}
+                  step={PRICE_STEP}
+                  suffix="원"
+                  ariaLabel="추가금액 직접 입력"
+                />
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="shrink-0 text-caption text-primary-50">추가시간 +</span>
+                <Stepper
+                  value={o.durationDelta}
+                  onChange={(v) => update(o.uid, { durationDelta: clampOptionDuration(v) })}
+                  step={OPTION_DURATION_STEP}
+                  suffix="분"
+                  ariaLabel="추가시간 직접 입력"
+                />
+              </div>
+            </div>
           </div>
         ))}
       </div>

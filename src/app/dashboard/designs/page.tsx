@@ -30,6 +30,7 @@ import {
   loadBulkSettings,
   saveBulkSettings,
   nextDesignNumber,
+  toOptionBody,
   DesignSettingsFields,
 } from './design-settings';
 import type { OptionRow, OptionKind, DesignSettings } from './design-settings';
@@ -774,12 +775,7 @@ function CreateForm({
       for (let i = 0; i < settings.options.length; i += 1) {
         const r = settings.options[i];
         if (!r.name.trim()) continue;
-        const body = {
-          kind: r.kind,
-          name: r.name.trim(),
-          price_delta: Math.max(0, Math.round(r.priceDelta) || 0),
-          sort_order: i,
-        };
+        const body = toOptionBody(r, i);
         if (r.id) {
           await designsApi.updateOption(designId, r.id, body);
         } else {
@@ -2100,6 +2096,7 @@ function DesignEditForm({ design: d, onClose }: { design: Design; onClose: () =>
       kind: (OPTION_KINDS.some((k) => k.value === o.kind) ? o.kind : 'extend') as OptionKind,
       name: o.name,
       priceDelta: o.price_delta,
+      durationDelta: o.duration_delta_min ?? 0,
     })),
   );
 
@@ -2192,12 +2189,7 @@ function DesignEditForm({ design: d, onClose }: { design: Design; onClose: () =>
       }
       for (let i = 0; i < options.length; i += 1) {
         const r = options[i];
-        const body = {
-          kind: r.kind,
-          name: r.name.trim(),
-          price_delta: Math.max(0, Math.round(r.priceDelta) || 0),
-          sort_order: i,
-        };
+        const body = toOptionBody(r, i);
         if (r.id) {
           if (!r.name.trim()) {
             await designsApi.deleteOption(d.id, r.id); // 이름을 비우면 삭제
@@ -2209,6 +2201,7 @@ function DesignEditForm({ design: d, onClose }: { design: Design; onClose: () =>
             before.kind !== body.kind ||
             before.name !== body.name ||
             before.price_delta !== body.price_delta ||
+            before.duration_delta_min !== body.duration_delta_min ||
             before.sort_order !== i
           ) {
             await designsApi.updateOption(d.id, r.id, body);
