@@ -71,7 +71,13 @@ export default function OnboardingPage() {
   const [gate, setGate] = useState<'checking' | 'ready'>('checking');
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [hours, setHours] = useState<BusinessHoursValue>(defaultBusinessHours());
-  const progressRef = useRef({ shopId: null as string | null, hoursDone: false, designersDone: false, foldersDone: false });
+  const progressRef = useRef({
+    shopId: null as string | null,
+    hoursDone: false,
+    designersDone: false,
+    designersCreatedCount: 0,
+    foldersDone: false,
+  });
 
   const form = useForm<OnboardingForm>({
     resolver: zodResolver(onboardingSchema),
@@ -140,18 +146,28 @@ export default function OnboardingPage() {
     const bank = values.paymentMethod === 'bank_transfer_guide';
     try {
       if (!progressRef.current.shopId) {
-        const shop = await shopApi.createMyShop({
-          name: values.shopName.trim(),
-          address: values.region?.trim() || '베타 테스트',
-          region: values.region?.trim() || null,
-          phone_number: '000-0000-0000',
-          payment_method: values.paymentMethod,
-          deposit_amount: bank ? values.depositAmount ?? null : null,
-          bank_name: bank ? values.bankName?.trim() || null : null,
-          bank_account_number: bank ? values.bankAccountNumber?.trim() || null : null,
-          bank_account_holder: bank ? values.bankAccountHolder?.trim() || null : null,
-          auto_accept: false,
-        });
+        // 재시도 시 이전 시도가 성공했지만 응답이 유실됐을 수 있으므로, 생성 전에
+        // 이미 샵이 있는지 먼저 확인해 재사용한다(중복 생성/409 방지).
+        let shop: { id: string } | undefined;
+        try {
+          shop = await shopApi.getMyShop();
+        } catch (e) {
+          if (!(isApiError(e) && e.status === 404)) throw e;
+        }
+        if (!shop) {
+          shop = await shopApi.createMyShop({
+            name: values.shopName.trim(),
+            address: values.region?.trim() || '베타 테스트',
+            region: values.region?.trim() || null,
+            phone_number: '000-0000-0000',
+            payment_method: values.paymentMethod,
+            deposit_amount: bank ? values.depositAmount ?? null : null,
+            bank_name: bank ? values.bankName?.trim() || null : null,
+            bank_account_number: bank ? values.bankAccountNumber?.trim() || null : null,
+            bank_account_holder: bank ? values.bankAccountHolder?.trim() || null : null,
+            auto_accept: false,
+          });
+        }
         progressRef.current.shopId = shop.id;
       }
       if (!progressRef.current.hoursDone) {
@@ -160,7 +176,12 @@ export default function OnboardingPage() {
       }
       if (!progressRef.current.designersDone) {
         const names = values.designers.map((d) => d.name.trim()).filter(Boolean);
-        for (const name of names) await designersApi.createDesigner({ name });
+        // 폴더 루프와 동일하게 per-item으로 진행 상황을 추적한다: 이미 생성에
+        // 성공한 앞부분은 재시도 시 건너뛰어 중복 생성을 막는다.
+        for (let i = progressRef.current.designersCreatedCount; i < names.length; i += 1) {
+          await designersApi.createDesigner({ name: names[i] });
+          progressRef.current.designersCreatedCount = i + 1;
+        }
         progressRef.current.designersDone = true;
       }
       // 기본 디자인 폴더

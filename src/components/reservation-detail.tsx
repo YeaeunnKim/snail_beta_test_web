@@ -41,6 +41,8 @@ export function ReservationDetail({
   const [reply, setReply] = useState('');
   const [error, setError] = useState<string | null>(null);
   const ps = payState(r);
+  // 노쇼는 백엔드 상태머신상 방문 시작 30분 경과 후에만 허용된다(그 전엔 NO_SHOW_TOO_EARLY 409).
+  const noShowEligible = Date.now() >= new Date(r.start_at).getTime() + 30 * 60 * 1000;
 
   const action = useMutation({
     mutationFn: (fn: () => Promise<unknown>) => fn(),
@@ -170,34 +172,35 @@ export function ReservationDetail({
           </div>
         </div>
       ) : (
-        <div className="mt-4 flex flex-wrap gap-2">
-          {r.status === 'pending' && (
-            <>
-              <ActBtn kind="primary" busy={busy} onClick={() => run(() => reservationsApi.accept(r.id, reply.trim() || undefined))}>
-                {reply.trim() ? '답변과 함께 확정' : '예약 확정'}
-              </ActBtn>
-              <ActBtn kind="danger" busy={busy} onClick={() => setReasonMode('reject')}>
-                거절
-              </ActBtn>
-            </>
-          )}
-          {r.status === 'confirmed' && (
-            <>
-              <ActBtn kind="primary" busy={busy} onClick={() => run(() => reservationsApi.complete(r.id))}>
-                방문 완료
-              </ActBtn>
-              <ActBtn kind="ghost" busy={busy} onClick={() => run(() => reservationsApi.noShow(r.id))}>
-                노쇼
-              </ActBtn>
-              <ActBtn kind="danger" busy={busy} onClick={() => setReasonMode('cancel')}>
-                취소
-              </ActBtn>
-            </>
-          )}
-          {r.status === 'payment_pending' && (
-            <ActBtn kind="danger" busy={busy} onClick={() => setReasonMode('cancel')}>
-              취소
-            </ActBtn>
+        <div className="mt-4">
+          <div className="flex flex-wrap gap-2">
+            {r.status === 'pending' && (
+              <>
+                <ActBtn kind="primary" busy={busy} onClick={() => run(() => reservationsApi.accept(r.id, reply.trim() || undefined))}>
+                  {reply.trim() ? '답변과 함께 확정' : '예약 확정'}
+                </ActBtn>
+                <ActBtn kind="danger" busy={busy} onClick={() => setReasonMode('reject')}>
+                  거절
+                </ActBtn>
+              </>
+            )}
+            {r.status === 'confirmed' && (
+              <>
+                <ActBtn kind="primary" busy={busy} onClick={() => run(() => reservationsApi.complete(r.id))}>
+                  방문 완료
+                </ActBtn>
+                <ActBtn kind="ghost" busy={busy || !noShowEligible} onClick={() => run(() => reservationsApi.noShow(r.id))}>
+                  노쇼
+                </ActBtn>
+                <ActBtn kind="danger" busy={busy} onClick={() => setReasonMode('cancel')}>
+                  취소
+                </ActBtn>
+              </>
+            )}
+            {/* payment_pending: 유효 전이는 confirm-payment뿐(취소 시 409) — 취소 버튼 없음. 입금 완료 처리 버튼은 위 결제 섹션에 있음. */}
+          </div>
+          {r.status === 'confirmed' && !noShowEligible && (
+            <p className="mt-1.5 text-caption text-primary-50">노쇼는 방문 시간이 지난 후 30분부터 처리할 수 있어요.</p>
           )}
         </div>
       )}

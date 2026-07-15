@@ -17,6 +17,7 @@ export const VERIFICATION_REQUIRED_CODE = 'VERIFICATION_REQUIRED';
 const CODE_MESSAGES: Record<string, string> = {
   [VERIFICATION_REQUIRED_CODE]: '사업자 인증이 완료되어야 이용할 수 있습니다.',
   OWNER_NOT_APPROVED: '사업자 인증 승인 후 이용할 수 있습니다.',
+  NO_SHOW_TOO_EARLY: '예약 시간 30분 경과 후에 노쇼 처리할 수 있어요.',
   [NETWORK_ERROR_CODE]: '서버에 연결할 수 없습니다. 네트워크 상태를 확인해주세요.',
 };
 

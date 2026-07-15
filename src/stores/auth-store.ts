@@ -10,6 +10,7 @@ import { authApi, ownersApi } from '@/services';
 import type { Owner, OwnerLoginRequest } from '@/services/types';
 import { clearTokens, hasTokens } from '@/lib/token';
 import { config } from '@/lib/config';
+import { onAuthExpired } from '@/lib/api-client';
 
 export type AuthStatus = 'idle' | 'loading' | 'authenticated' | 'unauthenticated';
 
@@ -90,3 +91,8 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ owner: null, status: 'unauthenticated' });
   },
 }));
+
+// api-client의 refresh 실패(세션 완전 만료) 알림을 받아 store를 로그아웃 상태로 되돌린다.
+// (토큰만 지워지고 status는 그대로라 "로그인된 셸"이 유지되던 버그 수정. api-client는 이 store를
+//  import하지 않고 콜백만 노출하므로 store → api-client 단방향 의존만 생기고 순환은 생기지 않는다.)
+onAuthExpired(() => useAuthStore.getState().logout());

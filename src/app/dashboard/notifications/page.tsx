@@ -4,7 +4,7 @@
  * 알림 — 예약 요청/방문 관리 (모바일).
  *
  * 세그먼트 3개:
- *  - 요청     : pending(수락/거절) · payment_pending(입금 확인/취소)
+ *  - 요청     : pending(수락/거절) · payment_pending(입금 확인만 — 취소는 409라 버튼 없음)
  *  - 방문 예정 : confirmed(방문 완료/노쇼/취소) — 방문 임박 순
  *  - 방문 완료 : completed(읽기 전용) — 최근 순
  *
@@ -15,7 +15,6 @@ import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { designsApi, reservationsApi } from '@/services';
 import type { Reservation } from '@/services';
-import { collectAll } from '@/lib/api-client';
 import { formatTime } from '@/lib/date';
 import { badgeMeta, dayLabel, won } from '@/lib/reservation-format';
 import { toUserMessage } from '@/lib/error-messages';
@@ -36,15 +35,37 @@ function segOf(r: Reservation): Seg | null {
   return null; // rejected / cancelled_* / no_show
 }
 
+const RESERVATIONS_MAX_PAGES = 50; // limit 50 * 50페이지 = 최대 2500건
+
+/**
+ * 예약 이력을 커서로 끝까지 모으되 상한(2500건)을 둔다. 상한에 닿았는데 다음 페이지가
+ * 남아있으면(truncated) 화면에서 "일부 오래된 이력은 표시되지 않을 수 있어요" 경고를 띄운다.
+ */
+async function collectReservationsBounded(): Promise<{ data: Reservation[]; truncated: boolean }> {
+  const all: Reservation[] = [];
+  let cursor: string | undefined;
+  let truncated = false;
+  for (let i = 0; i < RESERVATIONS_MAX_PAGES; i += 1) {
+    const { data, page } = await reservationsApi.listReservations({ cursor, limit: 50 });
+    all.push(...data);
+    const next = page?.next_cursor;
+    const hasMore = !!next && page?.has_next !== false;
+    if (!hasMore) break;
+    cursor = next;
+    if (i === RESERVATIONS_MAX_PAGES - 1) truncated = true;
+  }
+  return { data: all, truncated };
+}
+
 export default function NotificationsPage() {
   const [seg, setSeg] = useState<Seg>('requests');
 
   const reservationsQuery = useQuery({
     queryKey: ['reservations', 'notifications'],
-    queryFn: () =>
-      collectAll<Reservation>((cursor) => reservationsApi.listReservations({ cursor, limit: 50 })),
+    queryFn: collectReservationsBounded,
   });
-  const all = useMemo(() => reservationsQuery.data ?? [], [reservationsQuery.data]);
+  const all = useMemo(() => reservationsQuery.data?.data ?? [], [reservationsQuery.data]);
+  const truncated = reservationsQuery.data?.truncated ?? false;
 
   const counts = useMemo(() => {
     const c: Record<Seg, number> = { requests: 0, upcoming: 0, done: 0 };
@@ -100,6 +121,12 @@ export default function NotificationsPage() {
           );
         })}
       </div>
+
+      {truncated && (
+        <p className="rounded-md bg-warning-bg px-3 py-2 text-caption text-warning">
+          이력이 많아 일부 오래된 예약은 표시되지 않을 수 있어요.
+        </p>
+      )}
 
       {/* 목록 */}
       {reservationsQuery.isLoading ? (

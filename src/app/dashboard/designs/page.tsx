@@ -580,6 +580,8 @@ function CreateForm({
   const [settings, setSettings] = useState<DesignSettings>(() => defaultBulkSettings());
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // 등록 도중 일부 실패(옵션 등) 후 재시도할 때 디자인을 다시 만들지 않도록 보관.
+  const createdIdRef = useRef<string | null>(null);
   // 이 폴더에 저장된 이전 공통설정(있으면 "불러오기" 배너 노출) — 반복 등록 편의.
   const [folderPreset, setFolderPreset] = useState<DesignSettings | null>(null);
 
@@ -691,23 +693,50 @@ function CreateForm({
 
     setSubmitting(true);
     try {
-      const created = await designsApi.createDesign({
-        title: title.trim(),
-        description: settings.description.trim() || null,
-        base_price: price,
-        intro_price: settings.introPrice.trim() ? Number(settings.introPrice) : null,
-        duration_minutes: clampDuration(settings.duration),
-        designer_ids: designerIds,
-        designer_durations: designerDurations,
-        designer_prices: designerPrices,
-        folder_id: folderId || null,
-        image_upload_keys: imageKeys,
-        owner_tags: settings.tags,
-      });
-      await createOptionsFor(created.id, settings.options);
+      // 이미 디자인 생성까지는 성공했던 재시도라면 새로 만들지 않고 같은 디자인에 이어서 진행.
+      let designId = createdIdRef.current;
+      if (!designId) {
+        const created = await designsApi.createDesign({
+          title: title.trim(),
+          description: settings.description.trim() || null,
+          base_price: price,
+          intro_price: settings.introPrice.trim() ? Number(settings.introPrice) : null,
+          duration_minutes: clampDuration(settings.duration),
+          designer_ids: designerIds,
+          designer_durations: designerDurations,
+          designer_prices: designerPrices,
+          folder_id: folderId || null,
+          image_upload_keys: imageKeys,
+          owner_tags: settings.tags,
+        });
+        designId = created.id;
+        createdIdRef.current = designId;
+      }
+      // 옵션 생성: 이미 생성된 옵션(id 보유)은 갱신, 나머지만 생성 — 재시도 시 중복 생성 방지.
+      for (let i = 0; i < settings.options.length; i += 1) {
+        const r = settings.options[i];
+        if (!r.name.trim()) continue;
+        const body = {
+          kind: r.kind,
+          name: r.name.trim(),
+          price_delta: Math.max(0, Math.round(r.priceDelta) || 0),
+          sort_order: i,
+        };
+        if (r.id) {
+          await designsApi.updateOption(designId, r.id, body);
+        } else {
+          const created = await designsApi.createOption(designId, body);
+          const optId = created.id;
+          const uid = r.uid;
+          setSettings((prev) => ({
+            ...prev,
+            options: prev.options.map((o) => (o.uid === uid ? { ...o, id: optId } : o)),
+          }));
+        }
+      }
       try {
         // 이미지 자동 처리 트리거. 실패해도 등록 자체는 유지 — 카드의 "처리 재시도" 버튼으로 재시도 가능.
-        await designsApi.processDesign(created.id);
+        await designsApi.processDesign(designId);
       } catch {
         /* 무시 */
       }
@@ -1579,6 +1608,12 @@ function BulkAddModal({
           owner_tags: s.tags,
         });
         await createOptionsFor(created.id, s.options);
+        try {
+          // 이미지 자동 처리 트리거. 실패해도 등록 자체는 유지 — 카드의 "처리 재시도" 버튼으로 재시도 가능.
+          await designsApi.processDesign(created.id);
+        } catch {
+          /* 무시 */
+        }
       } catch (e) {
         failed.push(`${title}: ${toUserMessage(e)}`);
       }
@@ -1850,7 +1885,21 @@ function DesignEditForm({ design: d, onClose }: { design: Design; onClose: () =>
             await designsApi.updateOption(d.id, r.id, body);
           }
         } else if (r.name.trim()) {
-          await designsApi.createOption(d.id, body);
+          const created = await designsApi.createOption(d.id, body);
+          const optId = created.id;
+          const uid = r.uid;
+          // 생성된 옵션의 id를 로컬 상태에 반영 — 저장 재시도 시 create가 아닌 update 경로로 가도록(중복 생성 방지).
+          setOptions((prev) => prev.map((o) => (o.uid === uid ? { ...o, id: optId } : o)));
+        }
+      }
+
+      // 사진을 바꿨을 때만 이미지 자동 처리 트리거(새 대표/상세 사진 크롭 원본 처리). 실패해도 수정 자체는 유지
+      // — 카드의 "처리 재시도" 버튼으로 재시도 가능.
+      if (photosDirty) {
+        try {
+          await designsApi.processDesign(d.id);
+        } catch {
+          /* 무시 */
         }
       }
     },

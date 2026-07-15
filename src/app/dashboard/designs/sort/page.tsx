@@ -33,6 +33,9 @@ import {
 
 type FolderMode = 'existing' | 'new';
 
+// 백엔드 POST /shops/me/designs/sort의 image_upload_keys maxItems(30)과 동일 — 업로드 시작 전 클라에서 막는다.
+const MAX_SORT_PHOTOS = 30;
+
 /** 새 폴더 기본 이름 제안: "[샵이름]_NN" (기존 같은 접두 폴더 다음 번호, 2자리). */
 function suggestNewFolderName(shopName: string, folders: DesignFolder[]): string {
   const esc = shopName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -104,6 +107,11 @@ export default function DesignSortPage() {
     if (!list) return;
     const imgs = Array.from(list).filter((f) => f.type.startsWith('image/'));
     if (!imgs.length) return;
+    // 업로드 시작 전 클라에서 상한 검증 — 초과 시 /sort 호출까지 가지 않고 여기서 막는다.
+    if (imgs.length > MAX_SORT_PHOTOS) {
+      setError(`한 번에 최대 ${MAX_SORT_PHOTOS}장까지 정렬할 수 있어요. ${imgs.length}장을 선택하셨어요 — ${MAX_SORT_PHOTOS}장 이하로 다시 선택해주세요.`);
+      return;
+    }
     setFiles(imgs);
     setError(null);
   };
@@ -193,7 +201,12 @@ export default function DesignSortPage() {
       </div>
 
       {/* 1) 업로드 */}
-      {phase === 'idle' && <SortDropzone onFiles={onFiles} />}
+      {phase === 'idle' && (
+        <>
+          <SortDropzone onFiles={onFiles} />
+          {error && <p className="rounded-md bg-danger-bg px-3 py-2 text-body-sm text-danger">{error}</p>}
+        </>
+      )}
 
       {/* 2) 폴더 설정 */}
       {phase === 'settings' && (

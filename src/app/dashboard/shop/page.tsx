@@ -5,11 +5,13 @@
  * 베타에서는 공개/숨김 상태만 사장님이 직접 전환한다.
  */
 import Link from 'next/link';
-import { useState } from 'react';
-import type { Shop } from '@/services';
+import { useMemo, useState } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { shopApi, uploadsApi } from '@/services';
+import type { Shop, ShopImage } from '@/services';
 import { isApiError } from '@/lib/api-error';
 import { toUserMessage } from '@/lib/error-messages';
-import { useMyShop } from '@/hooks/use-my-shop';
+import { MY_SHOP_KEY, useMyShop } from '@/hooks/use-my-shop';
 import { useSetShopVisibility, type SetShopVisibility } from '@/hooks/use-set-shop-visibility';
 import { ShopEditModal } from '@/components/shop-edit-modal';
 
@@ -84,6 +86,8 @@ function ShopManageView({ shop }: { shop: Shop }) {
       </div>
 
       <VisibilityControl shop={shop} />
+
+      <ShopImagesSection shop={shop} />
 
       {editing && <ShopEditModal shop={shop} onClose={() => setEditing(false)} />}
     </div>
@@ -172,5 +176,166 @@ function VisibilityControl({ shop }: { shop: Shop }) {
         </div>
       )}
     </section>
+  );
+}
+
+/* ───────────── 샵 사진 (대표/갤러리) ─────────────
+ * 대표 사진 1장(is_thumbnail) + 갤러리 사진 여러 장. 업로드는 uploads 서비스(shop 용도)로 object_key를
+ * 받은 뒤 addImage로 등록한다. 추가/삭제 후에는 내 샵 쿼리(MY_SHOP_KEY)를 재검증해 최신 이미지 목록을 받는다.
+ */
+function ShopImagesSection({ shop }: { shop: Shop }) {
+  const qc = useQueryClient();
+  const [error, setError] = useState<string | null>(null);
+
+  const images = useMemo(
+    () => [...(shop.images ?? [])].sort((a, b) => a.sort_order - b.sort_order),
+    [shop.images],
+  );
+  const thumbnail = images.find((img) => img.is_thumbnail) ?? null;
+  const gallery = images.filter((img) => !img.is_thumbnail);
+
+  const invalidate = () => qc.invalidateQueries({ queryKey: MY_SHOP_KEY });
+
+  const addImages = useMutation({
+    mutationFn: async ({ files, isThumbnail }: { files: File[]; isThumbnail: boolean }) => {
+      let order = images.length;
+      for (const file of files) {
+        const uploaded = await uploadsApi.uploadFile(file, 'shop');
+        await shopApi.addImage({
+          upload_object_key: uploaded.object_key,
+          is_thumbnail: isThumbnail,
+          sort_order: order,
+        });
+        order += 1;
+      }
+    },
+    onSuccess: () => {
+      setError(null);
+      invalidate();
+    },
+    onError: (e) => setError(toUserMessage(e)),
+  });
+
+  const deleteImage = useMutation({
+    mutationFn: (imageId: string) => shopApi.deleteImage(imageId),
+    onSuccess: () => {
+      setError(null);
+      invalidate();
+    },
+    onError: (e) => setError(toUserMessage(e)),
+  });
+
+  const busy = addImages.isPending || deleteImage.isPending;
+
+  const pickThumbnail = (files: FileList | null) => {
+    const file = files?.[0];
+    if (!file) return;
+    addImages.mutate({ files: [file], isThumbnail: true });
+  };
+  const pickGallery = (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    addImages.mutate({ files: Array.from(files), isThumbnail: false });
+  };
+  const onDelete = (img: ShopImage) => {
+    if (!window.confirm('이 사진을 삭제할까요?')) return;
+    deleteImage.mutate(img.id);
+  };
+
+  return (
+    <section className="rounded-lg border border-neutral-200 bg-white p-4">
+      <h2 className="text-body-md font-bold text-primary">샵 사진</h2>
+      <p className="mt-1 text-caption text-primary-50">고객 앱에 노출되는 대표 사진과 갤러리 사진을 관리합니다.</p>
+
+      <div className="mt-3">
+        <p className="mb-2 text-caption font-semibold text-primary-50">대표 사진</p>
+        <div className="flex flex-wrap gap-2">
+          {thumbnail ? (
+            <ShopPhotoTile image={thumbnail} badge="대표" onDelete={() => onDelete(thumbnail)} disabled={busy} />
+          ) : (
+            <ShopUploadTile label="대표 사진" onFiles={pickThumbnail} disabled={busy} />
+          )}
+        </div>
+      </div>
+
+      <div className="mt-4">
+        <p className="mb-2 text-caption font-semibold text-primary-50">갤러리 사진</p>
+        <div className="flex flex-wrap gap-2">
+          {gallery.map((img) => (
+            <ShopPhotoTile key={img.id} image={img} onDelete={() => onDelete(img)} disabled={busy} />
+          ))}
+          <ShopUploadTile label="추가" multiple onFiles={pickGallery} disabled={busy} />
+        </div>
+      </div>
+
+      {addImages.isPending && <p className="mt-2 text-caption text-primary-50">사진 업로드 중…</p>}
+      {error && <p className="mt-2 rounded-md bg-danger-bg px-3 py-2 text-caption text-danger">{error}</p>}
+    </section>
+  );
+}
+
+function ShopPhotoTile({
+  image,
+  badge,
+  onDelete,
+  disabled,
+}: {
+  image: ShopImage;
+  badge?: string;
+  onDelete: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="relative h-24 w-24 overflow-hidden rounded-md border border-neutral-200">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={image.image_url} alt="" className="h-full w-full object-cover" />
+      {badge && (
+        <span className="absolute left-0 top-0 bg-secondary px-1.5 py-0.5 text-caption font-semibold text-white">
+          {badge}
+        </span>
+      )}
+      <button
+        type="button"
+        onClick={onDelete}
+        disabled={disabled}
+        className="absolute right-0 top-0 bg-black/50 px-1 text-caption text-white disabled:opacity-50"
+        aria-label="삭제"
+      >
+        ×
+      </button>
+    </div>
+  );
+}
+
+function ShopUploadTile({
+  label,
+  multiple,
+  onFiles,
+  disabled,
+}: {
+  label: string;
+  multiple?: boolean;
+  onFiles: (files: FileList | null) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <label
+      className={`flex h-24 w-24 flex-col items-center justify-center rounded-md border border-dashed border-neutral-300 text-primary-50 ${
+        disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:border-secondary'
+      }`}
+    >
+      <span className="text-2xl leading-none">+</span>
+      <span className="mt-1 text-caption">{label}</span>
+      <input
+        type="file"
+        accept="image/*"
+        multiple={multiple}
+        disabled={disabled}
+        className="hidden"
+        onChange={(e) => {
+          onFiles(e.target.files);
+          e.target.value = '';
+        }}
+      />
+    </label>
   );
 }

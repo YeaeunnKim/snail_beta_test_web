@@ -160,6 +160,11 @@ export default function RegisterPage() {
           로그인
         </a>
       </p>
+      <p className="text-center text-caption text-primary-50">
+        <a href="/password-reset" className="font-semibold text-secondary underline">
+          비밀번호를 잊으셨나요?
+        </a>
+      </p>
     </form>
   );
 }

@@ -75,12 +75,27 @@ function buildUrl(path: string, params?: Record<string, unknown>, query?: Record
 /** 진행 중인 refresh 요청을 공유해 동시 401 폭주 시 한 번만 갱신하도록 한다. */
 let refreshPromise: Promise<boolean> | null = null;
 
+/**
+ * refresh 시도 자체가 실패해(리프레시 토큰 없음/서버 거부) 세션이 완전히 끝났을 때 알림받을 핸들러.
+ * 인증 store(zustand)가 자신을 로그아웃 상태로 되돌리기 위해 등록한다.
+ * 이 파일은 store를 import하지 않고 콜백만 노출해 store → api-client 단방향 의존만 생기게 한다(순환 의존 방지).
+ */
+let authExpiredHandler: (() => void) | null = null;
+
+/** refresh 실패로 인한 세션 완전 만료 시 호출될 핸들러를 등록한다 (마지막 등록만 유효). */
+export function onAuthExpired(handler: () => void): void {
+  authExpiredHandler = handler;
+}
+
 async function refreshAccessToken(): Promise<boolean> {
   if (refreshPromise) return refreshPromise;
 
   refreshPromise = (async () => {
     const refreshToken = getRefreshToken();
-    if (!refreshToken) return false;
+    if (!refreshToken) {
+      authExpiredHandler?.();
+      return false;
+    }
     try {
       const res = await fetch(config.apiOrigin + '/api/v1/auth/refresh', {
         method: 'POST',
@@ -92,6 +107,7 @@ async function refreshAccessToken(): Promise<boolean> {
       });
       if (!res.ok) {
         clearTokens();
+        authExpiredHandler?.();
         return false;
       }
       const tokens = (await res.json()) as Schemas['TokenPair'];
@@ -187,6 +203,32 @@ async function request<T>(req: RawRequest, allowRefresh = true): Promise<T> {
   return body as T;
 }
 
+/**
+ * JSON 전용 request()와 별개로, 임의의 바디(FormData 등)를 그대로 전달하면서도
+ * 인증 헤더 자동 첨부 + 401→refresh→1회 재시도만 적용하는 저수준 fetch 래퍼.
+ * 멀티파트 업로드처럼 자체 fetch를 쓰던 서비스가 공통 401 갱신 경로에 편입되도록 제공한다.
+ * Content-Type은 호출자가 완전히 통제한다(FormData는 boundary 자동 설정을 위해 지정하면 안 됨).
+ */
+export async function fetchWithAuthRetry(
+  path: string,
+  init: RequestInit,
+  allowRefresh = true,
+): Promise<Response> {
+  const headers = new Headers(init.headers);
+  const accessToken = getAccessToken();
+  if (accessToken) headers.set('Authorization', `Bearer ${accessToken}`);
+
+  const res = await fetch(config.apiOrigin + path, { ...init, headers });
+
+  if (res.status === 401 && allowRefresh && !path.endsWith('/auth/refresh')) {
+    const refreshed = await refreshAccessToken();
+    if (refreshed) {
+      return fetchWithAuthRetry(path, init, false);
+    }
+  }
+  return res;
+}
+
 /** 메서드별 호출 시그니처를 만들어 주는 팩토리 */
 function makeMethod<M extends 'get' | 'post' | 'put' | 'patch' | 'delete'>(method: M) {
   return <P extends PathsWithMethod<M>>(
@@ -246,4 +288,28 @@ export async function collectAll<T>(
     cursor = next;
   }
   return all;
+}
+
+/**
+ * 최대 concurrency개씩 동시에 실행하며 입력 순서대로 결과를 모은다.
+ * 다수의 변이 호출(예: 휴무 대량 생성/삭제)을 순차 대비 훨씬 빠르게 처리하되,
+ * 무제한 병렬로 서버를 몰아치지 않도록 상한을 둔다.
+ *
+ * 개별 task가 던지면 pooledMap 전체가 reject된다. 부분 성공을 추적하려면
+ * task 내부에서 직접 성공분을 수집하라(진행 중이던 다른 task의 부수효과는 그대로 남는다).
+ */
+export async function pooledMap<T, R>(
+  items: readonly T[],
+  concurrency: number,
+  task: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let cursor = 0;
+  const workers = Array.from({ length: Math.max(1, Math.min(concurrency, items.length)) }, async () => {
+    for (let i = cursor++; i < items.length; i = cursor++) {
+      results[i] = await task(items[i], i);
+    }
+  });
+  await Promise.all(workers);
+  return results;
 }

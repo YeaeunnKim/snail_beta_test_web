@@ -23,6 +23,19 @@ const loginSchema = z.object({
 
 type LoginForm = z.infer<typeof loginSchema>;
 
+/**
+ * ?redirect= 값의 오픈 리다이렉트 방지.
+ *
+ * '/'로 시작하는 내부 경로만 허용한다. '//evil.com'(프로토콜-상대 URL)이나
+ * '/\evil.com'(브라우저가 //로 해석하는 백슬래시 트릭)은 외부 사이트로 튈 수 있으므로 거부한다.
+ */
+function safeRedirectPath(raw: string | null): string | null {
+  if (!raw) return null;
+  if (!raw.startsWith('/')) return null;
+  if (raw.startsWith('//') || raw.startsWith('/\\')) return null;
+  return raw;
+}
+
 export default function LoginPage() {
   return (
     <Suspense fallback={<p className="text-center text-body-sm text-primary-50">불러오는 중…</p>}>
@@ -50,7 +63,7 @@ function LoginForm() {
         email: instagramToEmail(values.instagram),
         password: values.password,
       });
-      const redirect = searchParams.get('redirect');
+      const redirect = safeRedirectPath(searchParams.get('redirect'));
       const dest =
         owner.verification_status === 'approved' && redirect ? redirect : resolveAuthedHome(owner);
       router.replace(dest);
@@ -119,6 +132,11 @@ function LoginForm() {
         아직 계정이 없으신가요?{' '}
         <a href="/register" className="font-semibold text-secondary underline">
           회원가입
+        </a>
+      </p>
+      <p className="text-center text-caption text-primary-50">
+        <a href="/password-reset" className="font-semibold text-secondary underline">
+          비밀번호를 잊으셨나요?
         </a>
       </p>
     </form>

@@ -10,8 +10,7 @@
  * 백엔드 시그니처: file: UploadFile(File), target_type: UploadTargetType(Form).
  */
 import { ApiError, NETWORK_ERROR_CODE } from '@/lib/api-error';
-import { config } from '@/lib/config';
-import { getAccessToken } from '@/lib/token';
+import { fetchWithAuthRetry } from '@/lib/api-client';
 
 /** 업로드 용도. 사장님 웹에서는 주로 business_license(등록증)·design(디자인 사진)·shop(샵 이미지)·profile(디자이너). */
 export type UploadTargetType = 'profile' | 'shop' | 'design' | 'snap' | 'review' | 'business_license';
@@ -50,13 +49,12 @@ export async function uploadFile(
   form.append('file', file);
   form.append('target_type', targetType);
 
-  const token = getAccessToken();
   let res: Response;
   try {
-    res = await fetch(config.apiOrigin + UPLOAD_PATH, {
+    // fetchWithAuthRetry가 Authorization 자동 첨부 + 401→refresh→1회 재시도까지 처리한다.
+    res = await fetchWithAuthRetry(UPLOAD_PATH, {
       method: 'POST',
       headers: {
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
         'Idempotency-Key': idempotencyKey(),
         // Content-Type은 지정하지 않는다 — FormData가 boundary 포함해 자동 설정.
       },
