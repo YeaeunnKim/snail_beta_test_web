@@ -17,13 +17,12 @@ export const MAX_OWNER_TAGS = 10;
 export const TAG_MAXLEN = 40;
 export const DURATION_MIN = 30;
 export const DURATION_MAX = 600;
-export const DURATION_STEP = 10;
+export const DURATION_STEP = 30; // 기본 소요시간 · 디자이너별 소요시간 +/- 단위(분). Stepper 기본 step이기도 하다
 export const PRICE_STEP = 5000; // 디자이너별 가격 · 추가옵션 가격 +/- 단위(원)
 export const PRICE_INPUT_STEP = 1000; // 정상가 · 인트로가 입력칸 화살표 +/- 단위(원)
 export const OPTION_PRICE_DEFAULT = 50000; // 추가옵션 기본 추가금액(원)
 export const OPTION_DURATION_DEFAULT = 30; // 추가옵션 기본 추가시간(분)
 export const OPTION_DURATION_STEP = 30; // 추가옵션 시간 +/- 단위(분)
-export const CARD_DURATION_STEP = 30; // 카드 인라인 소요시간 +/- 단위(분)
 export const OPTION_DURATION_MAX = 600; // 추가옵션 추가시간 상한(분)
 
 // 옵션의 시간은 기본 소요시간에 "더해지는" 값(가격이 price_delta인 것과 같다).
@@ -371,12 +370,11 @@ export function DesignSettingsFields({
             <p className="mt-1 text-caption font-semibold text-secondary">정상가 대비 {introPct}% 할인</p>
           )}
         </div>
-        {!multiDesigner && (
-          <div>
-            <label className={labelCls}>기본 소요시간</label>
-            <Stepper value={duration} onChange={(v) => onChange({ duration: clampDuration(v) })} suffix="분" />
-          </div>
-        )}
+        {/* 다인샵에서도 보여야 한다 — 아래 디자이너별 안내문이 이 기본값(소요시간 {duration}분)을 가리킨다. */}
+        <div className={multiDesigner ? 'mt-3' : ''}>
+          <label className={labelCls}>기본 소요시간</label>
+          <Stepper value={duration} onChange={(v) => onChange({ duration: clampDuration(v) })} suffix="분" />
+        </div>
       </div>
 
       {multiDesigner && (

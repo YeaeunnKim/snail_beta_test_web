@@ -11,7 +11,7 @@ import { useDebouncedSave } from '../_lib/use-debounced-save';
 import { priceRange, durationRange } from '../_lib/designer-values';
 import { DesignEditForm } from './design-edit-form';
 import { DesignerRows } from './designer-rows';
-import { Stepper, TagInput, PRICE_INPUT_STEP, CARD_DURATION_STEP, clampPrice, clampDuration } from '../design-settings';
+import { Stepper, TagInput, PRICE_INPUT_STEP, DURATION_STEP, clampPrice, clampDuration } from '../design-settings';
 
 /* ───────────── 디자인 카드 ───────────── */
 
@@ -203,7 +203,7 @@ export function DesignCard({ design, editMode }: { design: Design; editMode: boo
                 />
                 <Stepper
                   value={shownDuration}
-                  step={CARD_DURATION_STEP}
+                  step={DURATION_STEP}
                   suffix="분"
                   ariaLabel="소요시간"
                   onChange={(v) => {

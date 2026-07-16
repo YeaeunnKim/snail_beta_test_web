@@ -10,7 +10,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { designsApi } from '@/services';
 import type { Design } from '@/services';
 import { toUserMessage } from '@/lib/error-messages';
-import { Stepper, PRICE_STEP, CARD_DURATION_STEP, clampPrice, clampDuration } from '../design-settings';
+import { Stepper, PRICE_STEP, DURATION_STEP, clampPrice, clampDuration } from '../design-settings';
 import { formatWon } from '../_lib/design-helpers';
 import { useDebouncedSave } from '../_lib/use-debounced-save';
 
@@ -94,7 +94,7 @@ export function DesignerRows({ design: d, editMode }: { design: Design; editMode
                 />
                 <Stepper
                   value={e.duration_minutes}
-                  step={CARD_DURATION_STEP}
+                  step={DURATION_STEP}
                   suffix="분"
                   ariaLabel={`${x.name} 소요시간`}
                   onChange={(v) => patchRow(x.id, { duration_minutes: clampDuration(v) })}
