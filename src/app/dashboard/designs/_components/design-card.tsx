@@ -11,12 +11,13 @@ import { DesignEditForm } from './design-edit-form';
 
 /* ───────────── 디자인 카드 ───────────── */
 
-export function DesignCard({ design }: { design: Design }) {
+export function DesignCard({ design, editMode }: { design: Design; editMode: boolean }) {
   const qc = useQueryClient();
   const [actionError, setActionError] = useState<string | null>(null);
   const [zoomIndex, setZoomIndex] = useState<number | null>(null); // null = 확대 뷰 닫힘
   const [editing, setEditing] = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);
+  const [moveErr, setMoveErr] = useState<string | null>(null);
 
   const { data } = useQuery({
     queryKey: ['design', design.id],
@@ -47,6 +48,20 @@ export function DesignCard({ design }: { design: Design }) {
       qc.invalidateQueries({ queryKey: ['design-folders'] });
     },
     onError: (e) => setActionError(toUserMessage(e)),
+  });
+
+  // 폴더 이동용 — 폴더 목록(부모와 동일 캐시 재사용) + 이동 뮤테이션. 수정 ON일 때만 사용.
+  const foldersQuery = useQuery({ queryKey: ['design-folders'], queryFn: () => designsApi.listFolders() });
+  const folders = foldersQuery.data ?? [];
+  const move = useMutation({
+    mutationFn: (folderId: string) => designsApi.updateDesign(d.id, { folder_id: folderId || null }),
+    onSuccess: () => {
+      setMoveErr(null);
+      qc.invalidateQueries({ queryKey: ['designs'] });
+      qc.invalidateQueries({ queryKey: ['design-folders'] });
+      qc.invalidateQueries({ queryKey: ['design', d.id] });
+    },
+    onError: (e) => setMoveErr(toUserMessage(e)),
   });
 
   // 디자인별 공개/비공개 전환. 공개 조건(백엔드 검증): 샵 공개 + 오너 승인 (AI 분석과 무관).
@@ -91,9 +106,26 @@ export function DesignCard({ design }: { design: Design }) {
         <div className="flex min-w-0 flex-1 items-start justify-between gap-2">
           <div className="min-w-0">
             <p className="truncate font-medium">{d.title}</p>
-            <p className="mt-0.5 truncate text-caption text-primary-50">
-              📁 {d.folder_name ?? '미분류'}
-            </p>
+            {editMode ? (
+              <select
+                value={d.folder_id ?? ''}
+                onChange={(e) => move.mutate(e.target.value)}
+                disabled={move.isPending}
+                className="mt-0.5 rounded-md border border-neutral-300 bg-white px-2 py-1 text-caption outline-none focus:border-secondary disabled:opacity-50"
+                aria-label="폴더 이동"
+              >
+                <option value="">미분류</option>
+                {folders.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {f.name}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <p className="mt-0.5 truncate text-caption text-primary-50">📁 {d.folder_name ?? '미분류'}</p>
+            )}
+            {editMode && move.isPending && <p className="mt-0.5 text-caption text-primary-50">이동 중…</p>}
+            {editMode && moveErr && <p className="mt-0.5 text-caption text-danger">{moveErr}</p>}
             <p className="mt-0.5 text-body-sm text-primary-50">
               {d.intro_price != null && d.intro_price < d.base_price ? (
                 <>

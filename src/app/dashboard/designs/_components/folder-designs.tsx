@@ -44,6 +44,8 @@ export function FolderDesigns({ view, onBack }: { view: FolderView; onBack: () =
 
   const designersQuery = useQuery({ queryKey: ['designers'], queryFn: () => designersApi.listDesigners() });
   const [bulkFiles, setBulkFiles] = useState<File[] | null>(null); // 비어있지 않으면 일괄 모달 오픈
+  // 목록 전체에 걸리는 수정 ON/OFF — 카드마다가 아니다. 사장님이 평소에 값이 바뀌지 않도록 기본은 OFF.
+  const [editMode, setEditMode] = useState(false);
 
   // 실제 폴더에서만 일괄 등록(미분류는 제목에 폴더명을 못 붙임)
   const canBulk = !!view.folderId && !view.unfiled;
@@ -56,14 +58,28 @@ export function FolderDesigns({ view, onBack }: { view: FolderView; onBack: () =
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <button
+            onClick={onBack}
+            className="shrink-0 rounded-md border border-neutral-300 px-2.5 py-1.5 text-body-sm font-semibold text-primary hover:bg-neutral-50"
+          >
+            ← 폴더
+          </button>
+          <h2 className="truncate text-heading-md font-bold">{view.label}</h2>
+          <span className="shrink-0 text-body-sm text-primary-50">{designs.length}개</span>
+        </div>
         <button
-          onClick={onBack}
-          className="rounded-md border border-neutral-300 px-2.5 py-1.5 text-body-sm font-semibold text-primary hover:bg-neutral-50"
+          type="button"
+          onClick={() => setEditMode((v) => !v)}
+          aria-pressed={editMode}
+          className={
+            editMode
+              ? 'rounded-md bg-secondary px-3 py-1.5 text-caption font-semibold text-white'
+              : 'rounded-md border border-neutral-300 px-3 py-1.5 text-caption font-semibold text-primary-50 hover:bg-neutral-50'
+          }
         >
-          ← 폴더
+          {editMode ? '수정 ON' : '수정 OFF'}
         </button>
-        <h2 className="text-heading-md font-bold">{view.label}</h2>
-        <span className="text-body-sm text-primary-50">{designs.length}개</span>
       </div>
 
       {/* 디자인 정렬 진행상황 배너 */}
@@ -164,7 +180,7 @@ export function FolderDesigns({ view, onBack }: { view: FolderView; onBack: () =
       ) : (
         <ul className="grid grid-cols-1 gap-3">
           {designs.map((d) => (
-            <DesignCard key={d.id} design={d} />
+            <DesignCard key={d.id} design={d} editMode={editMode} />
           ))}
         </ul>
       )}
