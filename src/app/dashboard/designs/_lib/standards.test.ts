@@ -84,3 +84,34 @@ test('optionCoverage: 옵션 없는 목록은 빈 배열', () => {
   const cov = optionCoverage([mkOpts('a', []), mkOpts('b', [])]);
   assert.deepEqual(cov, []);
 });
+
+test('optionCoverage: 한 디자인 안에 같은 (kind,name)이 중복이어도 count는 1', () => {
+  const designs = [
+    mkOpts('a', [
+      { kind: 'care', name: '케어', price_delta: 30000, duration_delta_min: 20 },
+      { kind: 'care', name: '케어', price_delta: 30000, duration_delta_min: 20 },
+    ]),
+    mkOpts('b', []),
+  ];
+  const cov = optionCoverage(designs);
+  const care = cov.find((c) => c.name === '케어')!;
+  assert.equal(care.count, 1); // 디자인 1개 안에 2개 있어도 디자인 개수는 1
+  assert.equal(care.total, 2);
+  assert.equal(care.priceDelta, 30000); // 중복 인스턴스도 delta 일치 판정엔 반영됨
+});
+
+test('optionCoverage: 정렬은 count 내림차순, 동수면 name 오름차순', () => {
+  const designs = [
+    mkOpts('d1', [{ kind: 'extend', name: '연장', price_delta: 50000, duration_delta_min: 30 }]),
+    mkOpts('d2', [{ kind: 'extend', name: '연장', price_delta: 50000, duration_delta_min: 30 }]),
+    mkOpts('d3', [
+      { kind: 'extend', name: '연장', price_delta: 50000, duration_delta_min: 30 },
+      { kind: 'care', name: '다라', price_delta: 10000, duration_delta_min: 10 },
+    ]),
+    mkOpts('d4', [{ kind: 'care', name: '가나', price_delta: 20000, duration_delta_min: 15 }]),
+  ];
+  const cov = optionCoverage(designs);
+  // 연장(count 3)이 먼저, 가나·다라(count 1 동점)는 name 오름차순
+  assert.deepEqual(cov.map((c) => c.name), ['연장', '가나', '다라']);
+  assert.deepEqual(cov.map((c) => c.count), [3, 1, 1]);
+});
