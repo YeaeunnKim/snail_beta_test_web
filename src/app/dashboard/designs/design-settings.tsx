@@ -23,6 +23,7 @@ export const PRICE_INPUT_STEP = 1000; // 정상가 · 인트로가 입력칸 화
 export const OPTION_PRICE_DEFAULT = 50000; // 추가옵션 기본 추가금액(원)
 export const OPTION_DURATION_DEFAULT = 30; // 추가옵션 기본 추가시간(분)
 export const OPTION_DURATION_STEP = 30; // 추가옵션 시간 +/- 단위(분)
+export const CARD_DURATION_STEP = 30; // 카드 인라인 소요시간 +/- 단위(분)
 export const OPTION_DURATION_MAX = 600; // 추가옵션 추가시간 상한(분)
 
 // 옵션의 시간은 기본 소요시간에 "더해지는" 값(가격이 price_delta인 것과 같다).

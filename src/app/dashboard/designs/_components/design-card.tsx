@@ -7,7 +7,9 @@ import type { Design } from '@/services';
 import { toUserMessage } from '@/lib/error-messages';
 import { Lightbox } from './photo';
 import { designImageUrls, formatWon } from '../_lib/design-helpers';
+import { useDebouncedSave } from '../_lib/use-debounced-save';
 import { DesignEditForm } from './design-edit-form';
+import { Stepper, PRICE_INPUT_STEP, CARD_DURATION_STEP, clampPrice, clampDuration } from '../design-settings';
 
 /* ───────────── 디자인 카드 ───────────── */
 
@@ -18,6 +20,11 @@ export function DesignCard({ design, editMode }: { design: Design; editMode: boo
   const [editing, setEditing] = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);
   const [moveErr, setMoveErr] = useState<string | null>(null);
+
+  // 인라인 편집 중인 값(낙관적). null이면 서버 값을 그대로 쓴다.
+  const [draftPrice, setDraftPrice] = useState<number | null>(null);
+  const [draftDuration, setDraftDuration] = useState<number | null>(null);
+  const [saveErr, setSaveErr] = useState<string | null>(null);
 
   const { data } = useQuery({
     queryKey: ['design', design.id],
@@ -63,6 +70,32 @@ export function DesignCard({ design, editMode }: { design: Design; editMode: boo
     },
     onError: (e) => setMoveErr(toUserMessage(e)),
   });
+
+  // 카드 인라인 가격·소요시간 편집 — ± 연타를 800ms 디바운스로 묶어 PATCH 1회만 보낸다.
+  // 서버 폴링(refetchInterval)이 편집 중인 값을 덮어쓰지 않도록 draft가 있으면 draft를 우선 보여준다.
+  const patch = useMutation({
+    mutationFn: (body: { base_price?: number; duration_minutes?: number }) =>
+      designsApi.updateDesign(d.id, body),
+    onSuccess: () => {
+      setSaveErr(null);
+      setDraftPrice(null);
+      setDraftDuration(null);
+      qc.invalidateQueries({ queryKey: ['design', d.id] });
+      qc.invalidateQueries({ queryKey: ['designs'] });
+    },
+    onError: (e) => {
+      // 롤백 — draft를 버리고 서버 값으로 되돌린다
+      setDraftPrice(null);
+      setDraftDuration(null);
+      setSaveErr(toUserMessage(e));
+    },
+  });
+
+  const savePrice = useDebouncedSave<number>((v) => patch.mutate({ base_price: v }));
+  const saveDuration = useDebouncedSave<number>((v) => patch.mutate({ duration_minutes: v }));
+
+  const shownPrice = draftPrice ?? d.base_price;
+  const shownDuration = draftDuration ?? d.duration_minutes;
 
   // 디자인별 공개/비공개 전환. 공개 조건(백엔드 검증): 샵 공개 + 오너 승인 (AI 분석과 무관).
   // AI는 백그라운드로 계속 돌며 완료 시 검색 랭킹만 보강 — 공개(노출)를 막지 않는다.
@@ -126,17 +159,45 @@ export function DesignCard({ design, editMode }: { design: Design; editMode: boo
             )}
             {editMode && move.isPending && <p className="mt-0.5 text-caption text-primary-50">이동 중…</p>}
             {editMode && moveErr && <p className="mt-0.5 text-caption text-danger">{moveErr}</p>}
-            <p className="mt-0.5 text-body-sm text-primary-50">
-              {d.intro_price != null && d.intro_price < d.base_price ? (
-                <>
-                  <span className="line-through">{formatWon(d.base_price)}</span>{' '}
-                  <span className="font-semibold text-secondary">{formatWon(d.intro_price)}</span>
-                </>
-              ) : (
-                formatWon(d.base_price)
-              )}{' '}
-              · 기본 {d.duration_minutes}분
-            </p>
+            {editMode ? (
+              <div className="mt-1 flex flex-col gap-1.5">
+                <Stepper
+                  value={shownPrice}
+                  step={PRICE_INPUT_STEP}
+                  suffix="원"
+                  ariaLabel="가격"
+                  onChange={(v) => {
+                    const next = clampPrice(v);
+                    setDraftPrice(next);
+                    savePrice(next);
+                  }}
+                />
+                <Stepper
+                  value={shownDuration}
+                  step={CARD_DURATION_STEP}
+                  suffix="분"
+                  ariaLabel="소요시간"
+                  onChange={(v) => {
+                    const next = clampDuration(v);
+                    setDraftDuration(next);
+                    saveDuration(next);
+                  }}
+                />
+                {saveErr && <span className="text-caption text-danger">{saveErr}</span>}
+              </div>
+            ) : (
+              <p className="mt-0.5 text-body-sm text-primary-50">
+                {d.intro_price != null && d.intro_price < d.base_price ? (
+                  <>
+                    <span className="line-through">{formatWon(d.base_price)}</span>{' '}
+                    <span className="font-semibold text-secondary">{formatWon(d.intro_price)}</span>
+                  </>
+                ) : (
+                  formatWon(d.base_price)
+                )}{' '}
+                · 기본 {d.duration_minutes}분
+              </p>
+            )}
             {d.owner_tags.length > 0 && (
               <div className="mt-2 flex flex-wrap gap-1">
                 {d.owner_tags.map((t) => (
