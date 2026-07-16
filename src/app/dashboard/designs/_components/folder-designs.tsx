@@ -12,6 +12,7 @@ import { sortPublishedFirst } from '../_lib/sort-designs';
 import { BulkDropzone, BulkAddModal } from './bulk-add';
 import { BulkActionBar } from './bulk-action-bar';
 import { DesignCard } from './design-card';
+import { StandardsPanel } from './standards-panel';
 
 export type FolderView = { label: string; folderId?: string; unfiled?: boolean };
 
@@ -51,6 +52,7 @@ export function FolderDesigns({ view, onBack }: { view: FolderView; onBack: () =
   const [editMode, setEditMode] = useState(false);
   // 선택 모드 — "얘랑 얘 지워/옮겨"처럼 가끔 하는 정리. 수정 모드와 상호 배타(하나 켜면 다른 건 끈다).
   const [selectMode, setSelectMode] = useState(false);
+  const [standardsOpen, setStandardsOpen] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const clearSelection = () => setSelected(new Set());
   const toggleSelect = (id: string) =>
@@ -113,6 +115,14 @@ export function FolderDesigns({ view, onBack }: { view: FolderView; onBack: () =
           }
         >
           선택
+        </button>
+        <button
+          type="button"
+          onClick={() => setStandardsOpen(true)}
+          aria-label="현황판"
+          className="rounded-md border border-neutral-300 px-3 py-1.5 text-caption font-semibold text-primary-50 hover:bg-neutral-50"
+        >
+          ⚙ 기준
         </button>
       </div>
 
@@ -249,6 +259,15 @@ export function FolderDesigns({ view, onBack }: { view: FolderView; onBack: () =
           folders={foldersQuery.data ?? []}
           onDone={refetchLists}
           onClearSelection={clearSelection}
+        />
+      )}
+
+      {standardsOpen && (
+        <StandardsPanel
+          scopeLabel={view.label}
+          designs={designs}
+          onClose={() => setStandardsOpen(false)}
+          onDone={refetchLists}
         />
       )}
     </div>
