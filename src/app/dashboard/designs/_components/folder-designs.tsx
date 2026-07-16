@@ -69,6 +69,9 @@ export function FolderDesigns({ view, onBack }: { view: FolderView; onBack: () =
   const refetchLists = () => {
     qc.invalidateQueries({ queryKey: ['designs'] });
     qc.invalidateQueries({ queryKey: ['design-folders'] });
+    // 카드별 상세 캐시(['design', id])도 무효화 — 일괄 변경 후 마운트된 카드가 옛 값을 계속 보여주지 않도록.
+    // 'design' 프리픽스는 ['design', id]만 맞고 'designs'/'design-folders'/'designers'와는 겹치지 않는다.
+    qc.invalidateQueries({ queryKey: ['design'] });
   };
 
   return (

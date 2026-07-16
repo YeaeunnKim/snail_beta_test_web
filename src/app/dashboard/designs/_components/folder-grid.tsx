@@ -69,6 +69,8 @@ export function FolderGrid({
             onDone={() => {
               qc.invalidateQueries({ queryKey: ['designs'] });
               qc.invalidateQueries({ queryKey: ['design-folders'] });
+              // 카드별 상세 캐시도 무효화(일괄 변경 후 카드가 옛 값을 보여주지 않도록).
+              qc.invalidateQueries({ queryKey: ['design'] });
               allDesigns.refetch();
             }}
           />
