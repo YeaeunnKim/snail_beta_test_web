@@ -603,24 +603,27 @@ git commit -m "feat(designs): 목록 전체 수정 ON/OFF 토글 + 수정 ON일 
 
 **Files:**
 - Create: `src/app/dashboard/designs/_lib/use-debounced-save.ts`
-- Modify: `src/app/dashboard/designs/design-settings.tsx` — `CARD_DURATION_STEP` 추가
+- Modify: `src/app/dashboard/designs/design-settings.tsx` — 소요시간 ± 단위를 30분으로
 - Modify: `src/app/dashboard/designs/_components/design-card.tsx`
 
+> **후속 정정 (2026-07-17):** 원래 이 태스크는 별도 상수 `CARD_DURATION_STEP = 30`을 신설했으나, 그러면 `DURATION_STEP`(폼의 기본 소요시간·디자이너별 소요시간이 쓰는 `Stepper` 기본 step)이 10으로 남아 같은 뜻의 상수가 둘이 된다. 이후 `DURATION_STEP`을 **10 → 30**으로 바꾸고 `CARD_DURATION_STEP`을 제거해 하나로 통일했다. 아래 본문은 최종 상태로 갱신돼 있다.
+
 **Interfaces:**
-- Consumes: `design-settings.tsx`의 `Stepper`, `PRICE_INPUT_STEP`(=1000), `clampDuration`, `clampPrice`
+- Consumes: `design-settings.tsx`의 `Stepper`, `PRICE_INPUT_STEP`(=1000), `DURATION_STEP`(=30), `clampDuration`, `clampPrice`
 - Produces:
-  - `design-settings.tsx`: `export const CARD_DURATION_STEP = 30;`
   - `use-debounced-save.ts`: `useDebouncedSave<T>(save: (v: T) => void, delayMs?: number): (v: T) => void`
 
 > `use-debounced-save.ts`는 React 훅이라 `_lib`의 "런타임 import 금지" 규칙 예외다. `react`만 import하며 유닛 테스트는 없다 (테스트 러너에 React 환경이 없음). `_lib/*.test.ts` 글롭에 걸리지 않으므로 `pnpm test`에 영향 없다.
 
-- [ ] **Step 1: `CARD_DURATION_STEP` 추가**
+- [ ] **Step 1: 소요시간 ± 단위를 30분으로**
 
-`design-settings.tsx:25`(`OPTION_DURATION_STEP`) 아래에 추가한다. 기존 `DURATION_STEP = 10`은 폼용이라 **건드리지 않는다.**
+`design-settings.tsx`의 `DURATION_STEP`을 **10 → 30**으로 바꾼다. 이게 `Stepper`의 기본 step이라, step을 안 넘기는 폼의 "기본 소요시간"·"디자이너별 소요시간"과 카드 인라인 소요시간이 모두 30분 단위가 된다.
 
 ```ts
-export const CARD_DURATION_STEP = 30; // 카드 인라인 소요시간 +/- 단위(분)
+export const DURATION_STEP = 30; // 기본 소요시간 · 디자이너별 소요시간 +/- 단위(분). Stepper 기본 step이기도 하다
 ```
+
+카드 인라인 소요시간 스테퍼(design-card.tsx)와 디자이너별 소요시간 스테퍼(designer-rows.tsx)도 이 `DURATION_STEP`을 명시적으로 쓴다. `clampDuration`은 여전히 30~600 범위만 보므로 직접 입력은 30의 배수가 아니어도 허용된다.
 
 - [ ] **Step 2: 디바운스 훅 작성**
 
@@ -715,7 +718,7 @@ const shownDuration = draftDuration ?? d.duration_minutes;
     />
     <Stepper
       value={shownDuration}
-      step={CARD_DURATION_STEP}
+      step={DURATION_STEP}
       suffix="분"
       ariaLabel="소요시간"
       onChange={(v) => {
@@ -837,7 +840,7 @@ git commit -m "feat(designs): 카드 인라인 태그 편집 (TagInput 재사용
 - Modify: `src/app/dashboard/designs/_components/design-card.tsx`
 
 **Interfaces:**
-- Consumes: Task 1의 `priceRange`, `durationRange`, `ValueRange`; `design-settings.tsx`의 `Stepper`, `PRICE_STEP`(=5000, 디자이너별 가격용), `CARD_DURATION_STEP`, `clampPrice`, `clampDuration`; `_lib/design-helpers.ts`의 `formatWon`
+- Consumes: Task 1의 `priceRange`, `durationRange`, `ValueRange`; `design-settings.tsx`의 `Stepper`, `PRICE_STEP`(=5000, 디자이너별 가격용), `DURATION_STEP`, `clampPrice`, `clampDuration`; `_lib/design-helpers.ts`의 `formatWon`
 - Produces: `DesignerRows({ design, editMode }: { design: Design; editMode: boolean })`
 
 - [ ] **Step 1: 카드에 범위 표시를 붙인다**
@@ -884,7 +887,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { designsApi } from '@/services';
 import type { Design } from '@/services';
 import { toUserMessage } from '@/lib/error-messages';
-import { Stepper, PRICE_STEP, CARD_DURATION_STEP, clampPrice, clampDuration } from '../design-settings';
+import { Stepper, PRICE_STEP, DURATION_STEP, clampPrice, clampDuration } from '../design-settings';
 import { formatWon } from '../_lib/design-helpers';
 
 export function DesignerRows({ design: d, editMode }: { design: Design; editMode: boolean }) {
@@ -938,7 +941,7 @@ export function DesignerRows({ design: d, editMode }: { design: Design; editMode
                 />
                 <Stepper
                   value={x.duration_minutes}
-                  step={CARD_DURATION_STEP}
+                  step={DURATION_STEP}
                   suffix="분"
                   ariaLabel={`${x.name} 소요시간`}
                   onChange={(v) => patchRow(x.id, { duration_minutes: clampDuration(v) })}
