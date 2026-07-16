@@ -84,8 +84,10 @@ function baseResponse(p, m, sp) {
 const SCENARIOS = {
   // 디자인 등록 탭이 폴더 + 미분류 디자인과 함께 렌더되는지.
   baseline: { url: '/dashboard/designs', wait: 1600 },
-  // 폴더를 열어 실제 디자인 카드(사진/제목/가격/시간/태그)가 보이는지.
+  // 폴더를 열어 실제 디자인 카드(사진/제목/가격/시간/태그)가 보이는지. 기본 수정 OFF(폴더=텍스트).
   'designs-card-view': { url: '/dashboard/designs', wait: 1600, openFolder: '미분류' },
+  // Task 6: 목록 전체 수정 ON 토글 — 헤더 버튼 클릭 후 모든 카드가 폴더 select로 바뀌는지.
+  'designs-card-view-edit-on': { url: '/dashboard/designs', wait: 1600, openFolder: '미분류', clickToggle: /수정 OFF/ },
   // 폴더 목록 5xx → 에러 표면화(재시도 2회 후 ~6s). 관찰: 로딩 유지 아님, 에러 UI/consoleError.
   'designs-folders-error': { url: '/dashboard/designs', wait: 5200, override: (p, m) => {
     if (p.endsWith('/design-folders') && m === 'GET') return json(503, { error: { code: 'SERVICE_UNAVAILABLE', message: '점검 중' } }); return null; } },
@@ -141,6 +143,7 @@ async function run() {
 
     if (sc.clickNewDesign) { await page.getByRole('button', { name: /새 디자인|디자인 등록/ }).first().click().catch(() => {}); await page.waitForTimeout(600); }
     if (sc.openFolder) { await page.getByText(sc.openFolder, { exact: false }).first().click().catch(() => {}); await page.waitForTimeout(1500); }
+    if (sc.clickToggle) { await page.getByRole('button', { name: sc.clickToggle }).first().click().catch(() => {}); await page.waitForTimeout(600); }
     if (sc.createFolder) {
       await page.getByRole('button', { name: /새 폴더|폴더 추가/ }).first().click().catch(() => {}); await page.waitForTimeout(300);
       await page.getByPlaceholder(/폴더 이름/).fill(sc.createFolder).catch(() => {});
