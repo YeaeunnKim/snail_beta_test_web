@@ -8,9 +8,9 @@ import { useState } from 'react';
 import type { Design } from '@/services';
 import { designsApi } from '@/services';
 import { applyToMany, type ApplyResult } from '../_lib/apply';
-import { groupByValue } from '../_lib/standards';
+import { groupByValue, tagCoverage } from '../_lib/standards';
 import { formatWon } from '../_lib/design-helpers';
-import { PRICE_INPUT_STEP, DURATION_STEP, clampPrice, clampDuration } from '../design-settings';
+import { PRICE_INPUT_STEP, DURATION_STEP, clampPrice, clampDuration, MAX_OWNER_TAGS } from '../design-settings';
 import { ApplyPreview, type PreviewCfg } from './apply-preview';
 
 export function StandardsPanel({
@@ -69,6 +69,31 @@ export function StandardsPanel({
         }),
     });
 
+  const [newTag, setNewTag] = useState('');
+  const tags = tagCoverage(designs);
+
+  // 전체적용: 그 태그가 없고 상한 미만인 디자인에만 추가한다. 건너뛴 수를 알린다.
+  const addTagToAll = (tag: string) => {
+    const t = tag.trim();
+    if (!t) return;
+    const targets = designs.filter((d) => !d.owner_tags.includes(t) && d.owner_tags.length < MAX_OWNER_TAGS);
+    const skipped = designs.filter((d) => !d.owner_tags.includes(t) && d.owner_tags.length >= MAX_OWNER_TAGS).length;
+    if (skipped > 0) {
+      // 상한 초과분은 건너뜀 — 조용히 넘기지 않고 알린다.
+      window.alert(`${skipped}개는 태그가 꽉 차서(최대 ${MAX_OWNER_TAGS}개) 건너뜁니다.`);
+    }
+    runBulk(targets, async (d) => {
+      await designsApi.updateDesign(d.id, { owner_tags: [...d.owner_tags, t] });
+    });
+  };
+
+  const removeTagFromAll = (tag: string) => {
+    const targets = designs.filter((d) => d.owner_tags.includes(tag));
+    runBulk(targets, async (d) => {
+      await designsApi.updateDesign(d.id, { owner_tags: d.owner_tags.filter((x) => x !== tag) });
+    });
+  };
+
   const busy = progress !== null;
 
   return (
@@ -104,7 +129,69 @@ export function StandardsPanel({
           </div>
         </section>
 
-        {/* 태그 현황판 — Task 4에서 채운다 */}
+        <section className="mt-5 space-y-2">
+          <h3 className="text-body-sm font-semibold text-primary">태그 현황 (디자인 {designs.length}개)</h3>
+          <ul className="space-y-1">
+            {tags.map((t) => {
+              const all = t.count === t.total;
+              return (
+                <li key={t.tag} className="flex items-center gap-2 text-body-sm">
+                  <span className="flex-1 truncate">
+                    #{t.tag}{' '}
+                    <span className="tabular-nums text-primary-50">
+                      {t.count}/{t.total} {all ? '전체' : '일부 ⚠'}
+                    </span>
+                  </span>
+                  {!all && (
+                    <button
+                      onClick={() => addTagToAll(t.tag)}
+                      disabled={busy}
+                      className="rounded-md border border-neutral-300 px-2 py-1 text-caption text-primary hover:bg-neutral-50 disabled:opacity-50"
+                    >
+                      전체적용
+                    </button>
+                  )}
+                  <button
+                    onClick={() => removeTagFromAll(t.tag)}
+                    disabled={busy}
+                    className="rounded-md border border-neutral-300 px-2 py-1 text-caption text-danger/80 hover:bg-neutral-50 disabled:opacity-50"
+                  >
+                    빼기
+                  </button>
+                </li>
+              );
+            })}
+            {tags.length === 0 && <li className="text-caption text-primary-50">아직 태그가 없어요.</li>}
+          </ul>
+          <div className="flex items-center gap-2">
+            <input
+              value={newTag}
+              onChange={(e) => setNewTag(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && newTag.trim()) {
+                  addTagToAll(newTag);
+                  setNewTag('');
+                }
+              }}
+              placeholder="새 태그"
+              className="flex-1 rounded-md border border-neutral-300 px-2.5 py-1.5 text-body-sm outline-none focus:border-secondary"
+            />
+            <button
+              onClick={() => {
+                if (newTag.trim()) {
+                  addTagToAll(newTag);
+                  setNewTag('');
+                }
+              }}
+              disabled={busy || !newTag.trim()}
+              className="rounded-md bg-secondary px-3 py-1.5 text-caption font-semibold text-white disabled:opacity-50"
+            >
+              전체 추가
+            </button>
+          </div>
+          <p className="text-caption text-primary-50">※ 각 디자인의 다른 태그는 그대로 유지돼요.</p>
+        </section>
+
         {/* 옵션 현황판 — Task 5에서 채운다 */}
 
         {/* 공용 진행/결과 푸터 */}
