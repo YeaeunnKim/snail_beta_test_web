@@ -17,7 +17,6 @@ export function DesignCard({ design }: { design: Design }) {
   const [zoomIndex, setZoomIndex] = useState<number | null>(null); // null = 확대 뷰 닫힘
   const [editing, setEditing] = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);
-  const [moveErr, setMoveErr] = useState<string | null>(null);
 
   const { data } = useQuery({
     queryKey: ['design', design.id],
@@ -50,20 +49,6 @@ export function DesignCard({ design }: { design: Design }) {
     onError: (e) => setActionError(toUserMessage(e)),
   });
 
-  // 폴더 이동용 — 폴더 목록(부모와 동일 캐시 재사용) + 이동 뮤테이션
-  const foldersQuery = useQuery({ queryKey: ['design-folders'], queryFn: () => designsApi.listFolders() });
-  const folders = foldersQuery.data ?? [];
-  const move = useMutation({
-    mutationFn: (folderId: string) => designsApi.updateDesign(d.id, { folder_id: folderId || null }),
-    onSuccess: () => {
-      setMoveErr(null);
-      qc.invalidateQueries({ queryKey: ['designs'] });
-      qc.invalidateQueries({ queryKey: ['design-folders'] });
-      qc.invalidateQueries({ queryKey: ['design', d.id] });
-    },
-    onError: (e) => setMoveErr(toUserMessage(e)),
-  });
-
   // 디자인별 공개/비공개 전환. 공개 조건(백엔드 검증): 샵 공개 + 오너 승인 (AI 분석과 무관).
   // AI는 백그라운드로 계속 돌며 완료 시 검색 랭킹만 보강 — 공개(노출)를 막지 않는다.
   const publish = useMutation({
@@ -87,7 +72,7 @@ export function DesignCard({ design }: { design: Design }) {
           type="button"
           onClick={() => photoCount > 0 && setZoomIndex(0)}
           disabled={photoCount === 0}
-          className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-neutral-200 disabled:cursor-default"
+          className="relative h-28 w-28 shrink-0 overflow-hidden rounded-lg border border-neutral-200 disabled:cursor-default"
           title="사진 확대"
         >
           {d.thumbnail_url ? (
@@ -106,6 +91,9 @@ export function DesignCard({ design }: { design: Design }) {
         <div className="flex min-w-0 flex-1 items-start justify-between gap-2">
           <div className="min-w-0">
             <p className="truncate font-medium">{d.title}</p>
+            <p className="mt-0.5 truncate text-caption text-primary-50">
+              📁 {d.folder_name ?? '미분류'}
+            </p>
             <p className="mt-0.5 text-body-sm text-primary-50">
               {d.intro_price != null && d.intro_price < d.base_price ? (
                 <>
@@ -169,29 +157,6 @@ export function DesignCard({ design }: { design: Design }) {
           )}
         </div>
       </div>
-
-      {/* 폴더 이동 — 다른 폴더(또는 미분류)로 즉시 옮긴다 */}
-      {!editing && (
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <span className="text-caption text-primary-50">📁 폴더</span>
-          <select
-            value={d.folder_id ?? ''}
-            onChange={(e) => move.mutate(e.target.value)}
-            disabled={move.isPending}
-            className="rounded-md border border-neutral-300 bg-white px-2 py-1 text-caption outline-none focus:border-secondary disabled:opacity-50"
-            aria-label="폴더 이동"
-          >
-            <option value="">미분류</option>
-            {folders.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.name}
-              </option>
-            ))}
-          </select>
-          {move.isPending && <span className="text-caption text-primary-50">이동 중…</span>}
-          {moveErr && <span className="text-caption text-danger">{moveErr}</span>}
-        </div>
-      )}
 
       {/* 앱 노출(디자인별 공개) — 샵 공개와 별개로 디자인마다 공개해야 앱 피드에 노출된다.
           공개는 AI 분석과 무관(백엔드가 노출을 AI에서 분리). AI가 아직/실패여도 바로 공개할 수 있고,
