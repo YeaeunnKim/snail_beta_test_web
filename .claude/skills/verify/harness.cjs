@@ -123,6 +123,28 @@ const SCENARIOS = {
     override: (p, m) => {
       if (/\/shops\/me\/designs\/[^/]+$/.test(p) && m === 'PATCH') return json(500, { error: { code: 'INTERNAL', message: '서버 오류' } });
       return null; } },
+
+  // Task 8: 카드 인라인 태그 편집. 태그는 디바운스 없이 즉시 저장이라 각 op 사이에 settleWait만큼
+  // 기다려 PATCH→invalidate→GET 사이클이 끝난 뒤 다음 op를 친다(안 그러면 draft 겹침 레이스 우려).
+  // × 클릭 1회 → PATCH 1건, owner_tags에서 그 태그가 빠져야 한다.
+  'designs-card-tag-remove': { url: '/dashboard/designs', wait: 1600, openFolder: '미분류', clickToggle: /수정 OFF/,
+    tagOps: [{ op: 'remove', text: '프렌치' }], settleWait: 700 },
+  // 단어 입력 후 Enter → PATCH 1건, owner_tags에 새 태그가 추가돼야 한다.
+  'designs-card-tag-add': { url: '/dashboard/designs', wait: 1600, openFolder: '미분류', clickToggle: /수정 OFF/,
+    tagOps: [{ op: 'add', text: '트렌디' }], settleWait: 700 },
+  // 이미 2개(프렌치·글리터) 있는 상태에서 8개를 더 채워 10개(MAX_OWNER_TAGS) → 입력칸이 사라져야 한다.
+  'designs-card-tag-max': { url: '/dashboard/designs', wait: 1600, openFolder: '미분류', clickToggle: /수정 OFF/,
+    tagOps: [
+      { op: 'add', text: '태그3' }, { op: 'add', text: '태그4' }, { op: 'add', text: '태그5' },
+      { op: 'add', text: '태그6' }, { op: 'add', text: '태그7' }, { op: 'add', text: '태그8' },
+      { op: 'add', text: '태그9' }, { op: 'add', text: '태그10' },
+    ], settleWait: 700 },
+  // PATCH 500 주입 → × 클릭 후 draft가 롤백돼 원래 태그(프렌치·글리터)로 되돌아가고 에러 메시지가 뜨는지.
+  'designs-card-tag-rollback': { url: '/dashboard/designs', wait: 1600, openFolder: '미분류', clickToggle: /수정 OFF/,
+    tagOps: [{ op: 'remove', text: '프렌치' }], settleWait: 700,
+    override: (p, m) => {
+      if (/\/shops\/me\/designs\/[^/]+$/.test(p) && m === 'PATCH') return json(500, { error: { code: 'INTERNAL', message: '서버 오류' } });
+      return null; } },
 };
 
 // ± 스테퍼 연타 — 매 클릭 사이 gapMs만큼 실제로 대기(브라우저 이벤트 루프에 양보)해 React가
@@ -148,6 +170,41 @@ async function clickStepperRapid(page, ariaLabel, dir, times, gapMs) {
     },
     { ariaLabel, dir, times, gapMs },
   );
+}
+
+// Task 8 태그 op — 첫 카드(DOM 순서상 첫 번째)의 TagInput만 대상으로 한다.
+// TagInput엔 컨테이너 자체에 붙는 aria-label이 없어서, 칩 삭제 버튼(aria-label="{tag} 삭제")을
+// 앵커로 삼아 그 조상 div.rounded-md.border를 컨테이너로 역추적한다(Stepper의
+// div.rounded-md.border 탐색과 같은 요령). remove는 텍스트로 특정 칩의 × 버튼을 직접 클릭하고,
+// add는 컨테이너 안의 유일한 input에 값을 넣고 실제 KeyboardEvent(Enter)를 디스패치해
+// React의 onKeyDown 핸들러(add())를 그대로 태운다.
+async function runTagOp(page, op) {
+  return page.evaluate(({ op }) => {
+    const findFirstContainer = () => {
+      const anyChipBtn = document.querySelector('button[aria-label$=" 삭제"]');
+      const anyInput = document.querySelector('div.rounded-md.border input');
+      const anchor = anyChipBtn || anyInput;
+      return anchor ? anchor.closest('div.rounded-md.border') : null;
+    };
+    if (op.op === 'remove') {
+      const btn = document.querySelector(`button[aria-label="${op.text} 삭제"]`);
+      if (!btn) return { error: 'no-chip-button', text: op.text };
+      btn.click();
+      return { clicked: 'remove', text: op.text };
+    }
+    if (op.op === 'add') {
+      const container = findFirstContainer();
+      if (!container) return { error: 'no-container' };
+      const input = container.querySelector('input');
+      if (!input) return { error: 'no-input' }; // MAX_OWNER_TAGS 도달 시 정상적으로 없을 수 있음
+      const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+      setter.call(input, op.text);
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+      return { dispatched: 'add', text: op.text };
+    }
+    return { error: 'unknown-op', op: op.op };
+  }, { op });
 }
 
 async function run() {
@@ -238,6 +295,30 @@ async function run() {
       stepper.patchBodies = patchBodies.slice();
       stepper.hasSaveErr = await page.evaluate(() => document.body.innerText.includes('일시적인 서버 오류'));
     }
+    let tags = null;
+    if (sc.tagOps) {
+      tags = { ops: [] };
+      for (const op of sc.tagOps) {
+        const r = await runTagOp(page, op);
+        await page.waitForTimeout(sc.settleWait ?? 700); // 디바운스 없음 — PATCH+invalidate+GET 사이클이 끝날 시간
+        tags.ops.push({ op, result: r, patchCountAfter: patchCount });
+      }
+      tags.patchCount = patchCount;
+      tags.patchBodies = patchBodies.slice();
+      tags.firstCardTagsText = await page.evaluate(() => {
+        const anyChipBtn = document.querySelector('button[aria-label$=" 삭제"]');
+        const anyInput = document.querySelector('div.rounded-md.border input');
+        const anchor = anyChipBtn || anyInput;
+        const container = anchor ? anchor.closest('div.rounded-md.border') : null;
+        return container ? container.innerText : null;
+      });
+      tags.firstCardHasInput = await page.evaluate(() => {
+        const anyChipBtn = document.querySelector('button[aria-label$=" 삭제"]');
+        const container = anyChipBtn ? anyChipBtn.closest('div.rounded-md.border') : null;
+        return container ? !!container.querySelector('input') : null;
+      });
+      tags.hasSaveErr = await page.evaluate(() => document.body.innerText.includes('일시적인 서버 오류'));
+    }
     if (sc.createFolder) {
       await page.getByRole('button', { name: /새 폴더|폴더 추가/ }).first().click().catch(() => {}); await page.waitForTimeout(300);
       await page.getByPlaceholder(/폴더 이름/).fill(sc.createFolder).catch(() => {});
@@ -260,12 +341,13 @@ async function run() {
       errorRetry: bodyText.includes('다시 시도'),
       appError: bodyText.includes('Application error'),
     };
-    results[name] = { signals, reloads, consoleErrors, stepper, bodyExcerpt: bodyText.slice(0, 700) };
+    results[name] = { signals, reloads, consoleErrors, stepper, tags, bodyExcerpt: bodyText.slice(0, 700) };
     await context.close();
     console.log(`\n===== ${name} =====`);
     console.log('screenshot:', shot);
     console.log('SIGNALS  :', JSON.stringify(signals), reloads ? `(reloads=${reloads})` : '');
     if (stepper) console.log('STEPPER  :', JSON.stringify(stepper));
+    if (tags) console.log('TAGS     :', JSON.stringify(tags));
     if (recovered != null) console.log('  [retry] after:', recovered.replace(/\n+/g, ' ¦ ').slice(0, 260));
     console.log('consoleErrors:', consoleErrors.length ? consoleErrors.slice(0, 5) : 'none');
     console.log('BODY EXCERPT:\n' + results[name].bodyExcerpt);
