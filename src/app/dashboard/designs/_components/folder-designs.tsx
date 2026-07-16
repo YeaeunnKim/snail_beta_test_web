@@ -8,7 +8,9 @@ import { collectAll } from '@/lib/api-client';
 import { toUserMessage } from '@/lib/error-messages';
 import { useSortJobs } from '@/stores/sort-jobs';
 import { nextDesignNumber } from '../design-settings';
+import { sortPublishedFirst } from '../_lib/sort-designs';
 import { BulkDropzone, BulkAddModal } from './bulk-add';
+import { BulkActionBar } from './bulk-action-bar';
 import { DesignCard } from './design-card';
 
 export type FolderView = { label: string; folderId?: string; unfiled?: boolean };
@@ -31,7 +33,7 @@ export function FolderDesigns({ view, onBack }: { view: FolderView; onBack: () =
     // 업로드/정렬 처리 중이면 새로 생성되는 디자인이 실시간으로 보이도록 주기적으로 갱신.
     refetchInterval: jobActive ? 2000 : false,
   });
-  const designs = q.data ?? [];
+  const designs = sortPublishedFirst(q.data ?? []);
 
   // 정렬 진행률: 폴더에 늘어난 디자인 수로 계산(백엔드가 백그라운드로 생성).
   const sortProduced = job ? Math.max(0, designs.length - job.baseCount) : 0;
@@ -43,9 +45,21 @@ export function FolderDesigns({ view, onBack }: { view: FolderView; onBack: () =
   }, [job?.status, job?.total, sortDone, view.folderId, markDone]);
 
   const designersQuery = useQuery({ queryKey: ['designers'], queryFn: () => designersApi.listDesigners() });
+  const foldersQuery = useQuery({ queryKey: ['design-folders'], queryFn: () => designsApi.listFolders() });
   const [bulkFiles, setBulkFiles] = useState<File[] | null>(null); // 비어있지 않으면 일괄 모달 오픈
   // 목록 전체에 걸리는 수정 ON/OFF — 카드마다가 아니다. 사장님이 평소에 값이 바뀌지 않도록 기본은 OFF.
   const [editMode, setEditMode] = useState(false);
+  // 선택 모드 — "얘랑 얘 지워/옮겨"처럼 가끔 하는 정리. 수정 모드와 상호 배타(하나 켜면 다른 건 끈다).
+  const [selectMode, setSelectMode] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const clearSelection = () => setSelected(new Set());
+  const toggleSelect = (id: string) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
 
   // 실제 폴더에서만 일괄 등록(미분류는 제목에 폴더명을 못 붙임)
   const canBulk = !!view.folderId && !view.unfiled;
@@ -70,7 +84,11 @@ export function FolderDesigns({ view, onBack }: { view: FolderView; onBack: () =
         </div>
         <button
           type="button"
-          onClick={() => setEditMode((v) => !v)}
+          onClick={() => {
+            setEditMode((v) => !v);
+            setSelectMode(false);
+            clearSelection();
+          }}
           aria-pressed={editMode}
           className={
             editMode
@@ -79,6 +97,22 @@ export function FolderDesigns({ view, onBack }: { view: FolderView; onBack: () =
           }
         >
           {editMode ? '수정 ON' : '수정 OFF'}
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setSelectMode((v) => !v);
+            setEditMode(false);
+            clearSelection();
+          }}
+          aria-pressed={selectMode}
+          className={
+            selectMode
+              ? 'rounded-md bg-secondary px-3 py-1.5 text-caption font-semibold text-white'
+              : 'rounded-md border border-neutral-300 px-3 py-1.5 text-caption font-semibold text-primary-50 hover:bg-neutral-50'
+          }
+        >
+          선택
         </button>
       </div>
 
@@ -178,11 +212,44 @@ export function FolderDesigns({ view, onBack }: { view: FolderView; onBack: () =
           이 폴더에 디자인이 없습니다.
         </p>
       ) : (
-        <ul className="grid grid-cols-1 gap-3">
-          {designs.map((d) => (
-            <DesignCard key={d.id} design={d} editMode={editMode} />
-          ))}
-        </ul>
+        <>
+          {selectMode && designs.length > 0 && (
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() =>
+                  setSelected((prev) =>
+                    prev.size === designs.length ? new Set() : new Set(designs.map((d) => d.id)),
+                  )
+                }
+                className="rounded-md border border-neutral-300 px-3 py-1.5 text-caption font-semibold text-primary hover:bg-neutral-50"
+              >
+                {selected.size === designs.length ? '전체 해제' : '전체 선택'}
+              </button>
+              <span className="text-caption text-primary-50">{selected.size}개 선택됨</span>
+            </div>
+          )}
+          <ul className="grid grid-cols-1 gap-3">
+            {designs.map((d) => (
+              <DesignCard
+                key={d.id}
+                design={d}
+                editMode={editMode}
+                selectMode={selectMode}
+                selected={selected.has(d.id)}
+                onToggleSelect={() => toggleSelect(d.id)}
+              />
+            ))}
+          </ul>
+        </>
+      )}
+
+      {selectMode && selected.size > 0 && (
+        <BulkActionBar
+          selectedIds={[...selected]}
+          folders={foldersQuery.data ?? []}
+          onDone={refetchLists}
+          onClearSelection={clearSelection}
+        />
       )}
     </div>
   );
