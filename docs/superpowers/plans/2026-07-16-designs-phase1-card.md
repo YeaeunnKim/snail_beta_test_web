@@ -16,7 +16,16 @@
 - **PR 생성 금지. 푸시 금지. 추가 브랜치 생성 금지.** `git push`, `gh pr create`, `gh pr merge`를 **어떤 이유로도 실행하지 마라.** 커밋 허가는 되돌리기 지점을 만들라는 뜻이지 원격에 올리라는 뜻이 아니다. PR과 푸시 시점은 사령관이 직접 정한다. 계획을 다 끝냈어도 "이제 PR 올릴까요?"를 실행으로 옮기지 말고 **보고만** 해라.
 - **`next.config.ts`를 절대 커밋하지 마라.** 로컬 CORS 우회용 `rewrites()`가 들어간 미커밋 상태이고, 파일 안에 "커밋하지 말 것 — 배포 시엔 불필요"라고 명시돼 있다. `git add .`나 `git commit -a`를 쓰지 말고 이 계획에 적힌 경로만 `git add` 한다.
 - **main 머지 시 Vercel 프로덕션 자동 배포가 걸려 있다**(`00a19dc`). 이 계획은 main에 직접 커밋하지 않으므로 해당 없지만, 실수로 main에 커밋하면 파일 쪼개기 중간 상태가 배포된다.
-- **완료 검증은 `pnpm typecheck && pnpm lint && pnpm build`.** 세 개가 전부 통과해야 태스크가 끝난다.
+- **🚫 이미지 자동 처리(VM) UI를 절대 되살리지 마라.** `3a15ac9`에서 의도적으로 제거됐다. 등록/수정만 해도 정렬 VM(장당 70~85초, 단일 GPU)이 돌아 prod에서 계속 실패했기 때문이다. 아래는 **전부 지워진 상태가 정답**이며, 없다고 해서 만들지 마라:
+  - `processDesign()` 자동 호출 (CreateForm onSubmit / BulkAddModal runCreate / DesignEditForm의 `if (photosDirty)` 블록)
+  - 카드의 "🖼 이미지 처리" 블록 — 상태 배지, `처리 재시도`/`다시 처리` 버튼, `image_processing_error` 메시지, "처리 결과(검수)" 썸네일
+  - `reprocess` 뮤테이션, `imageStatus`·`processedUrls` 변수, `useQuery` `refetchInterval`의 `image_processing_status` 폴링 분기, "· 이미지 처리 완료 후 공개를 권장해요" 문구
+  - 카드 폴링은 이제 **`ai_analysis_status`만** 본다 (`page.tsx:1466-1470`). 이게 정상이다.
+  - `services/designs.ts:108`의 `processDesign`은 호출부 없는 export로 남아 있다. **건드리지 마라** (정리 여부는 사령관이 별도 판단).
+  - 이미지 처리는 "사진 다듬기(정렬)" 경로에서만 돈다. `sortDesigns`·`sort-jobs.ts`는 멀쩡하니 손대지 마라.
+- **태스크별 검증은 `pnpm typecheck && pnpm test`.** 둘 다 통과해야 태스크가 끝난다.
+- **`pnpm build`는 Task 4(파일 쪼개기 완료 시점)와 1단계 최종에만 돌린다.** 이 환경은 WSL2 + `/mnt/c`(Windows 파일시스템)라 build의 eslint 단계가 10분을 넘긴다. 태스크마다 돌리면 검증에만 1시간 반이 날아간다. 타입 오류는 `typecheck`가 이미 잡고, build 특유의 위험(번들링·라우팅)은 파일 이동이 끝나는 Task 4가 진짜 검증 지점이다.
+- **`pnpm build`가 오래 걸린다고 실패로 오판하지 마라.** 컴파일은 35초~2.4분에 끝나고 그 뒤 "Linting and checking validity of types"에서 길게 돈다. 타임아웃으로 죽이면 `EXIT 124`가 뜨는데 이건 빌드 실패가 아니다. 반드시 백그라운드로 돌리고 끝까지 기다려라.
 - `_lib/*.ts`는 **런타임 import를 가지지 않는다.** 타입은 반드시 `import type`으로만 가져온다 (`node --test`가 `@/` 별칭을 해석하지 못하므로, 타입 전용이어야 지워져서 실행된다).
 - `_lib/*.test.ts`에서 대상 모듈을 가져올 때는 **상대경로 + `.ts` 확장자**를 쓴다 (`./designer-values.ts`). 확장자를 빼면 Node가 못 찾는다.
 - 기존 코드의 네이밍·주석 밀도·컴포넌트 분리 방식을 따른다 (AGENTS.md §5).
@@ -277,16 +286,17 @@ git commit -m "test(designs): _lib 순수 함수 추출 + node --test 하네스 
   - `folder-field.tsx`: `FolderField({ value, onChange }: { value: string; onChange: (v: string) => void })`
   - `field.tsx`: `Field` (원본 `page.tsx:2372-2396`의 시그니처 그대로)
 
-- [ ] **Step 1: 원본 4개 블록을 읽는다**
+- [ ] **Step 1: 원본 블록을 읽는다**
 
-옮기기 전에 정확한 경계를 확인한다:
+> ⚠️ 아래 줄번호는 `3a15ac9`(page.tsx 2,300줄) 기준 실측값이다. 다른 세션이 또 커밋했을 수 있으니, **옮기기 전에 반드시 `grep -n "^function \|^interface " src/app/dashboard/designs/page.tsx`로 경계를 재확인해라.** 줄번호가 다르면 줄번호가 아니라 **함수명**을 믿어라.
+
 - `PhotoItem` — `page.tsx:40-47`
 - `EditPhoto` — `page.tsx:50-56`
-- `FolderField` — `page.tsx:1196-1305`
-- `PhotoTile` — `page.tsx:1306-1337`
-- `UploadTile` — `page.tsx:1338-1367`
-- `Lightbox` — `page.tsx:1379-1459`
-- `Field` — `page.tsx:2372-2396`
+- `FolderField` — `page.tsx:1190-1299`
+- `PhotoTile` — `page.tsx:1300-1331`
+- `UploadTile` — `page.tsx:1332-1361`
+- `Lightbox` — `page.tsx:1373-1453`
+- `Field` — `page.tsx:2276-2300`
 
 - [ ] **Step 2: `photo.tsx` 생성**
 
@@ -312,12 +322,12 @@ import { Field } from './_components/field';
 import { designImageUrls, urlToObjectKey, formatWon, MAX_DETAIL_PHOTOS, MAX_EDIT_PHOTOS } from './_lib/design-helpers';
 ```
 
-`page.tsx`에 남아 있던 `formatWon`(63), `designImageUrls`(1368-1378), `urlToObjectKey`(1787-1798), `MAX_DETAIL_PHOTOS`/`MAX_EDIT_PHOTOS`(61-62) **원본 정의도 함께 삭제**한다 (Task 1에서 `_lib`으로 옮겼으므로 중복).
+`page.tsx`에 남아 있던 `formatWon`(63), `designImageUrls`(1362-1372), `urlToObjectKey`(1706-1717), `MAX_DETAIL_PHOTOS`/`MAX_EDIT_PHOTOS`(61-62) **원본 정의도 함께 삭제**한다 (Task 1에서 `_lib`으로 옮겼으므로 중복).
 
 - [ ] **Step 6: 검증**
 
-Run: `pnpm typecheck && pnpm lint && pnpm build`
-Expected: 전부 통과. 미사용 import 경고가 뜨면 정리한다.
+Run: `pnpm typecheck && pnpm test`
+Expected: 둘 다 통과. (`build`는 이 태스크에서 돌리지 않는다 — Global Constraints 참고) 미사용 import 경고가 뜨면 정리한다.
 
 - [ ] **Step 7: 앱이 그대로 도는지 눈으로 확인**
 
@@ -336,10 +346,12 @@ git commit -m "refactor(designs): 사진·폴더 리프 컴포넌트를 _compone
 ### Task 3: 파일 쪼개기 ② — 폼 컴포넌트
 
 **Files:**
-- Create: `src/app/dashboard/designs/_components/create-form.tsx` — `CreateForm` (`page.tsx:596-935`)
-- Create: `src/app/dashboard/designs/_components/refine-form.tsx` — `REFINE_INSTAGRAM_URL`(936-944), `RefineForm`(945-1145), `RefineGuide`(1146-1174), `InstagramIcon`(1175-1195)
-- Create: `src/app/dashboard/designs/_components/bulk-add.tsx` — `BulkDropzone`(1799-1841), `BulkAddModal`(1842-2066)
-- Create: `src/app/dashboard/designs/_components/design-edit-form.tsx` — `DesignEditForm`(2067-2371)
+- Create: `src/app/dashboard/designs/_components/create-form.tsx` — `CreateForm` (`page.tsx:596-929`)
+- Create: `src/app/dashboard/designs/_components/refine-form.tsx` — `REFINE_INSTAGRAM_URL`(930-938), `RefineForm`(939-1139), `RefineGuide`(1140-1168), `InstagramIcon`(1169-1189)
+- Create: `src/app/dashboard/designs/_components/bulk-add.tsx` — `BulkDropzone`(1718-1760), `BulkAddModal`(1761-1979)
+- Create: `src/app/dashboard/designs/_components/design-edit-form.tsx` — `DesignEditForm`(1980-2275)
+
+> ⚠️ 줄번호는 `3a15ac9`(2,300줄) 기준. 옮기기 전에 `grep -n "^function " src/app/dashboard/designs/page.tsx`로 재확인하고, 어긋나면 **함수명을 믿어라.**
 - Modify: `src/app/dashboard/designs/page.tsx`
 
 **Interfaces:**
@@ -362,12 +374,12 @@ git commit -m "refactor(designs): 사진·폴더 리프 컴포넌트를 _compone
 
 - [ ] **Step 5: `design-edit-form.tsx` 생성 후 `page.tsx`에서 삭제·import**
 
-`DesignEditForm`은 옵션 diff 루프(원본 `2184-2216`)를 포함한다. **로직을 건드리지 않는다.**
+`DesignEditForm`은 옵션 diff 루프를 포함한다. **로직을 건드리지 않는다.** `3a15ac9`가 이 폼의 `if (photosDirty) processDesign(...)` 블록을 지웠다 — **없는 게 정상이니 되살리지 마라.**
 
 - [ ] **Step 6: 검증**
 
-Run: `pnpm typecheck && pnpm lint && pnpm build`
-Expected: 전부 통과.
+Run: `pnpm typecheck && pnpm test`
+Expected: 둘 다 통과. (`build`는 이 태스크에서 돌리지 않는다 — Global Constraints 참고)
 
 - [ ] **Step 7: 앱 동작 확인**
 
@@ -388,7 +400,7 @@ git commit -m "refactor(designs): 등록·다듬기·대량등록·수정 폼을
 **Files:**
 - Create: `src/app/dashboard/designs/_components/folder-grid.tsx` — `FolderGrid`(208-237), `FolderCard`(238-260), `EditableFolderCard`(261-356), `NewFolderCard`(357-438)
 - Create: `src/app/dashboard/designs/_components/folder-designs.tsx` — `FolderView` 타입(65), `FolderDesigns`(439-595)
-- Create: `src/app/dashboard/designs/_components/design-card.tsx` — `DesignCard`(1460-1786)
+- Create: `src/app/dashboard/designs/_components/design-card.tsx` — `DesignCard`(1454-1705)
 - Modify: `src/app/dashboard/designs/page.tsx` — `DesignsPage`(67-207) + `DEFAULT_FOLDERS`(59)만 남긴다
 
 **Interfaces:**
@@ -425,7 +437,7 @@ Expected: 전부 통과.
 - [ ] **Step 7: 앱 전체 동작 확인**
 
 Run: `pnpm dev`
-Expected: 폴더 목록, 폴더 만들기/이달의아트 지정/삭제, 폴더 진입, 디자인 카드(사진확대·수정·삭제·폴더이동·공개전환·이미지처리·AI재분석), 새 디자인, 사진 다듬기, 대량 등록 — **전부 개편 전과 동일**. 여기까지 보이는 변화는 0이어야 한다.
+Expected: 폴더 목록, 폴더 만들기/이달의아트 지정/삭제, 폴더 진입, 디자인 카드(사진확대·수정·삭제·폴더이동·공개전환·AI재분석), 새 디자인, 사진 다듬기, 대량 등록 — **전부 파일 쪼개기 전과 동일**. 여기까지 보이는 변화는 0이어야 한다.
 
 - [ ] **Step 8: 커밋**
 
@@ -454,7 +466,7 @@ git commit -m "refactor(designs): page.tsx 2396줄 → 셸(<200줄) + _component
 - 썸네일: `h-16 w-16` → `h-28 w-28` (112px)
 - 우측 열 순서: 제목 → **폴더** → 가격·시간 → 태그
 - 폴더 줄(원본 `page.tsx:1638-1659` 위치의 블록)을 **우측 열 안 제목 바로 아래로 이동**
-- 앱 노출·이미지 처리·AI 실패 줄은 **위치·동작 그대로**
+- 앱 노출·AI 실패 줄은 **위치·동작 그대로** (이미지 처리 줄은 `3a15ac9`에서 제거됐다 — 없는 게 정상이니 만들지 마라)
 
 수정 OFF 상태 목표:
 
@@ -485,8 +497,8 @@ git commit -m "refactor(designs): page.tsx 2396줄 → 셸(<200줄) + _component
 
 - [ ] **Step 4: 검증**
 
-Run: `pnpm typecheck && pnpm lint && pnpm build`
-Expected: 전부 통과.
+Run: `pnpm typecheck && pnpm test`
+Expected: 둘 다 통과. (`build`는 이 태스크에서 돌리지 않는다 — Global Constraints 참고)
 
 - [ ] **Step 5: 눈으로 확인**
 
@@ -570,8 +582,8 @@ Task 5에서 텍스트로 바꾼 폴더 줄을 분기로 만든다. select JSX·
 
 - [ ] **Step 4: 검증**
 
-Run: `pnpm typecheck && pnpm lint && pnpm build`
-Expected: 전부 통과.
+Run: `pnpm typecheck && pnpm test`
+Expected: 둘 다 통과. (`build`는 이 태스크에서 돌리지 않는다 — Global Constraints 참고)
 
 - [ ] **Step 5: 동작 확인**
 
@@ -721,8 +733,8 @@ const shownDuration = draftDuration ?? d.duration_minutes;
 
 - [ ] **Step 5: 검증**
 
-Run: `pnpm typecheck && pnpm lint && pnpm build`
-Expected: 전부 통과.
+Run: `pnpm typecheck && pnpm test`
+Expected: 둘 다 통과. (`build`는 이 태스크에서 돌리지 않는다 — Global Constraints 참고)
 
 - [ ] **Step 6: 동작 확인 — 특히 연타와 클램프**
 
@@ -796,8 +808,8 @@ const shownTags = draftTags ?? d.owner_tags;
 
 - [ ] **Step 3: 검증**
 
-Run: `pnpm typecheck && pnpm lint && pnpm build`
-Expected: 전부 통과.
+Run: `pnpm typecheck && pnpm test`
+Expected: 둘 다 통과. (`build`는 이 태스크에서 돌리지 않는다 — Global Constraints 참고)
 
 - [ ] **Step 4: 동작 확인**
 
@@ -994,7 +1006,8 @@ git commit -m "feat(designs): 카드에 디자이너별 가격·소요시간 범
 - [ ] 수정 OFF에서 카드가 사진 크게 + 제목·폴더·가격/시간·태그 세로 배치
 - [ ] 수정 ON에서 가격(±1,000)·시간(±30)·태그(×/Enter)·폴더(select)가 카드에서 바로 편집됨
 - [ ] 디자이너별로 값이 다른 디자인이 범위로 표시되고 펼쳐서 편집됨
-- [ ] 기존 기능(사진확대·상세수정폼·삭제·공개전환·이미지처리·AI재분석·새디자인·사진다듬기·대량등록)이 전부 그대로 동작
+- [ ] 기존 기능(사진확대·상세수정폼·삭제·공개전환·AI재분석·새디자인·사진다듬기·대량등록)이 전부 그대로 동작
+- [ ] 이미지 자동 처리 UI가 되살아나지 않았다 (`grep -rn "processDesign\|image_processing\|reprocess" src/app/dashboard/designs/` 결과 0건)
 
 ## 다음 단계 (별도 계획)
 
