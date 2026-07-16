@@ -195,6 +195,33 @@ const SCENARIOS = {
   // 돌아가는지(DesignerRows도 hasVariance=false가 되면서 자동으로 접혀야 한다).
   'designs-card-designer-reset-to-base': { url: '/dashboard/designs', wait: 1600, openFolder: '미분류', clickToggle: /수정 OFF/,
     clickText: /기본으로/, settleWait: 1300 },
+
+  // ── design-settings.tsx 수정 검증 (DURATION_STEP 10→30 + 다인샵에서도 기본 소요시간 노출) ──
+  // 등록 폼(CreateForm)의 DesignSettingsFields를 연다. 단일 디자이너(1명)로 override해
+  // "기본 소요시간" Stepper가 그대로 보이고 30분 단위로 움직이는지 확인.
+  // Stepper는 기본 소요시간 필드에 ariaLabel을 명시하지 않아 기본값 '직접 입력'을 쓴다
+  // (다른 Stepper들은 전부 명시적 ariaLabel이라 이 페이지에서 유일하게 매칭된다).
+  'designs-form-single-duration-step': { url: '/dashboard/designs', wait: 1600, clickNewDesign: true,
+    override: (p, m) => {
+      if (p.endsWith('/shops/me/designers') && m === 'GET') return json(200, [{ id: 'd1', name: '민지' }]);
+      return null; },
+    stepperClicks: [{ ariaLabel: '직접 입력', dir: '증가', times: 2, gapMs: 30 }], settleWait: 400 },
+  // 다인샵(디자이너 2명, fixture 기본값) — "기본 소요시간" 칸이 새로 보이는지 + 30분 단위로
+  // 움직이면 아래 "디자이너별 소요시간·가격" 안내문의 숫자가 따라 바뀌는지.
+  'designs-form-multi-duration-visible-and-guidance': { url: '/dashboard/designs', wait: 1600, clickNewDesign: true,
+    stepperClicks: [{ ariaLabel: '직접 입력', dir: '증가', times: 2, gapMs: 30 }], settleWait: 400 },
+  // 다인샵에서 디자이너 체크 후 디자이너별 "소요시간" Stepper가 30분 단위로 움직이는지.
+  'designs-form-multi-designer-duration-step': { url: '/dashboard/designs', wait: 1600, clickNewDesign: true,
+    checkDesigner: '민지',
+    stepperClicks: [{ ariaLabel: '소요시간 직접 입력', dir: '증가', times: 1, gapMs: 30 }], settleWait: 400 },
+  // 다인샵에서 디자이너별 "가격" Stepper는 영향받지 않고 5000원 단위 그대로인지(PRICE_STEP 명시).
+  'designs-form-multi-designer-price-step': { url: '/dashboard/designs', wait: 1600, clickNewDesign: true,
+    checkDesigner: '민지',
+    stepperClicks: [{ ariaLabel: '가격 직접 입력', dir: '증가', times: 1, gapMs: 30 }], settleWait: 400 },
+  // 수정 폼(DesignEditForm) 경로도 같은 DesignSettingsFields를 쓰므로 한 번 더 확인:
+  // 카드 "수정" 클릭 → 기본 소요시간 칸이 보이고 30분 단위로 움직이는지(다인샵, fixture 2명).
+  'designs-form-edit-multi-duration-step': { url: '/dashboard/designs', wait: 1600, openFolder: '미분류', clickEditFirst: true,
+    stepperClicks: [{ ariaLabel: '직접 입력', dir: '증가', times: 1, gapMs: 30 }], settleWait: 400 },
 };
 
 // ± 스테퍼 연타 — 매 클릭 사이 gapMs만큼 실제로 대기(브라우저 이벤트 루프에 양보)해 React가
@@ -349,6 +376,11 @@ async function run() {
     if (sc.clickNewDesign) { await page.getByRole('button', { name: /새 디자인|디자인 등록/ }).first().click().catch(() => {}); await page.waitForTimeout(600); }
     if (sc.openFolder) { await page.getByText(sc.openFolder, { exact: false }).first().click().catch(() => {}); await page.waitForTimeout(1500); }
     if (sc.clickToggle) { await page.getByRole('button', { name: sc.clickToggle }).first().click().catch(() => {}); await page.waitForTimeout(600); }
+    // design-settings.tsx 검증용: 첫 카드의 "수정" 버튼 → DesignEditForm을 연다.
+    if (sc.clickEditFirst) { await page.getByRole('button', { name: '수정', exact: true }).first().click().catch(() => {}); await page.waitForTimeout(600); }
+    // design-settings.tsx 검증용: 다인샵 디자이너별 체크박스(implicit <label>{이름}) 클릭 →
+    // 그 디자이너의 소요시간/가격 Stepper 줄이 펼쳐진다.
+    if (sc.checkDesigner) { await page.getByRole('checkbox', { name: sc.checkDesigner }).first().click().catch(() => {}); await page.waitForTimeout(400); }
     // Task 9: 카드의 "min~max원 ▾/▴" 범위 토글 버튼을 클릭해 DesignerRows를 펼치거나 접는다.
     if (sc.clickRangeToggle) { await page.getByRole('button', { name: /~.*원/ }).first().click().catch(() => {}); await page.waitForTimeout(500); }
     // Task 9: 텍스트로 특정 버튼(예: "기본으로")을 클릭하는 범용 스텝.
@@ -434,6 +466,14 @@ async function run() {
       // Task 9: 범위 표시 버튼(min~max원 ▾)이 보이는지 + 펼침 시 디자이너별 줄(이름·따로/기본)이 보이는지.
       hasRangeToggle: /~[\d,]+원 [▾▴]/.test(bodyText),
       hasDesignerRows: bodyText.includes('민지') && bodyText.includes('수아') && (bodyText.includes('따로') || bodyText.includes('기본')),
+      // design-settings.tsx 검증용: 폼(DesignSettingsFields)의 "기본 소요시간" 칸이 보이는지,
+      // "디자이너별 소요시간·가격" 묶음보다 위(DOM/텍스트 순서상 앞)에 오는지, 안내문의 숫자.
+      hasBaseDuration: bodyText.includes('기본 소요시간'),
+      baseDurationBeforeDesignerBlock:
+        bodyText.includes('기본 소요시간') && bodyText.includes('디자이너별 소요시간')
+          ? bodyText.indexOf('기본 소요시간') < bodyText.indexOf('디자이너별 소요시간')
+          : null,
+      guidanceText: (bodyText.match(/미조정 시\s*기본값\(소요시간 \d+분[^)]*\)/) || [])[0] || null,
     };
     results[name] = { signals, reloads, consoleErrors, stepper, tags, bodyExcerpt: bodyText.slice(0, 700) };
     await context.close();
