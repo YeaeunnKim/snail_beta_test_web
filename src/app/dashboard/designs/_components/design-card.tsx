@@ -9,7 +9,7 @@ import { Lightbox } from './photo';
 import { designImageUrls, formatWon } from '../_lib/design-helpers';
 import { useDebouncedSave } from '../_lib/use-debounced-save';
 import { DesignEditForm } from './design-edit-form';
-import { Stepper, PRICE_INPUT_STEP, CARD_DURATION_STEP, clampPrice, clampDuration } from '../design-settings';
+import { Stepper, TagInput, PRICE_INPUT_STEP, CARD_DURATION_STEP, clampPrice, clampDuration } from '../design-settings';
 
 /* ───────────── 디자인 카드 ───────────── */
 
@@ -25,6 +25,8 @@ export function DesignCard({ design, editMode }: { design: Design; editMode: boo
   const [draftPrice, setDraftPrice] = useState<number | null>(null);
   const [draftDuration, setDraftDuration] = useState<number | null>(null);
   const [saveErr, setSaveErr] = useState<string | null>(null);
+  // 태그는 ± 스테퍼처럼 연타 대상이 아니라서(× 클릭·Enter 등록 모두 단발 동작) 디바운스 없이 즉시 저장한다.
+  const [draftTags, setDraftTags] = useState<string[] | null>(null);
 
   const { data } = useQuery({
     queryKey: ['design', design.id],
@@ -98,6 +100,23 @@ export function DesignCard({ design, editMode }: { design: Design; editMode: boo
 
   const shownPrice = draftPrice ?? d.base_price;
   const shownDuration = draftDuration ?? d.duration_minutes;
+
+  // 카드 인라인 태그 편집 — × 삭제·Enter 등록 모두 그 자리에서 바로 PATCH 1건을 보낸다(디바운스 없음).
+  const patchTags = useMutation({
+    mutationFn: (owner_tags: string[]) => designsApi.updateDesign(d.id, { owner_tags }),
+    onSuccess: () => {
+      setSaveErr(null);
+      setDraftTags(null);
+      qc.invalidateQueries({ queryKey: ['design', d.id] });
+      qc.invalidateQueries({ queryKey: ['designs'] });
+    },
+    onError: (e) => {
+      setDraftTags(null); // 롤백 — 서버 값(d.owner_tags)으로 되돌아간다
+      setSaveErr(toUserMessage(e));
+    },
+  });
+
+  const shownTags = draftTags ?? d.owner_tags;
 
   // 디자인별 공개/비공개 전환. 공개 조건(백엔드 검증): 샵 공개 + 오너 승인 (AI 분석과 무관).
   // AI는 백그라운드로 계속 돌며 완료 시 검색 랭킹만 보강 — 공개(노출)를 막지 않는다.
@@ -200,14 +219,26 @@ export function DesignCard({ design, editMode }: { design: Design; editMode: boo
                 · 기본 {d.duration_minutes}분
               </p>
             )}
-            {d.owner_tags.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-1">
-                {d.owner_tags.map((t) => (
-                  <span key={`o-${t}`} className="rounded bg-secondary/10 px-2 py-0.5 text-caption text-secondary">
-                    #{t}
-                  </span>
-                ))}
+            {editMode ? (
+              <div className="mt-2">
+                <TagInput
+                  tags={shownTags}
+                  onChange={(next) => {
+                    setDraftTags(next);
+                    patchTags.mutate(next);
+                  }}
+                />
               </div>
+            ) : (
+              d.owner_tags.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1">
+                  {d.owner_tags.map((t) => (
+                    <span key={`o-${t}`} className="rounded bg-secondary/10 px-2 py-0.5 text-caption text-secondary">
+                      #{t}
+                    </span>
+                  ))}
+                </div>
+              )
             )}
           </div>
 
