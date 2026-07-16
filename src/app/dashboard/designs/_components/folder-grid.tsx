@@ -66,15 +66,17 @@ function EditableFolderCard({ folder, onOpen }: { folder: DesignFolder; onOpen: 
   const qc = useQueryClient();
   const [editing, setEditing] = useState(false);
   const [month, setMonth] = useState(folder.featured_month ?? '');
+  const [name, setName] = useState(folder.name);
   const [error, setError] = useState<string | null>(null);
 
   const update = useMutation({
-    mutationFn: (body: { featured_month: string | null }) =>
+    mutationFn: (body: { name?: string; featured_month?: string | null }) =>
       designsApi.updateFolder(folder.id, body),
     onSuccess: () => {
       setEditing(false);
       setError(null);
       qc.invalidateQueries({ queryKey: ['design-folders'] });
+      qc.invalidateQueries({ queryKey: ['designs'] });
     },
     onError: (e) => setError(toUserMessage(e)),
   });
@@ -110,6 +112,13 @@ function EditableFolderCard({ folder, onOpen }: { folder: DesignFolder; onOpen: 
       {editing ? (
         <div className="mt-2 flex flex-col gap-1.5">
           <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="폴더 이름"
+            maxLength={60}
+            className="rounded-md border border-neutral-300 px-2.5 py-1.5 text-body-sm outline-none focus:border-secondary"
+          />
+          <input
             type="month"
             value={month}
             onChange={(e) => setMonth(e.target.value)}
@@ -117,7 +126,14 @@ function EditableFolderCard({ folder, onOpen }: { folder: DesignFolder; onOpen: 
           />
           <div className="flex gap-1.5">
             <button
-              onClick={() => update.mutate({ featured_month: month || null })}
+              onClick={() => {
+                const trimmed = name.trim();
+                if (!trimmed) {
+                  setError('폴더 이름을 입력해 주세요.');
+                  return;
+                }
+                update.mutate({ name: trimmed, featured_month: month || null });
+              }}
               disabled={update.isPending}
               className="flex-1 rounded-md bg-secondary py-1 text-caption font-semibold text-white disabled:opacity-50"
             >
@@ -127,6 +143,7 @@ function EditableFolderCard({ folder, onOpen }: { folder: DesignFolder; onOpen: 
               onClick={() => {
                 setEditing(false);
                 setMonth(folder.featured_month ?? '');
+                setName(folder.name);
                 setError(null);
               }}
               className="rounded-md border border-neutral-300 px-2 py-1 text-caption text-primary-50"
@@ -142,7 +159,7 @@ function EditableFolderCard({ folder, onOpen }: { folder: DesignFolder; onOpen: 
             onClick={() => setEditing(true)}
             className="text-left text-caption text-primary-50 underline hover:text-secondary"
           >
-            {folder.featured_month ? '진행월 변경' : '이달의 아트 지정'}
+            폴더 편집
           </button>
           <button
             onClick={onDelete}
