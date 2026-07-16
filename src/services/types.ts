@@ -42,6 +42,7 @@ export type DesignFolderCreate = Schemas['DesignFolderCreate'];
 export type DesignFolderUpdate = Schemas['DesignFolderUpdate'];
 export type DesignDesigner = Schemas['DesignDesignerPublic'];
 export type DesignOption = Schemas['DesignOptionPublic'];
+export type DesignOptionKind = Schemas['DesignOptionKind'];
 export type DesignOptionCreate = Schemas['DesignOptionCreate'];
 export type DesignOptionUpdate = Schemas['DesignOptionUpdate'];
 export type DesignVisibilityUpdate = Schemas['DesignVisibilityUpdate'];

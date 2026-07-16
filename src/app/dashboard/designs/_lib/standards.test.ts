@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { groupByValue } from './standards.ts';
+import { groupByValue, tagCoverage, optionCoverage } from './standards.ts';
 import type { Design } from '@/services';
 
 function mkPrice(id: string, base_price: number): Design {
@@ -39,4 +39,48 @@ test('전부 같은 값이면 base 하나, groups 하나', () => {
 test('빈 목록이면 base=null, groups=[]', () => {
   const r = groupByValue([] as Design[], (d) => d.base_price);
   assert.deepEqual(r, { base: null, groups: [] });
+});
+
+function mkTags(id: string, owner_tags: string[]): Design {
+  return { id, owner_tags } as unknown as Design;
+}
+
+test('tagCoverage: 태그별 개수와 total, 개수 내림차순', () => {
+  const designs = [
+    mkTags('a', ['젤', '프렌치']),
+    mkTags('b', ['젤']),
+    mkTags('c', ['젤', '여름']),
+  ];
+  const cov = tagCoverage(designs);
+  assert.deepEqual(cov[0], { tag: '젤', count: 3, total: 3 });
+  // 동수(프렌치 1, 여름 1)는 tag 오름차순
+  assert.deepEqual(cov.slice(1).map((c) => c.tag), ['여름', '프렌치']);
+  assert.ok(cov.every((c) => c.total === 3));
+});
+
+function mkOpts(
+  id: string,
+  options: { kind: string; name: string; price_delta: number; duration_delta_min: number }[],
+): Design {
+  return { id, options } as unknown as Design;
+}
+
+test('optionCoverage: (kind,name)별 개수 + delta 일치/mixed', () => {
+  const designs = [
+    mkOpts('a', [{ kind: 'extend', name: '연장', price_delta: 50000, duration_delta_min: 30 }]),
+    mkOpts('b', [{ kind: 'extend', name: '연장', price_delta: 50000, duration_delta_min: 30 }]),
+    mkOpts('c', [{ kind: 'extend', name: '연장', price_delta: 45000, duration_delta_min: 30 }]),
+    mkOpts('d', []),
+  ];
+  const cov = optionCoverage(designs);
+  const ext = cov.find((c) => c.name === '연장')!;
+  assert.equal(ext.count, 3);
+  assert.equal(ext.total, 4);
+  assert.equal(ext.priceDelta, 'mixed'); // 50000·50000·45000
+  assert.equal(ext.durationDelta, 30); // 전부 30
+});
+
+test('optionCoverage: 옵션 없는 목록은 빈 배열', () => {
+  const cov = optionCoverage([mkOpts('a', []), mkOpts('b', [])]);
+  assert.deepEqual(cov, []);
 });
