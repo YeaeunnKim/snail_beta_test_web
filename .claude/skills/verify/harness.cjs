@@ -171,6 +171,15 @@ const SCENARIOS = {
     override: (p, m) => {
       if (/\/shops\/me\/designs\/[^/]+$/.test(p) && m === 'PATCH') return json(500, { error: { code: 'INTERNAL', message: '서버 오류' } });
       return null; } },
+  // 무음 유실 버그 회귀 검증(use-debounced-save.ts flush 수정): 민지 가격 스테퍼를 1회 누른 직후
+  // (800ms 디바운스가 정착하기 훨씬 전에) 바로 "수정 OFF"를 눌러 DesignerRows를 언마운트시킨다.
+  // 수정 전이었다면 대기 중이던 저장이 버려져 PATCH가 0회였다 — 수정 후에는 언마운트 cleanup이
+  // flush하여 PATCH가 정확히 1회 나가야 한다. settleWait을 300ms로 짧게 둬 "800ms를 기다려서
+  // 정상 타이머가 발화한 것"이 아니라 "언마운트가 즉시 flush한 것"임을 구분한다. 이후 900ms를
+  // 더 기다려도(합계 800ms를 넘겨도) patchCount가 늘지 않아야 중복 발화가 없다는 것도 확인된다.
+  'designs-card-designer-flush-on-unmount': { url: '/dashboard/designs', wait: 1600, openFolder: '미분류', clickToggle: /수정 OFF/,
+    stepperClicks: [{ ariaLabel: '민지 가격', dir: '증가', times: 1, gapMs: 30 }],
+    toggleOffImmediately: /수정 ON/, settleWait: 300 },
   // 디자이너 전원이 기본값과 같으면(uniform) 범위 표시·펼침 없이 예전처럼 단일 표시만 뜨는지.
   'designs-card-designer-uniform': { url: '/dashboard/designs', wait: 1600, openFolder: '미분류',
     override: (p, m) => {
@@ -357,7 +366,13 @@ async function run() {
         duration: document.querySelector('input[aria-label="소요시간"]')?.value ?? null,
       }));
       stepper.patchCountImmediate = patchCount;
-      await page.waitForTimeout(sc.settleWait ?? 1100); // > 800ms 디바운스 정착 대기
+      // flush 회귀 시나리오 전용: 800ms 디바운스가 정착하기 전에 즉시 토글을 눌러 편집 컴포넌트를
+      // 언마운트시킨다(예: DesignerRows). wait 없이 바로 클릭해야 "800ms 전 토글" 조건이 성립한다.
+      if (sc.toggleOffImmediately) {
+        await page.getByRole('button', { name: sc.toggleOffImmediately }).first().click().catch(() => {});
+        stepper.patchCountRightAfterToggleClick = patchCount;
+      }
+      await page.waitForTimeout(sc.settleWait ?? 1100); // > 800ms 디바운스 정착 대기(또는 flush 확인용 짧은 대기)
       stepper.settled = await page.evaluate(() => ({
         price: document.querySelector('input[aria-label="가격"]')?.value ?? null,
         duration: document.querySelector('input[aria-label="소요시간"]')?.value ?? null,
@@ -365,6 +380,11 @@ async function run() {
       stepper.patchCountFinal = patchCount;
       stepper.patchBodies = patchBodies.slice();
       stepper.hasSaveErr = await page.evaluate(() => document.body.innerText.includes('일시적인 서버 오류'));
+      if (sc.toggleOffImmediately) {
+        // 원래 디바운스 창(800ms)을 완전히 넘겨도 patchCount가 더 늘지 않아야 중복 발화가 없다는 것.
+        await page.waitForTimeout(900);
+        stepper.patchCountAfterExtraWait = patchCount;
+      }
     }
     let tags = null;
     if (sc.tagOps) {
