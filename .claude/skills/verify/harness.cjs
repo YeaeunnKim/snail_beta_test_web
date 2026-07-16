@@ -106,7 +106,49 @@ const SCENARIOS = {
       return json(200, { data: [], page: { has_next: false, next_cursor: null }, request_id: 'r3' });
     }
     return null; } },
+
+  // Task 7: 카드 인라인 ± 스테퍼. 가격 + 5연타(150ms 안에 몰아침, 800ms 디바운스 안쪽) → 화면은
+  // 즉시 +5000, PATCH는 디바운스 정착(settleWait) 후 정확히 1회만 나가야 한다.
+  'designs-card-price-rapid5': { url: '/dashboard/designs', wait: 1600, openFolder: '미분류', clickToggle: /수정 OFF/,
+    stepperClicks: [{ ariaLabel: '가격', dir: '증가', times: 5, gapMs: 30 }], settleWait: 1100 },
+  // 소요시간 − 연타로 30분 밑으로 내리려 해도 clampDuration이 30에서 멈추는지.
+  'designs-card-duration-floor': { url: '/dashboard/designs', wait: 1600, openFolder: '미분류', clickToggle: /수정 OFF/,
+    stepperClicks: [{ ariaLabel: '소요시간', dir: '감소', times: 5, gapMs: 30 }], settleWait: 1100 },
+  // 가격 − 연타(50회, 총 500ms — 디바운스 창 안쪽 유지)로 0원 밑으로 내리려 해도 clampPrice가 0에서 멈추는지.
+  'designs-card-price-floor': { url: '/dashboard/designs', wait: 1600, openFolder: '미분류', clickToggle: /수정 OFF/,
+    stepperClicks: [{ ariaLabel: '가격', dir: '감소', times: 50, gapMs: 10 }], settleWait: 1100 },
+  // PATCH 500 주입 → draft가 롤백되어 서버 값(45,000원)으로 되돌아가고 에러 메시지가 뜨는지.
+  'designs-card-patch-rollback': { url: '/dashboard/designs', wait: 1600, openFolder: '미분류', clickToggle: /수정 OFF/,
+    stepperClicks: [{ ariaLabel: '가격', dir: '증가', times: 2, gapMs: 30 }], settleWait: 1100,
+    override: (p, m) => {
+      if (/\/shops\/me\/designs\/[^/]+$/.test(p) && m === 'PATCH') return json(500, { error: { code: 'INTERNAL', message: '서버 오류' } });
+      return null; } },
 };
+
+// ± 스테퍼 연타 — 매 클릭 사이 gapMs만큼 실제로 대기(브라우저 이벤트 루프에 양보)해 React가
+// 커밋할 시간을 준다. page.evaluate 안에서 동기 루프로 .click()을 연타하면 클릭들이 모두 같은
+// stale value를 참조해(재렌더가 끼어들 틈이 없어) 값이 한 번만 바뀌는 것처럼 보이는 함정이 있다 —
+// 그래서 반드시 setTimeout으로 프레임 사이를 벌려야 실제 연타(각 클릭이 이전 결과를 반영)를 재현한다.
+async function clickStepperRapid(page, ariaLabel, dir, times, gapMs) {
+  return page.evaluate(
+    async ({ ariaLabel, dir, times, gapMs }) => {
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      for (let i = 0; i < times; i += 1) {
+        const input = document.querySelector(`input[aria-label="${ariaLabel}"]`);
+        if (!input) return { error: 'no-input', at: i };
+        const outer = input.closest('div.rounded-md.border');
+        if (!outer) return { error: 'no-outer', at: i };
+        const btn = outer.querySelector(`button[aria-label="${dir}"]`);
+        if (!btn) return { error: 'no-button', at: i };
+        btn.click();
+        await wait(gapMs);
+      }
+      const input2 = document.querySelector(`input[aria-label="${ariaLabel}"]`);
+      return { value: input2 ? input2.value : null };
+    },
+    { ariaLabel, dir, times, gapMs },
+  );
+}
 
 async function run() {
   const only = process.env.SCEN;
@@ -122,10 +164,40 @@ async function run() {
       localStorage.setItem('snail.owner.access_token', 'test-access');
       localStorage.setItem('snail.owner.refresh_token', 'test-refresh');
     } catch (e) {} });
+    // 카드 인라인 PATCH(updateDesign) 요청 횟수 카운트 — 디바운스가 깨지면(연타마다 쐈다면) 여기서 잡힌다.
+    // /reanalyze, /visibility 는 경로 끝이 id가 아니라서(정규식 $ 앵커) 안 섞인다.
+    let patchCount = 0;
+    const patchBodies = [];
+    // 성공한(override로 에러 주입되지 않은) PATCH만 여기 누적 — 저장 성공 후 onSuccess가
+    // invalidateQueries(['design', id])로 GET 단건을 다시 부르는데, baseResponse의 범용 GET
+    // 폴백(빈 배열)이 그대로 오면 useQuery data가 배열이 돼 d.owner_tags.length가 터진다
+    // (harness fixture 갭이지 앱 버그 아님 — 발견 기록은 report에 남긴다).
+    // 실패 주입 시나리오(override가 에러 반환)는 여기 안 남겨야 "롤백 후 GET은 원래 서버값"이 재현된다.
+    const designOverrides = {};
+    const applyOverrides = (d) => (designOverrides[d.id] ? { ...d, ...designOverrides[d.id] } : d);
     await context.route('**/api/v1/**', (route) => {
       const req = route.request(); const url = new URL(req.url());
-      const ov = sc.override && sc.override(url.pathname, req.method(), url.searchParams, url);
-      route.fulfill(ov || baseResponse(url.pathname, req.method(), url.searchParams));
+      const p = url.pathname, m = req.method();
+      const idMatch = p.match(/\/shops\/me\/designs\/([^/]+)$/);
+      const ov = sc.override && sc.override(p, m, url.searchParams, url);
+      if (m === 'PATCH' && idMatch) {
+        patchCount += 1;
+        let body = {};
+        try { body = JSON.parse(req.postData() || '{}'); } catch (e) { /* noop */ }
+        patchBodies.push(body);
+        if (!ov) designOverrides[idMatch[1]] = { ...(designOverrides[idMatch[1]] || {}), ...body };
+      }
+      if (ov) { route.fulfill(ov); return; }
+      if (m === 'GET' && idMatch) {
+        const found = DESIGNS.data.find((d) => d.id === idMatch[1]);
+        route.fulfill(json(200, applyOverrides(found || design(idMatch[1], idMatch[1]))));
+        return;
+      }
+      if (m === 'GET' && p.endsWith('/shops/me/designs')) {
+        route.fulfill(json(200, { ...DESIGNS, data: DESIGNS.data.map(applyOverrides) }));
+        return;
+      }
+      route.fulfill(baseResponse(p, m, url.searchParams));
     });
     const page = await context.newPage();
     page.setDefaultTimeout(12000);
@@ -144,6 +216,28 @@ async function run() {
     if (sc.clickNewDesign) { await page.getByRole('button', { name: /새 디자인|디자인 등록/ }).first().click().catch(() => {}); await page.waitForTimeout(600); }
     if (sc.openFolder) { await page.getByText(sc.openFolder, { exact: false }).first().click().catch(() => {}); await page.waitForTimeout(1500); }
     if (sc.clickToggle) { await page.getByRole('button', { name: sc.clickToggle }).first().click().catch(() => {}); await page.waitForTimeout(600); }
+    let stepper = null;
+    if (sc.stepperClicks) {
+      stepper = { clicks: [] };
+      for (const s of sc.stepperClicks) {
+        const r = await clickStepperRapid(page, s.ariaLabel, s.dir, s.times, s.gapMs || 30);
+        stepper.clicks.push({ ariaLabel: s.ariaLabel, dir: s.dir, times: s.times, result: r });
+      }
+      // 클릭 직후(디바운스 800ms 안쪽) — 화면은 이미 반영됐지만 PATCH는 아직 안 나갔어야 한다.
+      stepper.immediate = await page.evaluate(() => ({
+        price: document.querySelector('input[aria-label="가격"]')?.value ?? null,
+        duration: document.querySelector('input[aria-label="소요시간"]')?.value ?? null,
+      }));
+      stepper.patchCountImmediate = patchCount;
+      await page.waitForTimeout(sc.settleWait ?? 1100); // > 800ms 디바운스 정착 대기
+      stepper.settled = await page.evaluate(() => ({
+        price: document.querySelector('input[aria-label="가격"]')?.value ?? null,
+        duration: document.querySelector('input[aria-label="소요시간"]')?.value ?? null,
+      }));
+      stepper.patchCountFinal = patchCount;
+      stepper.patchBodies = patchBodies.slice();
+      stepper.hasSaveErr = await page.evaluate(() => document.body.innerText.includes('일시적인 서버 오류'));
+    }
     if (sc.createFolder) {
       await page.getByRole('button', { name: /새 폴더|폴더 추가/ }).first().click().catch(() => {}); await page.waitForTimeout(300);
       await page.getByPlaceholder(/폴더 이름/).fill(sc.createFolder).catch(() => {});
@@ -166,11 +260,12 @@ async function run() {
       errorRetry: bodyText.includes('다시 시도'),
       appError: bodyText.includes('Application error'),
     };
-    results[name] = { signals, reloads, consoleErrors, bodyExcerpt: bodyText.slice(0, 700) };
+    results[name] = { signals, reloads, consoleErrors, stepper, bodyExcerpt: bodyText.slice(0, 700) };
     await context.close();
     console.log(`\n===== ${name} =====`);
     console.log('screenshot:', shot);
     console.log('SIGNALS  :', JSON.stringify(signals), reloads ? `(reloads=${reloads})` : '');
+    if (stepper) console.log('STEPPER  :', JSON.stringify(stepper));
     if (recovered != null) console.log('  [retry] after:', recovered.replace(/\n+/g, ' ¦ ').slice(0, 260));
     console.log('consoleErrors:', consoleErrors.length ? consoleErrors.slice(0, 5) : 'none');
     console.log('BODY EXCERPT:\n' + results[name].bodyExcerpt);
