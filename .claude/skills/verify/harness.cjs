@@ -23,9 +23,23 @@ const path = require('path');
 const { chromium } = require(process.env.PW_CORE || 'playwright-core');
 
 const CHROME = process.env.VERIFY_CHROME || 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+const CDP_URL = process.env.VERIFY_CDP_URL || '';
 const BASE = process.env.BASE || 'http://localhost:3100';
 const OUT = process.env.VERIFY_OUT || path.join(__dirname, 'shots');
 fs.mkdirSync(OUT, { recursive: true });
+
+// WSL2 gotcha: playwright-core's default chromium.launch() uses a stdio *pipe*
+// transport (--remote-debugging-pipe) to talk to the browser. That works when
+// node and the browser are the same OS, but this repo's only available Chrome
+// is the Windows host binary (C:\...\chrome.exe) invoked from a WSL2 Linux node
+// process via interop. Anonymous pipe fds 3/4 don't cross that boundary, so
+// launch() fails immediately with "Remote debugging pipe file descriptors are
+// not open." Fix: launch chrome.exe out-of-band with --remote-debugging-port
+// (TCP, which *does* cross the WSL2<->Windows localhost forwarding) and have
+// playwright attach via connectOverCDP instead of spawning it itself. See
+// SKILL.md "실행" section for the exact launch command. Set VERIFY_CDP_URL
+// (e.g. http://localhost:9222) to use this path; otherwise falls back to the
+// original same-OS chromium.launch(CHROME).
 
 const json = (status, obj) => ({ status, contentType: 'application/json', body: JSON.stringify(obj) });
 const text = (status, body) => ({ status, contentType: 'text/plain', body });
@@ -37,12 +51,17 @@ const iso = (h, m = 0) => { const d = new Date(now); d.setHours(h, m, 0, 0); ret
 const OWNER = { id: 'o1', email: 'owner@test', name: '테스트사장', verification_status: 'approved' };
 const SHOP = { id: 'shop1', name: '테스트네일샵', visibility: 'active',
   business_hours: [{ day_of_week: 1, is_closed: false, open_time: '10:00', close_time: '20:00' }] };
-const DESIGNERS = [{ id: 'd1', name: '민지' }];               // bare array
+const DESIGNERS = [{ id: 'd1', name: '민지' }, { id: 'd2', name: '수아' }]; // bare array (2명 이상 시나리오 겸용)
 const FOLDERS = [{ id: 'f1', name: '7월 이달의 아트', design_count: 3 }]; // bare array
+// 1x1 data URI — 카드 사진 렌더 확인용(외부 네트워크 의존 없이 <img>가 실제로 그려지는지 확인).
+const DOT_PNG =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
 const design = (id, title) => ({ id, shop_id: 'shop1', title, description: null,
   base_price: 45000, duration_minutes: 60, folder_id: null, folder_name: null,
-  thumbnail_url: null, visibility: 'active', ai_analysis_status: 'done',
-  owner_tags: [], ai_tags: [], color_palette: [], images: [], designers: [],
+  thumbnail_url: DOT_PNG, visibility: 'active', ai_analysis_status: 'done',
+  owner_tags: ['프렌치', '글리터'], ai_tags: [], color_palette: [], images: [{ url: DOT_PNG }],
+  designers: [{ id: 'd1', name: '민지', base_price: 45000, duration_minutes: 60 },
+    { id: 'd2', name: '수아', base_price: 50000, duration_minutes: 75 }],
   created_at: iso(9), updated_at: iso(9) });
 const rangeDesigns = (a, b) => Array.from({ length: b - a }, (_, i) => design('dz' + (a + i + 1), '디자인 ' + (a + i + 1)));
 // /shops/me/designs 는 봉투 { data, page } 반환 (collectAll 이 커서 추적).
@@ -65,6 +84,8 @@ function baseResponse(p, m, sp) {
 const SCENARIOS = {
   // 디자인 등록 탭이 폴더 + 미분류 디자인과 함께 렌더되는지.
   baseline: { url: '/dashboard/designs', wait: 1600 },
+  // 폴더를 열어 실제 디자인 카드(사진/제목/가격/시간/태그)가 보이는지.
+  'designs-card-view': { url: '/dashboard/designs', wait: 1600, openFolder: '미분류' },
   // 폴더 목록 5xx → 에러 표면화(재시도 2회 후 ~6s). 관찰: 로딩 유지 아님, 에러 UI/consoleError.
   'designs-folders-error': { url: '/dashboard/designs', wait: 5200, override: (p, m) => {
     if (p.endsWith('/design-folders') && m === 'GET') return json(503, { error: { code: 'SERVICE_UNAVAILABLE', message: '점검 중' } }); return null; } },
@@ -87,7 +108,9 @@ const SCENARIOS = {
 
 async function run() {
   const only = process.env.SCEN;
-  const browser = await chromium.launch({ executablePath: CHROME, headless: true });
+  const browser = CDP_URL
+    ? await chromium.connectOverCDP(CDP_URL)
+    : await chromium.launch({ executablePath: CHROME, headless: true });
   const results = {};
   for (const [name, sc] of Object.entries(SCENARIOS)) {
     if (only && only !== name) continue;
