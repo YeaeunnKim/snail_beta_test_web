@@ -1,11 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { designsApi } from '@/services';
-import type { DesignFolder } from '@/services';
+import type { Design, DesignFolder } from '@/services';
+import { collectAll } from '@/lib/api-client';
 import { toUserMessage } from '@/lib/error-messages';
 import type { FolderView } from './folder-designs';
+import { StandardsPanel } from './standards-panel';
 
 /* ───────────── 폴더 목록 ───────────── */
 
@@ -20,22 +22,58 @@ export function FolderGrid({
   loading: boolean;
   onOpen: (v: FolderView) => void;
 }) {
+  const qc = useQueryClient();
+  const [shopBoardOpen, setShopBoardOpen] = useState(false);
+  // 샵 전체 최빈값을 세려면 전 디자인이 필요하다(폴더 필터 없이 collectAll). 패널을 열 때만 조회한다.
+  const allDesigns = useQuery({
+    queryKey: ['designs', 'all'],
+    queryFn: () => collectAll<Design>((cursor) => designsApi.listDesigns({ limit: 50, cursor })),
+    enabled: shopBoardOpen,
+  });
+
   if (loading) return <p className="text-body-sm text-primary-50">불러오는 중…</p>;
 
   return (
-    <div className="grid grid-cols-2 gap-3">
-      {folders.map((f) => (
-        <EditableFolderCard
-          key={f.id}
-          folder={f}
-          onOpen={() => onOpen({ label: f.name, folderId: f.id })}
-        />
-      ))}
-      {unfiledCount > 0 && (
-        <FolderCard name="미분류" count={unfiledCount} muted onClick={() => onOpen({ label: '미분류', unfiled: true })} />
-      )}
-      <NewFolderCard />
-    </div>
+    <>
+      <div className="mb-3 flex justify-end">
+        <button
+          onClick={() => setShopBoardOpen(true)}
+          className="rounded-md border border-neutral-300 px-3 py-1.5 text-caption font-semibold text-primary-50 hover:bg-neutral-50"
+        >
+          ⚙ 샵 전체 기준
+        </button>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        {folders.map((f) => (
+          <EditableFolderCard
+            key={f.id}
+            folder={f}
+            onOpen={() => onOpen({ label: f.name, folderId: f.id })}
+          />
+        ))}
+        {unfiledCount > 0 && (
+          <FolderCard name="미분류" count={unfiledCount} muted onClick={() => onOpen({ label: '미분류', unfiled: true })} />
+        )}
+        <NewFolderCard />
+      </div>
+      {shopBoardOpen &&
+        (allDesigns.isLoading ? (
+          <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40">
+            <p className="rounded-lg bg-white px-4 py-3 text-body-sm text-primary">전 디자인 불러오는 중…</p>
+          </div>
+        ) : (
+          <StandardsPanel
+            scopeLabel="샵 전체"
+            designs={allDesigns.data ?? []}
+            onClose={() => setShopBoardOpen(false)}
+            onDone={() => {
+              qc.invalidateQueries({ queryKey: ['designs'] });
+              qc.invalidateQueries({ queryKey: ['design-folders'] });
+              allDesigns.refetch();
+            }}
+          />
+        ))}
+    </>
   );
 }
 
