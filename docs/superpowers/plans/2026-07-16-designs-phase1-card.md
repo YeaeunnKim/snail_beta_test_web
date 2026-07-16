@@ -12,7 +12,8 @@
 
 - **의존성 추가 금지.** `package.json`의 `dependencies`/`devDependencies`를 건드리지 않는다. (사령관이 `scripts`에 `test` 한 줄 추가는 승인함 — Task 1)
 - **백엔드 계약 수정 금지.** `backend-context/`, `src/types/api.d.ts` 절대 손대지 않는다.
-- **커밋 허용** (사령관 승인). 작업 브랜치는 **`feature/designs-card-inline`** — `main`(`b47bbb9`)에서 파서 이미 만들어 뒀다. 여기에만 커밋한다. **푸시 금지, 추가 브랜치 생성 금지.**
+- **커밋 허용** (사령관 승인). 작업 브랜치는 **`feature/designs-card-inline`** — `main`(`b47bbb9`)에서 파서 이미 만들어 뒀다. 여기에만 커밋한다. **로컬 커밋까지만이다.**
+- **PR 생성 금지. 푸시 금지. 추가 브랜치 생성 금지.** `git push`, `gh pr create`, `gh pr merge`를 **어떤 이유로도 실행하지 마라.** 커밋 허가는 되돌리기 지점을 만들라는 뜻이지 원격에 올리라는 뜻이 아니다. PR과 푸시 시점은 사령관이 직접 정한다. 계획을 다 끝냈어도 "이제 PR 올릴까요?"를 실행으로 옮기지 말고 **보고만** 해라.
 - **`next.config.ts`를 절대 커밋하지 마라.** 로컬 CORS 우회용 `rewrites()`가 들어간 미커밋 상태이고, 파일 안에 "커밋하지 말 것 — 배포 시엔 불필요"라고 명시돼 있다. `git add .`나 `git commit -a`를 쓰지 말고 이 계획에 적힌 경로만 `git add` 한다.
 - **main 머지 시 Vercel 프로덕션 자동 배포가 걸려 있다**(`00a19dc`). 이 계획은 main에 직접 커밋하지 않으므로 해당 없지만, 실수로 main에 커밋하면 파일 쪼개기 중간 상태가 배포된다.
 - **완료 검증은 `pnpm typecheck && pnpm lint && pnpm build`.** 세 개가 전부 통과해야 태스크가 끝난다.
