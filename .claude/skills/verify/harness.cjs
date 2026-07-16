@@ -160,6 +160,17 @@ const SCENARIOS = {
   // designer_ids는 전체 목록, designer_prices/durations는 기본값과 다른 것만 담겨야 한다.
   'designs-card-designer-price-edit': { url: '/dashboard/designs', wait: 1600, openFolder: '미분류', clickToggle: /수정 OFF/,
     stepperClicks: [{ ariaLabel: '민지 가격', dir: '증가', times: 1, gapMs: 30 }], settleWait: 1100 },
+  // Task 9 fix 재검증: 민지 가격 스테퍼를 5연타 — 화면은 즉시 +5×5000=25,000원(45,000→70,000)
+  // 오르고, PATCH는 디바운스 정착 후 정확히 1회만 나가야 한다(이전 버그: 클릭마다 즉시 PATCH → 최대 5회).
+  'designs-card-designer-price-rapid5': { url: '/dashboard/designs', wait: 1600, openFolder: '미분류', clickToggle: /수정 OFF/,
+    stepperClicks: [{ ariaLabel: '민지 가격', dir: '증가', times: 5, gapMs: 30 }], settleWait: 1100 },
+  // 디자이너별 스테퍼 PATCH 500 주입 → draft가 롤백돼 서버 값(민지 45,000원)으로 되돌아가고
+  // 에러 메시지가 뜨는지(카드 기본 가격 롤백과 동일 패턴을 DesignerRows에도 검증).
+  'designs-card-designer-price-rollback': { url: '/dashboard/designs', wait: 1600, openFolder: '미분류', clickToggle: /수정 OFF/,
+    stepperClicks: [{ ariaLabel: '민지 가격', dir: '증가', times: 2, gapMs: 30 }], settleWait: 1100,
+    override: (p, m) => {
+      if (/\/shops\/me\/designs\/[^/]+$/.test(p) && m === 'PATCH') return json(500, { error: { code: 'INTERNAL', message: '서버 오류' } });
+      return null; } },
   // 디자이너 전원이 기본값과 같으면(uniform) 범위 표시·펼침 없이 예전처럼 단일 표시만 뜨는지.
   'designs-card-designer-uniform': { url: '/dashboard/designs', wait: 1600, openFolder: '미분류',
     override: (p, m) => {
