@@ -788,12 +788,6 @@ function CreateForm({
           }));
         }
       }
-      try {
-        // 이미지 자동 처리 트리거. 실패해도 등록 자체는 유지 — 카드의 "처리 재시도" 버튼으로 재시도 가능.
-        await designsApi.processDesign(designId);
-      } catch {
-        /* 무시 */
-      }
       if (folderId) saveBulkSettings(`snail_bulk_settings:${folderId}`, settings);
       onCreated();
     } catch (e) {
@@ -1471,10 +1465,7 @@ function DesignCard({ design }: { design: Design }) {
     initialData: design,
     refetchInterval: (q) => {
       const s = q.state.data?.ai_analysis_status;
-      // 신규 이미지 처리 상태도 진행 중이면 폴링(공개와 무관, 결과 검수용).
-      const ip = q.state.data?.image_processing_status;
-      const active =
-        s === 'pending' || s === 'in_progress' || ip === 'pending' || ip === 'in_progress';
+      const active = s === 'pending' || s === 'in_progress';
       return active ? 3000 : false;
     },
   });
@@ -1524,22 +1515,6 @@ function DesignCard({ design }: { design: Design }) {
     },
     onError: (e) => setActionError(toUserMessage(e)),
   });
-
-  // 이미지 자동 처리 재시도(크롭 원본 → 워커 처리). 상태는 image_processing_status로 폴링된다.
-  const reprocess = useMutation({
-    mutationFn: () => designsApi.processDesign(d.id),
-    onSuccess: () => {
-      setActionError(null);
-      qc.invalidateQueries({ queryKey: ['design', d.id] });
-      qc.invalidateQueries({ queryKey: ['designs'] });
-    },
-    onError: (e) => setActionError(toUserMessage(e)),
-  });
-
-  const imageStatus = d.image_processing_status;
-  const processedUrls = (d.images ?? [])
-    .filter((i) => i.processed_url)
-    .map((i) => i.processed_url as string);
 
   const zoomUrls = designImageUrls(d); // 확대 뷰에 넘길 사진 URL(대표 먼저)
   const photoCount = zoomUrls.length;
@@ -1695,62 +1670,6 @@ function DesignCard({ design }: { design: Design }) {
           )}
           {(d.ai_analysis_status === 'pending' || d.ai_analysis_status === 'in_progress') && (
             <span className="text-caption text-primary-50">· AI 분석 중(공개엔 영향 없어요)</span>
-          )}
-          {(imageStatus === 'pending' || imageStatus === 'in_progress') && (
-            <span className="text-caption text-primary-50">· 이미지 처리 완료 후 공개를 권장해요</span>
-          )}
-        </div>
-      )}
-
-      {/* 이미지 자동 처리(크롭 원본 → 배경 제거/보정 등) 상태 + 결과 검수. 공개(노출)와는 무관.
-          image_processing_status: idle | pending | in_progress | done | failed. */}
-      {!editing && imageStatus && imageStatus !== 'idle' && (
-        <div className="mt-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-caption text-primary-50">🖼 이미지 처리</span>
-            {imageStatus === 'done' ? (
-              <span className="rounded-full bg-success-bg px-2 py-0.5 text-caption font-semibold text-success">
-                완료
-              </span>
-            ) : imageStatus === 'failed' ? (
-              <span className="rounded-full bg-danger-bg px-2 py-0.5 text-caption font-semibold text-danger">
-                실패
-              </span>
-            ) : (
-              <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-caption font-semibold text-primary-50">
-                {imageStatus === 'pending' ? '대기 중' : '처리 중…'}
-              </span>
-            )}
-            {(imageStatus === 'failed' || imageStatus === 'done') && (
-              <button
-                onClick={() => reprocess.mutate()}
-                disabled={reprocess.isPending}
-                className="rounded-md border border-neutral-300 px-3 py-1.5 text-caption font-semibold text-primary hover:bg-neutral-50 disabled:opacity-50"
-              >
-                {reprocess.isPending ? '요청 중…' : imageStatus === 'failed' ? '처리 재시도' : '다시 처리'}
-              </button>
-            )}
-          </div>
-          {imageStatus === 'failed' && (
-            <p className="mt-2 rounded-md bg-danger-bg p-2 text-caption text-danger">
-              {d.image_processing_error ?? '이미지 처리에 실패했습니다.'}
-            </p>
-          )}
-          {imageStatus === 'done' && processedUrls.length > 0 && (
-            <div className="mt-2">
-              <p className="mb-1 text-caption text-primary-50">처리 결과(검수) — 공개 전 확인하세요</p>
-              <div className="flex flex-wrap gap-2">
-                {processedUrls.map((u, i) => (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    key={`p-${i}`}
-                    src={u}
-                    alt="처리 결과"
-                    className="h-16 w-16 rounded-md border border-neutral-200 object-cover"
-                  />
-                ))}
-              </div>
-            </div>
           )}
         </div>
       )}
@@ -1933,12 +1852,6 @@ function BulkAddModal({
           owner_tags: s.tags,
         });
         await createOptionsFor(created.id, s.options);
-        try {
-          // 이미지 자동 처리 트리거. 실패해도 등록 자체는 유지 — 카드의 "처리 재시도" 버튼으로 재시도 가능.
-          await designsApi.processDesign(created.id);
-        } catch {
-          /* 무시 */
-        }
       } catch (e) {
         failed.push(`${title}: ${toUserMessage(e)}`);
       }
@@ -2215,15 +2128,6 @@ function DesignEditForm({ design: d, onClose }: { design: Design; onClose: () =>
         }
       }
 
-      // 사진을 바꿨을 때만 이미지 자동 처리 트리거(새 대표/상세 사진 크롭 원본 처리). 실패해도 수정 자체는 유지
-      // — 카드의 "처리 재시도" 버튼으로 재시도 가능.
-      if (photosDirty) {
-        try {
-          await designsApi.processDesign(d.id);
-        } catch {
-          /* 무시 */
-        }
-      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['design', d.id] });
