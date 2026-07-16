@@ -8,7 +8,9 @@ import { toUserMessage } from '@/lib/error-messages';
 import { Lightbox } from './photo';
 import { designImageUrls, formatWon } from '../_lib/design-helpers';
 import { useDebouncedSave } from '../_lib/use-debounced-save';
+import { priceRange, durationRange } from '../_lib/designer-values';
 import { DesignEditForm } from './design-edit-form';
+import { DesignerRows } from './designer-rows';
 import { Stepper, TagInput, PRICE_INPUT_STEP, CARD_DURATION_STEP, clampPrice, clampDuration } from '../design-settings';
 
 /* ───────────── 디자인 카드 ───────────── */
@@ -39,6 +41,12 @@ export function DesignCard({ design, editMode }: { design: Design; editMode: boo
     },
   });
   const d = data ?? design;
+
+  // 디자이너별 가격·소요시간 범위 — 전부 같으면 단일 표시, 다르면 "min~max ▾"로 펼침 토글.
+  const pr = priceRange(d);
+  const dr = durationRange(d);
+  const [showDesigners, setShowDesigners] = useState(false);
+  const hasVariance = !pr.uniform || !dr.uniform;
 
   const reanalyze = useMutation({
     mutationFn: () => designsApi.reanalyze(d.id),
@@ -208,17 +216,29 @@ export function DesignCard({ design, editMode }: { design: Design; editMode: boo
               </div>
             ) : (
               <p className="mt-0.5 text-body-sm text-primary-50">
-                {d.intro_price != null && d.intro_price < d.base_price ? (
-                  <>
-                    <span className="line-through">{formatWon(d.base_price)}</span>{' '}
-                    <span className="font-semibold text-secondary">{formatWon(d.intro_price)}</span>
-                  </>
+                {pr.uniform ? (
+                  d.intro_price != null && d.intro_price < d.base_price ? (
+                    <>
+                      <span className="line-through">{formatWon(d.base_price)}</span>{' '}
+                      <span className="font-semibold text-secondary">{formatWon(d.intro_price)}</span>
+                    </>
+                  ) : (
+                    formatWon(d.base_price)
+                  )
                 ) : (
-                  formatWon(d.base_price)
-                )}{' '}
-                · 기본 {d.duration_minutes}분
+                  <button
+                    type="button"
+                    onClick={() => setShowDesigners((v) => !v)}
+                    className="text-body-sm text-primary-50"
+                  >
+                    {formatWon(pr.min)}~{formatWon(pr.max)} {showDesigners ? '▴' : '▾'}
+                  </button>
+                )}
+                {' · '}
+                {dr.uniform ? `${d.duration_minutes}분` : `${dr.min}~${dr.max}분`}
               </p>
             )}
+            {(showDesigners || (editMode && hasVariance)) && <DesignerRows design={d} editMode={editMode} />}
             {editMode ? (
               <div className="mt-2">
                 <TagInput
