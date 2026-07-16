@@ -145,6 +145,36 @@ const SCENARIOS = {
     override: (p, m) => {
       if (/\/shops\/me\/designs\/[^/]+$/.test(p) && m === 'PATCH') return json(500, { error: { code: 'INTERNAL', message: '서버 오류' } });
       return null; } },
+
+  // Task 9: 디자이너별 가격·소요시간 범위 표시 + 펼침 편집.
+  // design() fixture 기본값 자체가 이미 민지(45,000/60분)·수아(50,000/75분)로 다르므로
+  // 그대로 "45,000~50,000원 ▾ · 60~75분" 범위 표시가 뜨는지 확인(수정 OFF, 펼침 전).
+  'designs-card-designer-range': { url: '/dashboard/designs', wait: 1600, openFolder: '미분류' },
+  // ▾ 눌러 펼치면 기본/디자이너별 줄이 나오고 다른 값엔 "따로", 기본과 같으면 "기본"이 붙는지.
+  'designs-card-designer-range-expand': { url: '/dashboard/designs', wait: 1600, openFolder: '미분류',
+    clickRangeToggle: true },
+  // 수정 ON — hasVariance면 토글 버튼 없이도 DesignerRows가 자동으로 펼쳐지고 줄마다 ± 스테퍼가 뜨는지.
+  'designs-card-designer-range-edit': { url: '/dashboard/designs', wait: 1600, openFolder: '미분류',
+    clickToggle: /수정 OFF/ },
+  // 수정 ON 상태에서 민지 가격 스테퍼를 1회 눌러 PATCH 페이로드를 검증한다:
+  // designer_ids는 전체 목록, designer_prices/durations는 기본값과 다른 것만 담겨야 한다.
+  'designs-card-designer-price-edit': { url: '/dashboard/designs', wait: 1600, openFolder: '미분류', clickToggle: /수정 OFF/,
+    stepperClicks: [{ ariaLabel: '민지 가격', dir: '증가', times: 1, gapMs: 30 }], settleWait: 1100 },
+  // 디자이너 전원이 기본값과 같으면(uniform) 범위 표시·펼침 없이 예전처럼 단일 표시만 뜨는지.
+  'designs-card-designer-uniform': { url: '/dashboard/designs', wait: 1600, openFolder: '미분류',
+    override: (p, m) => {
+      if (p.endsWith('/shops/me/designs') && m === 'GET') {
+        const uniform = rangeDesigns(0, 3).map((d) => ({
+          ...d,
+          designers: d.designers.map((x) => ({ ...x, base_price: d.base_price, duration_minutes: d.duration_minutes })),
+        }));
+        return json(200, { data: uniform, page: { has_next: false, next_cursor: null }, request_id: 'req-uniform' });
+      }
+      return null; } },
+  // [기본으로] 클릭 → 그 디자이너가 기본값으로 돌아가고, 전원이 기본이 되면 범위 표시가 단일 표시로
+  // 돌아가는지(DesignerRows도 hasVariance=false가 되면서 자동으로 접혀야 한다).
+  'designs-card-designer-reset-to-base': { url: '/dashboard/designs', wait: 1600, openFolder: '미분류', clickToggle: /수정 OFF/,
+    clickText: /기본으로/, settleWait: 1300 },
 };
 
 // ± 스테퍼 연타 — 매 클릭 사이 gapMs만큼 실제로 대기(브라우저 이벤트 루프에 양보)해 React가
@@ -242,7 +272,33 @@ async function run() {
         let body = {};
         try { body = JSON.parse(req.postData() || '{}'); } catch (e) { /* noop */ }
         patchBodies.push(body);
-        if (!ov) designOverrides[idMatch[1]] = { ...(designOverrides[idMatch[1]] || {}), ...body };
+        if (!ov) {
+          const id = idMatch[1];
+          const prevOverride = designOverrides[id] || {};
+          const merged = { ...prevOverride, ...body };
+          // Task 9 fixture 보강: designer_ids/designer_prices/designer_durations는 Design의
+          // 실제 필드가 아니라 "서버가 designers[] 배열에 반영해야 하는 커맨드"다. 진짜 백엔드가
+          // 없으니 하네스가 그 매핑을 대신 흉내낸다 — 안 하면 [기본으로]/디자이너별 스테퍼가
+          // PATCH는 성공해도 후속 GET에서 designers[]가 그대로라 화면이 안 바뀐 것처럼 보인다.
+          if (body.designer_ids) {
+            const original = DESIGNS.data.find((d) => d.id === id) || design(id, id);
+            const baseDesigners = prevOverride.designers || original.designers || [];
+            const basePrice = merged.base_price !== undefined ? merged.base_price : original.base_price;
+            const baseDuration = merged.duration_minutes !== undefined ? merged.duration_minutes : original.duration_minutes;
+            const priceMap = new Map((body.designer_prices || []).map((x) => [x.designer_id, x.base_price]));
+            const durationMap = new Map((body.designer_durations || []).map((x) => [x.designer_id, x.duration_minutes]));
+            merged.designers = body.designer_ids.map((did) => {
+              const existing = baseDesigners.find((x) => x.id === did) || { id: did, name: did };
+              return {
+                ...existing,
+                base_price: priceMap.has(did) ? priceMap.get(did) : basePrice,
+                duration_minutes: durationMap.has(did) ? durationMap.get(did) : baseDuration,
+              };
+            });
+            delete merged.designer_ids; delete merged.designer_prices; delete merged.designer_durations;
+          }
+          designOverrides[id] = merged;
+        }
       }
       if (ov) { route.fulfill(ov); return; }
       if (m === 'GET' && idMatch) {
@@ -273,6 +329,10 @@ async function run() {
     if (sc.clickNewDesign) { await page.getByRole('button', { name: /새 디자인|디자인 등록/ }).first().click().catch(() => {}); await page.waitForTimeout(600); }
     if (sc.openFolder) { await page.getByText(sc.openFolder, { exact: false }).first().click().catch(() => {}); await page.waitForTimeout(1500); }
     if (sc.clickToggle) { await page.getByRole('button', { name: sc.clickToggle }).first().click().catch(() => {}); await page.waitForTimeout(600); }
+    // Task 9: 카드의 "min~max원 ▾/▴" 범위 토글 버튼을 클릭해 DesignerRows를 펼치거나 접는다.
+    if (sc.clickRangeToggle) { await page.getByRole('button', { name: /~.*원/ }).first().click().catch(() => {}); await page.waitForTimeout(500); }
+    // Task 9: 텍스트로 특정 버튼(예: "기본으로")을 클릭하는 범용 스텝.
+    if (sc.clickText) { await page.getByRole('button', { name: sc.clickText }).first().click().catch(() => {}); await page.waitForTimeout(sc.settleWait ?? 800); }
     let stepper = null;
     if (sc.stepperClicks) {
       stepper = { clicks: [] };
@@ -340,6 +400,9 @@ async function run() {
       loading: bodyText.includes('불러오는 중'),
       errorRetry: bodyText.includes('다시 시도'),
       appError: bodyText.includes('Application error'),
+      // Task 9: 범위 표시 버튼(min~max원 ▾)이 보이는지 + 펼침 시 디자이너별 줄(이름·따로/기본)이 보이는지.
+      hasRangeToggle: /~[\d,]+원 [▾▴]/.test(bodyText),
+      hasDesignerRows: bodyText.includes('민지') && bodyText.includes('수아') && (bodyText.includes('따로') || bodyText.includes('기본')),
     };
     results[name] = { signals, reloads, consoleErrors, stepper, tags, bodyExcerpt: bodyText.slice(0, 700) };
     await context.close();
