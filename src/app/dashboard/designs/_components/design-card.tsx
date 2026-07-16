@@ -15,7 +15,19 @@ import { Stepper, TagInput, PRICE_INPUT_STEP, DURATION_STEP, clampPrice, clampDu
 
 /* ───────────── 디자인 카드 ───────────── */
 
-export function DesignCard({ design, editMode }: { design: Design; editMode: boolean }) {
+export function DesignCard({
+  design,
+  editMode,
+  selectMode = false,
+  selected = false,
+  onToggleSelect,
+}: {
+  design: Design;
+  editMode: boolean;
+  selectMode?: boolean;
+  selected?: boolean;
+  onToggleSelect?: () => void;
+}) {
   const qc = useQueryClient();
   const [actionError, setActionError] = useState<string | null>(null);
   const [zoomIndex, setZoomIndex] = useState<number | null>(null); // null = 확대 뷰 닫힘
@@ -140,6 +152,44 @@ export function DesignCard({ design, editMode }: { design: Design; editMode: boo
 
   const zoomUrls = designImageUrls(d); // 확대 뷰에 넘길 사진 URL(대표 먼저)
   const photoCount = zoomUrls.length;
+
+  if (selectMode) {
+    return (
+      <li>
+        <button
+          type="button"
+          onClick={onToggleSelect}
+          aria-pressed={selected}
+          className={`flex w-full items-center gap-3 rounded-lg border p-4 text-left transition ${
+            selected ? 'border-secondary bg-secondary/5' : 'border-neutral-200 bg-white hover:bg-neutral-50'
+          }`}
+        >
+          <span
+            className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border text-caption font-bold ${
+              selected ? 'border-secondary bg-secondary text-white' : 'border-neutral-300 bg-white text-transparent'
+            }`}
+            aria-hidden
+          >
+            ✓
+          </span>
+          <span className="h-16 w-16 shrink-0 overflow-hidden rounded-md border border-neutral-200">
+            {d.thumbnail_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={d.thumbnail_url} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <span className="block h-full w-full bg-neutral-100" />
+            )}
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate font-medium">{d.title}</span>
+            <span className="block truncate text-caption text-primary-50">
+              📁 {d.folder_name ?? '미분류'} · {d.visibility === 'active' ? '공개 중' : '비공개'}
+            </span>
+          </span>
+        </button>
+      </li>
+    );
+  }
 
   return (
     <li className="rounded-lg border border-neutral-200 bg-white p-4">
