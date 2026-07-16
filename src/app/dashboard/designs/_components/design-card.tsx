@@ -76,17 +76,19 @@ export function DesignCard({ design, editMode }: { design: Design; editMode: boo
   const patch = useMutation({
     mutationFn: (body: { base_price?: number; duration_minutes?: number }) =>
       designsApi.updateDesign(d.id, body),
-    onSuccess: () => {
+    // 가격·시간은 각자 디바운스라 뮤테이션을 공유해도 요청엔 한 필드만 담긴다.
+    // 방금 저장한 필드의 draft만 정리해야, 겹쳐 편집 중인 다른 필드 draft가 날아가지 않는다.
+    onSuccess: (_data, vars) => {
       setSaveErr(null);
-      setDraftPrice(null);
-      setDraftDuration(null);
+      if (vars.base_price !== undefined) setDraftPrice(null);
+      if (vars.duration_minutes !== undefined) setDraftDuration(null);
       qc.invalidateQueries({ queryKey: ['design', d.id] });
       qc.invalidateQueries({ queryKey: ['designs'] });
     },
-    onError: (e) => {
-      // 롤백 — draft를 버리고 서버 값으로 되돌린다
-      setDraftPrice(null);
-      setDraftDuration(null);
+    onError: (e, vars) => {
+      // 롤백 — 실패한 필드의 draft만 버리고 서버 값으로 되돌린다
+      if (vars.base_price !== undefined) setDraftPrice(null);
+      if (vars.duration_minutes !== undefined) setDraftDuration(null);
       setSaveErr(toUserMessage(e));
     },
   });
