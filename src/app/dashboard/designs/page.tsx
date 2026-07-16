@@ -36,31 +36,20 @@ import {
 import type { OptionRow, OptionKind, DesignSettings } from './design-settings';
 import { useSortJobs } from '@/stores/sort-jobs';
 import { ImageCropper } from '@/components/ImageCropper';
-
-interface PhotoItem {
-  id: string;
-  name: string;
-  previewUrl: string;
-  objectKey?: string;
-  status: 'uploading' | 'done' | 'error';
-  error?: string;
-}
-
-/** 디자인 수정 시 사진 편집용. 기존 사진(key는 URL에서 역추출)과 새 업로드를 함께 다룬다. */
-interface EditPhoto {
-  uid: string;
-  key: string; // object_key ('' = 업로드 중)
-  previewUrl: string;
-  status: 'uploading' | 'done' | 'error';
-  error?: string;
-}
+import { PhotoTile, UploadTile, Lightbox } from './_components/photo';
+import type { PhotoItem, EditPhoto } from './_components/photo';
+import { FolderField } from './_components/folder-field';
+import { Field, inputCls } from './_components/field';
+import {
+  designImageUrls,
+  urlToObjectKey,
+  formatWon,
+  MAX_DETAIL_PHOTOS,
+  MAX_EDIT_PHOTOS,
+} from './_lib/design-helpers';
 
 /** 샵마다 기본으로 만들어 두는 디자인 폴더 */
 const DEFAULT_FOLDERS = ['7월의 아트', '8월의 아트'];
-
-const MAX_DETAIL_PHOTOS = 5;
-const MAX_EDIT_PHOTOS = 6; // 수정 시 대표 1 + 상세 5
-const formatWon = (n: number) => `${n.toLocaleString('ko-KR')}원`;
 
 type FolderView = { label: string; folderId?: string; unfiled?: boolean };
 
@@ -1185,270 +1174,6 @@ function InstagramIcon() {
   );
 }
 
-/* ───────────── 폴더 선택/만들기 ───────────── */
-
-function FolderField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const qc = useQueryClient();
-  const [creating, setCreating] = useState(false);
-  const [name, setName] = useState('');
-  const [featuredMonth, setFeaturedMonth] = useState('');
-  const [error, setError] = useState<string | null>(null);
-
-  const foldersQuery = useQuery({
-    queryKey: ['design-folders'],
-    queryFn: () => designsApi.listFolders(),
-  });
-  const folders: DesignFolder[] = foldersQuery.data ?? [];
-
-  const create = useMutation({
-    mutationFn: (body: { name: string; featured_month: string | null }) =>
-      designsApi.createFolder(body),
-    onSuccess: (folder) => {
-      setError(null);
-      setName('');
-      setFeaturedMonth('');
-      setCreating(false);
-      qc.invalidateQueries({ queryKey: ['design-folders'] });
-      onChange(folder.id);
-    },
-    onError: (e) => setError(toUserMessage(e)),
-  });
-
-  return (
-    <div>
-      <label className="mb-1 block text-body-sm font-medium">
-        폴더 <span className="text-danger">*</span>
-      </label>
-      {creating ? (
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center gap-2">
-            <input
-              autoFocus
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="예: 7월 이달의 아트"
-              maxLength={60}
-              className={inputCls}
-            />
-            <button
-              type="button"
-              onClick={() =>
-                name.trim() &&
-                create.mutate({ name: name.trim(), featured_month: featuredMonth || null })
-              }
-              disabled={create.isPending || !name.trim()}
-              className="shrink-0 rounded-md border border-secondary px-3 py-2 text-body-sm font-semibold text-secondary disabled:opacity-50"
-            >
-              만들기
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setCreating(false);
-                setName('');
-                setFeaturedMonth('');
-                setError(null);
-              }}
-              className="shrink-0 rounded-md border border-neutral-300 px-3 py-2 text-body-sm text-primary-50"
-            >
-              취소
-            </button>
-          </div>
-          <label className="flex items-center gap-2 text-caption text-primary-50">
-            <span className="shrink-0">이달의 아트 진행월</span>
-            <input
-              type="month"
-              value={featuredMonth}
-              onChange={(e) => setFeaturedMonth(e.target.value)}
-              className={`${inputCls} max-w-[12rem]`}
-            />
-            <span className="shrink-0">비우면 일반 폴더</span>
-          </label>
-        </div>
-      ) : (
-        <div className="flex items-center gap-2">
-          <select
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            className={`${inputCls} bg-white`}
-          >
-            <option value="">폴더를 선택하세요</option>
-            {folders.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.name}
-                {f.featured_month ? ` · 이달의 아트 ${f.featured_month}` : ''} ({f.design_count})
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            onClick={() => setCreating(true)}
-            className="shrink-0 rounded-md border border-neutral-300 px-3 py-2 text-body-sm text-primary"
-          >
-            + 새 폴더
-          </button>
-        </div>
-      )}
-      {error && <p className="mt-1 text-caption text-danger">{error}</p>}
-    </div>
-  );
-}
-
-
-/* ───────────── 사진 타일 ───────────── */
-
-function PhotoTile({ photo: p, onRemove, badge }: { photo: PhotoItem; onRemove: () => void; badge?: string }) {
-  return (
-    <div className="relative h-24 w-24 overflow-hidden rounded-md border border-neutral-200">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={p.previewUrl} alt={p.name} className="h-full w-full object-cover" />
-      {badge && (
-        <span className="absolute left-0 top-0 bg-secondary px-1.5 py-0.5 text-caption font-semibold text-white">
-          {badge}
-        </span>
-      )}
-      {p.status === 'uploading' && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/40 text-caption text-white">
-          업로드 중…
-        </div>
-      )}
-      {p.status === 'error' && (
-        <div className="absolute inset-0 flex items-center justify-center bg-red-600/70 px-1 text-center text-caption text-white">
-          {p.error ?? '실패'}
-        </div>
-      )}
-      <button
-        type="button"
-        onClick={onRemove}
-        className="absolute right-0 top-0 bg-black/50 px-1 text-caption text-white"
-        aria-label="삭제"
-      >
-        ×
-      </button>
-    </div>
-  );
-}
-
-function UploadTile({
-  label,
-  multiple,
-  onFiles,
-}: {
-  label: string;
-  multiple?: boolean;
-  onFiles: (files: FileList | null) => void;
-}) {
-  return (
-    <label className="flex h-24 w-24 cursor-pointer flex-col items-center justify-center rounded-md border border-dashed border-neutral-300 text-primary-50 hover:border-secondary">
-      <span className="text-2xl leading-none">+</span>
-      <span className="mt-1 text-caption">{label}</span>
-      <input
-        type="file"
-        accept="image/*"
-        multiple={multiple}
-        className="hidden"
-        onChange={(e) => {
-          onFiles(e.target.files);
-          e.target.value = '';
-        }}
-      />
-    </label>
-  );
-}
-
-/* ───────────── 사진 확대 뷰(라이트박스) ───────────── */
-
-/** 디자인의 모든 사진 URL을 대표 사진이 맨 앞에 오도록 정렬해 반환한다. */
-function designImageUrls(d: Design): string[] {
-  const imgs = d.images ?? [];
-  if (imgs.length > 0) {
-    return [...imgs]
-      .sort((a, b) => Number(b.is_thumbnail) - Number(a.is_thumbnail))
-      .map((i) => i.original_url);
-  }
-  return d.thumbnail_url ? [d.thumbnail_url] : [];
-}
-
-/** 전체화면 사진 확대 뷰. 배경 클릭·ESC로 닫고, 좌우 버튼/화살표키로 넘긴다. */
-function Lightbox({
-  urls,
-  index,
-  onIndex,
-  onClose,
-}: {
-  urls: string[];
-  index: number | null;
-  onIndex: (i: number) => void;
-  onClose: () => void;
-}) {
-  useEffect(() => {
-    if (index == null) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-      else if (e.key === 'ArrowLeft') onIndex((index - 1 + urls.length) % urls.length);
-      else if (e.key === 'ArrowRight') onIndex((index + 1) % urls.length);
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [index, urls.length, onIndex, onClose]);
-
-  if (index == null || !urls[index]) return null;
-  const many = urls.length > 1;
-  const btnCls =
-    'absolute grid h-11 w-11 place-items-center rounded-full bg-white/15 text-heading-md text-white hover:bg-white/25';
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-    >
-      <button type="button" onClick={onClose} aria-label="닫기" className={`${btnCls} right-4 top-4`}>
-        ×
-      </button>
-      {many && (
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onIndex((index - 1 + urls.length) % urls.length);
-          }}
-          aria-label="이전 사진"
-          className={`${btnCls} left-3`}
-        >
-          ‹
-        </button>
-      )}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={urls[index]}
-        alt=""
-        onClick={(e) => e.stopPropagation()}
-        className="max-h-[85vh] max-w-[92vw] rounded-lg object-contain"
-      />
-      {many && (
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onIndex((index + 1) % urls.length);
-          }}
-          aria-label="다음 사진"
-          className={`${btnCls} right-3`}
-        >
-          ›
-        </button>
-      )}
-      {many && (
-        <div className="absolute bottom-5 rounded-full bg-black/50 px-3 py-1 text-caption text-white">
-          {index + 1} / {urls.length}
-        </div>
-      )}
-    </div>
-  );
-}
-
 /* ───────────── 디자인 카드 ───────────── */
 
 function DesignCard({ design }: { design: Design }) {
@@ -1699,16 +1424,6 @@ function DesignCard({ design }: { design: Design }) {
       <Lightbox urls={zoomUrls} index={zoomIndex} onIndex={setZoomIndex} onClose={() => setZoomIndex(null)} />
     </li>
   );
-}
-
-
-/** 이미지 URL에서 업로드 object_key를 역추출(버킷명 무관). 기존 사진 보존용. */
-function urlToObjectKey(url: string): string {
-  try {
-    return new URL(url).pathname.replace(/^\/[^/]+\//, '');
-  } catch {
-    return url;
-  }
 }
 
 
@@ -2270,31 +1985,3 @@ function DesignEditForm({ design: d, onClose }: { design: Design; onClose: () =>
   );
 }
 
-const inputCls =
-  'w-full rounded-md border border-neutral-300 px-3 py-2 text-body-sm outline-none focus:border-secondary';
-
-function Field({
-  label,
-  error,
-  hint,
-  required,
-  children,
-}: {
-  label: string;
-  error?: string;
-  hint?: string;
-  required?: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <label className="mb-1 block text-body-sm font-medium">
-        {label}
-        {required && <span className="ml-0.5 text-danger">*</span>}
-      </label>
-      {children}
-      {hint && !error && <p className="mt-1 text-caption text-primary-50">{hint}</p>}
-      {error && <p className="mt-1 text-caption text-danger">{error}</p>}
-    </div>
-  );
-}
