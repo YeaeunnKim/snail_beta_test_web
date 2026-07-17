@@ -267,14 +267,7 @@ export function DesignCard({
             ) : (
               <p className="mt-0.5 text-body-sm text-primary-50">
                 {pr.uniform ? (
-                  d.intro_price != null && d.intro_price < d.base_price ? (
-                    <>
-                      <span className="line-through">{formatWon(d.base_price)}</span>{' '}
-                      <span className="font-semibold text-secondary">{formatWon(d.intro_price)}</span>
-                    </>
-                  ) : (
-                    formatWon(d.base_price)
-                  )
+                  formatWon(d.base_price)
                 ) : (
                   <button
                     type="button"

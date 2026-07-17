@@ -190,7 +190,7 @@ export function CreateForm({
           title: effectiveTitle,
           description: settings.description.trim() || null,
           base_price: price,
-          intro_price: settings.introPrice.trim() ? Number(settings.introPrice) : null,
+          intro_price: null,
           duration_minutes: clampDuration(settings.duration),
           designer_ids: designerIds,
           designer_durations: designerDurations,

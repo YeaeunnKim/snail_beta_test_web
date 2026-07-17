@@ -144,7 +144,7 @@ export function BulkAddModal({
           title,
           description: s.description.trim() || null,
           base_price: price,
-          intro_price: s.introPrice.trim() ? Number(s.introPrice) : null,
+          intro_price: null,
           duration_minutes: clampDuration(s.duration),
           designer_ids: designerIds,
           designer_durations: designerDurations,

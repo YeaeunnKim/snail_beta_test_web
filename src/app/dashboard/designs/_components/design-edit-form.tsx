@@ -22,7 +22,6 @@ export function DesignEditForm({ design: d, onClose }: { design: Design; onClose
   const [title, setTitle] = useState(d.title);
   const [description, setDescription] = useState(d.description ?? '');
   const [price, setPrice] = useState(String(d.base_price));
-  const [introPrice, setIntroPrice] = useState(d.intro_price != null ? String(d.intro_price) : '');
   const [duration, setDuration] = useState(clampDuration(d.duration_minutes));
   const [tags, setTags] = useState<string[]>(d.owner_tags ?? []);
   const [err, setErr] = useState<string | null>(null);
@@ -122,7 +121,8 @@ export function DesignEditForm({ design: d, onClose }: { design: Design; onClose
         title: title.trim(),
         description: description.trim() || null,
         base_price: basePriceNum,
-        intro_price: introPrice.trim() ? Number(introPrice) : null,
+        // 이달의 아트 인트로가(전용 할인가) 개념 제거 — 저장할 때마다 남아있던 인트로가도 지운다.
+        intro_price: null,
         duration_minutes: clampDuration(duration),
         owner_tags: tags,
         // 사진을 바꿨을 때만 전체 세트를 전송(백엔드는 image_upload_keys를 통째로 교체).
@@ -271,10 +271,9 @@ export function DesignEditForm({ design: d, onClose }: { design: Design; onClose
       {/* 가격·디자이너·소요시간·설명·태그 (등록/일괄과 동일한 필드) */}
       <DesignSettingsFields
         designers={designers}
-        value={{ price, introPrice, duration, description, tags, picked, pickedPrice, options }}
+        value={{ price, duration, description, tags, picked, pickedPrice, options }}
         onChange={(p) => {
           if (p.price !== undefined) setPrice(p.price);
-          if (p.introPrice !== undefined) setIntroPrice(p.introPrice);
           if (p.duration !== undefined) setDuration(p.duration);
           if (p.description !== undefined) setDescription(p.description);
           if (p.tags !== undefined) setTags(p.tags);

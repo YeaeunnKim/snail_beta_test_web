@@ -94,7 +94,6 @@ export const useSortJobs = create<SortJobsState>((set, get) => ({
 
     // 2) 백엔드 정렬 요청(백엔드가 VM /process 처리 후 폴더에 디자인 생성)
     const price = Math.max(0, Number(settings.price) || 0);
-    const introPrice = settings.introPrice.trim() ? Number(settings.introPrice) : null;
     const multiDesigner = designers.length >= 2;
     const designerIds = multiDesigner
       ? Object.keys(settings.picked)
@@ -108,7 +107,7 @@ export const useSortJobs = create<SortJobsState>((set, get) => ({
         image_upload_keys: keys,
         folder_id: folderId,
         base_price: price,
-        intro_price: introPrice,
+        intro_price: null,
         duration_minutes: clampDuration(settings.duration),
         designer_ids: designerIds,
         owner_tags: settings.tags,
