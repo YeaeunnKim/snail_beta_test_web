@@ -5,8 +5,7 @@
  *
  * 새 디자인 등록(CreateForm) · 대량 등록(BulkAddModal) · 디자인 수정(DesignEditForm)
  * · 디자인 정렬(sort 페이지)이 모두 ★완전히 동일한 설정 필드/유효성/디자인★을 쓰도록
- * 한 곳에 모아 재사용한다. designs/page.tsx 안에 있던 것을 그대로 추출한 것이라
- * 필드 구성·UX·유효성은 기존과 100% 동일하다(이달의 아트 인트로가 포함).
+ * 한 곳에 모아 재사용한다. designs/page.tsx 안에 있던 것을 그대로 추출했다.
  */
 
 import { useEffect, useRef, useState } from 'react';
@@ -17,9 +16,9 @@ export const MAX_OWNER_TAGS = 10;
 export const TAG_MAXLEN = 40;
 export const DURATION_MIN = 30;
 export const DURATION_MAX = 600;
-export const DURATION_STEP = 10;
+export const DURATION_STEP = 30; // 기본 소요시간 · 디자이너별 소요시간 +/- 단위(분). Stepper 기본 step이기도 하다
 export const PRICE_STEP = 5000; // 디자이너별 가격 · 추가옵션 가격 +/- 단위(원)
-export const PRICE_INPUT_STEP = 1000; // 정상가 · 인트로가 입력칸 화살표 +/- 단위(원)
+export const PRICE_INPUT_STEP = 1000; // 정상가 입력칸 화살표 +/- 단위(원)
 export const OPTION_PRICE_DEFAULT = 50000; // 추가옵션 기본 추가금액(원)
 export const OPTION_DURATION_DEFAULT = 30; // 추가옵션 기본 추가시간(분)
 export const OPTION_DURATION_STEP = 30; // 추가옵션 시간 +/- 단위(분)
@@ -84,7 +83,6 @@ export const clampPrice = (n: number) => Math.max(0, Math.round(n));
 
 export interface DesignSettings {
   price: string;
-  introPrice: string; // 이달의 아트 인트로가(비우면 정상가)
   duration: number;
   description: string;
   tags: string[];
@@ -96,7 +94,6 @@ export interface DesignSettings {
 export function defaultBulkSettings(): DesignSettings {
   return {
     price: '',
-    introPrice: '',
     duration: 120,
     description: '',
     tags: [],
@@ -130,7 +127,6 @@ export function loadBulkSettings(key: string, designers: Designer[]): DesignSett
       : defaultOptionRows();
     return {
       price: s.price ?? '',
-      introPrice: s.introPrice ?? '',
       duration: s.duration ?? 120,
       description: s.description ?? '',
       tags: s.tags ?? [],
@@ -291,7 +287,7 @@ export function Stepper({
   );
 }
 
-/** 정상가·인트로가·디자이너/소요시간·설명·태그 필드. 제목/사진은 포함하지 않는다. */
+/** 정상가·디자이너/소요시간·설명·태그 필드. 제목/사진은 포함하지 않는다. */
 export function DesignSettingsFields({
   designers,
   value,
@@ -302,13 +298,8 @@ export function DesignSettingsFields({
   onChange: (patch: Partial<DesignSettings>) => void;
 }) {
   const multiDesigner = designers.length >= 2;
-  const { price, introPrice, duration, description, tags, picked, pickedPrice, options } = value;
+  const { price, duration, description, tags, picked, pickedPrice, options } = value;
   const basePrice = clampPrice(Number(price) || 0);
-  const introNum = Number(introPrice);
-  const introPct =
-    introPrice.trim() !== '' && basePrice > 0 && introNum > 0 && introNum < basePrice
-      ? Math.round((1 - introNum / basePrice) * 100)
-      : null;
   const labelCls = 'mb-1 block text-caption font-semibold text-primary-50';
   const fieldCls =
     'w-full rounded-md border border-neutral-300 px-3 py-2 text-body-sm outline-none focus:border-secondary';
@@ -325,14 +316,7 @@ export function DesignSettingsFields({
     }
     onChange({ picked: nextPicked, pickedPrice: nextPrice });
   };
-  // 정상가를 바꾸면 인트로가도 같은 값으로 따라 채운다.
-  // 단 인트로가가 정상가와 다르게 들어가 있으면(사장님이 할인가를 직접 넣은 상태) 건드리지 않는다.
-  // "손댔는지"를 별도 플래그로 들고 있지 않고 현재 값만으로 판정하므로,
-  // 이전 설정 불러오기로 할인가가 채워진 경우에도 자동으로 보존된다.
-  const setPrice = (next: string) => {
-    const introFollowsPrice = introPrice.trim() === '' || introPrice === price;
-    onChange(introFollowsPrice ? { price: next, introPrice: next } : { price: next });
-  };
+  const setPrice = (next: string) => onChange({ price: next });
 
   const setDesignerDuration = (id: string, minutes: number) =>
     onChange({ picked: { ...picked, [id]: clampDuration(minutes) } });
@@ -355,27 +339,11 @@ export function DesignSettingsFields({
             className={fieldCls}
           />
         </div>
-        <div className={multiDesigner ? 'mt-3' : 'min-w-[8rem] flex-1'}>
-          <label className={labelCls}>이달의 아트 인트로가(원)</label>
-          <input
-            type="number"
-            min={0}
-            step={PRICE_INPUT_STEP}
-            value={introPrice}
-            onChange={(e) => onChange({ introPrice: e.target.value })}
-            placeholder="비우면 정상가"
-            className={fieldCls}
-          />
-          {introPct !== null && (
-            <p className="mt-1 text-caption font-semibold text-secondary">정상가 대비 {introPct}% 할인</p>
-          )}
+        {/* 다인샵에서도 보여야 한다 — 아래 디자이너별 안내문이 이 기본값(소요시간 {duration}분)을 가리킨다. */}
+        <div className={multiDesigner ? 'mt-3' : ''}>
+          <label className={labelCls}>기본 소요시간</label>
+          <Stepper value={duration} onChange={(v) => onChange({ duration: clampDuration(v) })} suffix="분" />
         </div>
-        {!multiDesigner && (
-          <div>
-            <label className={labelCls}>기본 소요시간</label>
-            <Stepper value={duration} onChange={(v) => onChange({ duration: clampDuration(v) })} suffix="분" />
-          </div>
-        )}
       </div>
 
       {multiDesigner && (
