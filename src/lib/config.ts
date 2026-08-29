@@ -26,6 +26,7 @@ const API_ORIGIN = API_BASE_URL.replace(/\/api\/v1$/, '');
  * 빌드 타임에 상수로 확정되어 시드 자격증명 리터럴이 번들에 포함되지 않는다.
  */
 const IS_PRODUCTION_BUILD = process.env.NODE_ENV === 'production';
+const POSTHOG_KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY?.trim() ?? '';
 
 export const config = {
   /** `.../api/v1` 까지 포함한 base URL (사람이 읽는 용도/표시용) */
@@ -34,6 +35,12 @@ export const config = {
   apiOrigin: API_ORIGIN,
   appName: process.env.NEXT_PUBLIC_APP_NAME ?? '스네일 사장님',
   apiDocsUrl: process.env.NEXT_PUBLIC_API_DOCS_URL ?? '',
+  analytics: {
+    // 키와 명시적 스위치가 모두 있어야 전송한다. 로컬/PR 빌드는 기본 no-op이다.
+    enabled: process.env.NEXT_PUBLIC_ANALYTICS_ENABLED === '1' && POSTHOG_KEY.length > 0,
+    posthogKey: POSTHOG_KEY,
+    posthogHost: process.env.NEXT_PUBLIC_POSTHOG_HOST?.trim() || 'https://us.i.posthog.com',
+  },
   /** 브라우저 런타임 여부 */
   isBrowser: typeof window !== 'undefined',
   /**

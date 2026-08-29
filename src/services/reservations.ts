@@ -8,7 +8,28 @@
  *  - terminal(rejected, cancelled_by_user, cancelled_by_shop, no_show, completed)는 읽기 전용
  */
 import { apiClient } from '@/lib/api-client';
-import type { ReservationStatus } from './types';
+import { captureAnalytics } from '@/lib/analytics';
+import type { Reservation, ReservationStatus } from './types';
+
+type ReservationAction =
+  | 'accept'
+  | 'reject'
+  | 'confirm_payment'
+  | 'complete'
+  | 'no_show'
+  | 'cancel';
+
+async function trackTransition(
+  action: ReservationAction,
+  request: () => Promise<Reservation>,
+): Promise<Reservation> {
+  const reservation = await request();
+  captureAnalytics('reservation_status_changed', {
+    action,
+    target_status: reservation.status,
+  });
+  return reservation;
+}
 
 export interface ReservationListQuery {
   status?: ReservationStatus;
@@ -32,45 +53,57 @@ export async function getReservation(reservationId: string) {
 
 /** 예약 승인 (pending → ...). ownerReply를 주면 고객 문의에 대한 답변으로 함께 저장된다. */
 export async function accept(reservationId: string, ownerReply?: string) {
-  return apiClient.post('/api/v1/shops/me/reservations/{reservation_id}/accept', {
-    params: { reservation_id: reservationId },
-    body: ownerReply ? { owner_reply: ownerReply } : undefined,
-  });
+  return trackTransition('accept', () =>
+    apiClient.post('/api/v1/shops/me/reservations/{reservation_id}/accept', {
+      params: { reservation_id: reservationId },
+      body: ownerReply ? { owner_reply: ownerReply } : undefined,
+    }),
+  );
 }
 
 /** 예약 거절 (reject_reason 필수) */
 export async function reject(reservationId: string, rejectReason: string) {
-  return apiClient.post('/api/v1/shops/me/reservations/{reservation_id}/reject', {
-    params: { reservation_id: reservationId },
-    body: { reject_reason: rejectReason },
-  });
+  return trackTransition('reject', () =>
+    apiClient.post('/api/v1/shops/me/reservations/{reservation_id}/reject', {
+      params: { reservation_id: reservationId },
+      body: { reject_reason: rejectReason },
+    }),
+  );
 }
 
 /** 결제 확인 (payment_pending → confirmed) */
 export async function confirmPayment(reservationId: string) {
-  return apiClient.post('/api/v1/shops/me/reservations/{reservation_id}/confirm-payment', {
-    params: { reservation_id: reservationId },
-  });
+  return trackTransition('confirm_payment', () =>
+    apiClient.post('/api/v1/shops/me/reservations/{reservation_id}/confirm-payment', {
+      params: { reservation_id: reservationId },
+    }),
+  );
 }
 
 /** 방문 완료 처리 (confirmed → completed) */
 export async function complete(reservationId: string) {
-  return apiClient.post('/api/v1/shops/me/reservations/{reservation_id}/complete', {
-    params: { reservation_id: reservationId },
-  });
+  return trackTransition('complete', () =>
+    apiClient.post('/api/v1/shops/me/reservations/{reservation_id}/complete', {
+      params: { reservation_id: reservationId },
+    }),
+  );
 }
 
 /** 노쇼 처리 (예약 시작 30분 후부터 가능) */
 export async function noShow(reservationId: string) {
-  return apiClient.post('/api/v1/shops/me/reservations/{reservation_id}/no-show', {
-    params: { reservation_id: reservationId },
-  });
+  return trackTransition('no_show', () =>
+    apiClient.post('/api/v1/shops/me/reservations/{reservation_id}/no-show', {
+      params: { reservation_id: reservationId },
+    }),
+  );
 }
 
 /** 샵에 의한 예약 취소 (cancel_reason 필수) */
 export async function cancel(reservationId: string, cancelReason: string) {
-  return apiClient.post('/api/v1/shops/me/reservations/{reservation_id}/cancel', {
-    params: { reservation_id: reservationId },
-    body: { cancel_reason: cancelReason },
-  });
+  return trackTransition('cancel', () =>
+    apiClient.post('/api/v1/shops/me/reservations/{reservation_id}/cancel', {
+      params: { reservation_id: reservationId },
+      body: { cancel_reason: cancelReason },
+    }),
+  );
 }

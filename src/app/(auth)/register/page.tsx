@@ -19,7 +19,7 @@ import { authApi } from '@/services';
 import { useAuth } from '@/hooks/use-auth';
 import { toUserMessage } from '@/lib/error-messages';
 import { resolveAuthedHome } from '@/lib/auth-routing';
-import { PRIVACY_VERSION, TERMS_VERSION } from '@/lib/legal';
+import { PRIVACY_URL, PRIVACY_VERSION, TERMS_URL, TERMS_VERSION } from '@/lib/legal';
 import { instagramToEmail, isValidInstagramHandle, normalizeInstagramHandle } from '@/lib/beta-account';
 
 const registerSchema = z
@@ -133,7 +133,25 @@ export default function RegisterPage() {
       <label className="flex items-start gap-2 text-body-sm">
         <input type="checkbox" className="mt-0.5" {...register('agree')} />
         <span>
-          [필수] 이용약관 및 개인정보 처리방침에 동의합니다.
+          [필수]{' '}
+          <a
+            href={TERMS_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="underline underline-offset-4"
+          >
+            이용약관
+          </a>{' '}
+          및{' '}
+          <a
+            href={PRIVACY_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="underline underline-offset-4"
+          >
+            개인정보 처리방침
+          </a>
+          에 동의합니다.
           <span className="text-primary-50">
             {' '}
             (약관 v{TERMS_VERSION} · 개인정보 v{PRIVACY_VERSION})

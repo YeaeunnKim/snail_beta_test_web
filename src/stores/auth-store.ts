@@ -11,6 +11,7 @@ import type { Owner, OwnerLoginRequest } from '@/services/types';
 import { clearTokens, hasTokens } from '@/lib/token';
 import { config } from '@/lib/config';
 import { onAuthExpired } from '@/lib/api-client';
+import { captureAnalytics, identifyAnalyticsOwner, resetAnalytics } from '@/lib/analytics';
 
 export type AuthStatus = 'idle' | 'loading' | 'authenticated' | 'unauthenticated';
 
@@ -36,6 +37,8 @@ export const useAuthStore = create<AuthState>((set) => ({
       await authApi.login(credentials);
       const owner = await ownersApi.getMe();
       set({ owner, status: 'authenticated' });
+      identifyAnalyticsOwner(owner.id);
+      captureAnalytics('owner_login_succeeded');
       return owner;
     } catch (e) {
       set({ status: 'unauthenticated' });
@@ -88,6 +91,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   logout: () => {
     clearTokens();
+    resetAnalytics();
     set({ owner: null, status: 'unauthenticated' });
   },
 }));

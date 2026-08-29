@@ -15,7 +15,12 @@ import { create } from 'zustand';
 import { designsApi, uploadsApi } from '@/services';
 import type { Designer } from '@/services';
 import { toUserMessage } from '@/lib/error-messages';
-import { clampDuration, saveBulkSettings, type DesignSettings } from '@/app/dashboard/designs/design-settings';
+import { captureAnalytics } from '@/lib/analytics';
+import {
+  clampDuration,
+  saveBulkSettings,
+  type DesignSettings,
+} from '@/app/dashboard/designs/design-settings';
 
 export interface SortJob {
   folderId: string;
@@ -86,7 +91,10 @@ export const useSortJobs = create<SortJobsState>((set, get) => ({
         const j = s.jobs[folderId];
         if (!j) return s;
         return {
-          jobs: { ...s.jobs, [folderId]: { ...j, status: 'error', error: '이미지 업로드에 실패했어요.' } },
+          jobs: {
+            ...s.jobs,
+            [folderId]: { ...j, status: 'error', error: '이미지 업로드에 실패했어요.' },
+          },
         };
       });
       return;
@@ -113,30 +121,41 @@ export const useSortJobs = create<SortJobsState>((set, get) => ({
         designer_ids: designerIds,
         owner_tags: settings.tags,
       });
+      captureAnalytics('design_sort_requested', {
+        requested_image_count: files.length,
+        uploaded_image_count: keys.length,
+      });
       // 폴더 공통설정 저장 → 이후 이 폴더에 추가 등록 시 재사용(기존 폴더 흐름과 동일).
       saveBulkSettings(`snail_bulk_settings:${folderId}`, settings);
       set((s) => {
         const j = s.jobs[folderId];
         if (!j) return s;
         return {
-          jobs: { ...s.jobs, [folderId]: { ...j, status: 'processing', total: res.count ?? keys.length } },
+          jobs: {
+            ...s.jobs,
+            [folderId]: { ...j, status: 'processing', total: res.count ?? keys.length },
+          },
         };
       });
     } catch (e) {
       set((s) => {
         const j = s.jobs[folderId];
         if (!j) return s;
-        return { jobs: { ...s.jobs, [folderId]: { ...j, status: 'error', error: toUserMessage(e) } } };
+        return {
+          jobs: { ...s.jobs, [folderId]: { ...j, status: 'error', error: toUserMessage(e) } },
+        };
       });
     }
   },
 
-  markDone: (folderId) =>
-    set((s) => {
-      const j = s.jobs[folderId];
-      if (!j || j.status !== 'processing') return s;
-      return { jobs: { ...s.jobs, [folderId]: { ...j, status: 'done' } } };
-    }),
+  markDone: (folderId) => {
+    const job = get().jobs[folderId];
+    if (!job || job.status !== 'processing') return;
+    set((s) => ({
+      jobs: { ...s.jobs, [folderId]: { ...job, status: 'done' } },
+    }));
+    captureAnalytics('design_sort_completed', { image_count: job.total });
+  },
 
   clearJob: (folderId) =>
     set((s) => {
