@@ -21,6 +21,7 @@ import { resolveAuthedHome } from '@/lib/auth-routing';
 import { BusinessHoursField } from '@/components/business-hours-field';
 import { defaultBusinessHours, toEntries, type BusinessHoursValue } from '@/lib/business-hours';
 import { SHOP_REGIONS } from '@/lib/regions';
+import { DEPOSIT_AMOUNT_MAX, DEPOSIT_AMOUNT_MAX_MESSAGE } from '@/lib/payment-policy';
 
 const onboardingSchema = z
   .object({
@@ -28,7 +29,12 @@ const onboardingSchema = z
     isMulti: z.boolean(),
     designers: z.array(z.object({ name: z.string() })),
     paymentMethod: z.enum(['on_site', 'bank_transfer_guide']),
-    depositAmount: z.coerce.number().int().min(0).optional(),
+    depositAmount: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .max(DEPOSIT_AMOUNT_MAX, DEPOSIT_AMOUNT_MAX_MESSAGE)
+      .optional(),
     bankName: z.string().optional(),
     bankAccountNumber: z.string().optional(),
     bankAccountHolder: z.string().optional(),
@@ -307,7 +313,14 @@ export default function OnboardingPage() {
               <div className="mt-3 space-y-3 rounded-xl border border-neutral-200 bg-neutral-50 p-3">
                 <div>
                   <label className="mb-1 block text-caption font-semibold text-primary-50">예약금(원)</label>
-                  <input type="number" min={0} className={inputCls} placeholder="예: 20000" {...register('depositAmount')} />
+                  <input
+                    type="number"
+                    min={0}
+                    max={DEPOSIT_AMOUNT_MAX}
+                    className={inputCls}
+                    placeholder="예: 20000"
+                    {...register('depositAmount')}
+                  />
                   {errors.depositAmount && <p className="mt-1 text-caption text-danger">{errors.depositAmount.message}</p>}
                 </div>
                 <div className="flex gap-2">

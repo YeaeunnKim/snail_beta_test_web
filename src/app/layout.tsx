@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import '@/styles/globals.css';
 import { AuthBootstrap } from '@/components/auth-bootstrap';
+import { AnalyticsProvider } from '@/components/analytics-provider';
 import { QueryProvider } from '@/components/query-provider';
 import { config } from '@/lib/config';
 import { pretendard } from '@/lib/fonts';
@@ -14,9 +15,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="ko" className={pretendard.variable}>
       <body>
-        <QueryProvider>
-          <AuthBootstrap>{children}</AuthBootstrap>
-        </QueryProvider>
+        <AnalyticsProvider>
+          <QueryProvider>
+            <AuthBootstrap>{children}</AuthBootstrap>
+          </QueryProvider>
+        </AnalyticsProvider>
       </body>
     </html>
   );
