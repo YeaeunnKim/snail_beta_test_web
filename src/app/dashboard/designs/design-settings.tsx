@@ -38,6 +38,20 @@ export const OPTION_KINDS = [
 ] as const;
 export type OptionKind = (typeof OPTION_KINDS)[number]['value'];
 
+/**
+ * 자주 쓰이는 옵션 이름 프리셋. 눌러서 이름만 채워 넣는 시작점이고, 저장되면 평범한
+ * design_options row라 이후 이름·금액·시간 전부 자유롭게 고칠 수 있다(별도 테이블 아님).
+ */
+export const COMMON_OPTION_PRESETS = [
+  { kind: 'removal', name: '자샵 제거' },
+  { kind: 'removal', name: '타샵 제거' },
+  { kind: 'removal', name: '연장 제거' },
+  { kind: 'care', name: '리페어' },
+  { kind: 'extend', name: '랩핑' },
+  { kind: 'extend', name: '전체 연장' },
+  { kind: 'extend', name: '부분 연장(개수 요청사항에 기재)' },
+] as const satisfies readonly { kind: OptionKind; name: string }[];
+
 /** 폼에서 편집하는 추가옵션 한 줄. id가 있으면 기존(수정 대상) 옵션. */
 export interface OptionRow {
   uid: string;
@@ -486,6 +500,17 @@ export function OptionsField({ options, onChange }: { options: OptionRow[]; onCh
         durationDelta: OPTION_DURATION_DEFAULT,
       },
     ]);
+  const addPreset = (preset: (typeof COMMON_OPTION_PRESETS)[number]) =>
+    onChange([
+      ...options,
+      {
+        uid: crypto.randomUUID(),
+        kind: preset.kind,
+        name: preset.name,
+        priceDelta: OPTION_PRICE_DEFAULT,
+        durationDelta: OPTION_DURATION_DEFAULT,
+      },
+    ]);
 
   const startDrag = (e: React.PointerEvent, uid: string) => {
     e.preventDefault(); // 드래그 중 텍스트 선택/스크롤 방지
@@ -521,6 +546,18 @@ export function OptionsField({ options, onChange }: { options: OptionRow[]; onCh
         연장·제거·케어 등 추가 시술이에요. 고객이 앱에서 옵션을 고르면 그만큼 가격과 소요시간이 올라갑니다. ⋮⋮ 를 잡고
         끌어 순서를 바꿀 수 있어요.
       </p>
+      <div className="mb-3 flex flex-wrap gap-1.5">
+        {COMMON_OPTION_PRESETS.map((preset) => (
+          <button
+            key={preset.name}
+            type="button"
+            onClick={() => addPreset(preset)}
+            className="rounded-full border border-neutral-300 px-3 py-1 text-caption text-primary-50 hover:border-secondary hover:text-secondary"
+          >
+            + {preset.name}
+          </button>
+        ))}
+      </div>
       <div className="space-y-2">
         {options.map((o) => (
           <div
