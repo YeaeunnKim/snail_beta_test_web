@@ -9,8 +9,6 @@
  *  - 폴더(만들기/선택)로 정리 — 예: "7월 이달의 아트"
  *  - 사장님 태그: 단어 입력→등록(엔터), X로 삭제, 최대 10개
  *  - 디자이너 선택 시 디자이너별 소요시간을 +/-로 조정(미조정 시 기본 소요시간)
- *
- * 목록: 카드별 AI 분석 상태 배지(pending/in_progress면 폴링), failed 시 재분석.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
@@ -21,10 +19,17 @@ import { collectAll } from '@/lib/api-client';
 import { toUserMessage } from '@/lib/error-messages';
 import { useMyShop } from '@/hooks/use-my-shop';
 // 설정 입력 관련 상수·타입·헬퍼·컴포넌트는 ./design-settings 로 추출해
-// 새 디자인/대량 등록/수정/정렬 화면이 ★완전히 동일하게★ 재사용한다.
+// 새 디자인/대량 등록/수정 화면이 ★완전히 동일하게★ 재사용한다.
 import {
+  COMMON_OPTION_PRESETS,
+  OPTION_DURATION_DEFAULT,
+  OPTION_DURATION_STEP,
   OPTION_KINDS,
+  OPTION_PRICE_DEFAULT,
+  PRICE_STEP,
+  Stepper,
   clampDuration,
+  clampOptionDuration,
   createOptionsFor,
   defaultBulkSettings,
   loadBulkSettings,
@@ -34,7 +39,6 @@ import {
   DesignSettingsFields,
 } from './design-settings';
 import type { OptionRow, OptionKind, DesignSettings } from './design-settings';
-import { useSortJobs } from '@/stores/sort-jobs';
 import { ImageCropper } from '@/components/ImageCropper';
 
 interface PhotoItem {
@@ -67,7 +71,7 @@ type FolderView = { label: string; folderId?: string; unfiled?: boolean };
 export default function DesignsPage() {
   const qc = useQueryClient();
   const [showCreate, setShowCreate] = useState(false);
-  const [showRefine, setShowRefine] = useState(false); // "사진 다듬기"(구 디자인 정렬) 인라인 폼
+  const [showBulkOptions, setShowBulkOptions] = useState(false); // "옵션 일괄 적용" 인라인 패널
   const [open, setOpen] = useState<FolderView | null>(null); // null = 폴더 목록
 
   const designers = useQuery({ queryKey: ['designers'], queryFn: () => designersApi.listDesigners() });
@@ -83,20 +87,6 @@ export default function DesignsPage() {
 
   const folders = useMemo(() => foldersQuery.data ?? [], [foldersQuery.data]);
   const unfiledCount = unfiledQuery.data?.length ?? 0;
-
-  // "디자인 정렬"에서 /dashboard/designs?folder=<id> 로 넘어오면 그 폴더를 자동으로 연다.
-  const [pendingFolder, setPendingFolder] = useState<string | null>(null);
-  useEffect(() => {
-    setPendingFolder(new URLSearchParams(window.location.search).get('folder'));
-  }, []);
-  useEffect(() => {
-    if (!pendingFolder) return;
-    const f = folders.find((x) => x.id === pendingFolder);
-    if (!f) return; // 폴더 목록이 아직 안 왔으면 다음 렌더에서 다시 시도
-    setOpen({ label: f.name, folderId: f.id });
-    setPendingFolder(null);
-    window.history.replaceState(null, '', '/dashboard/designs'); // URL 정리(뒤로가기 정상화)
-  }, [pendingFolder, folders]);
 
   // 기본 폴더(7월의 아트·8월의 아트)가 없으면 자동 생성 (샵마다 1회)
   const { data: shop } = useMyShop();
@@ -142,25 +132,27 @@ export default function DesignsPage() {
         </div>
         <div className="flex flex-col items-stretch gap-2">
           <button
-            onClick={() => {
-              setShowCreate((v) => !v);
-              setShowRefine(false);
-            }}
+            onClick={() => setShowCreate((v) => !v)}
             className="rounded-md bg-secondary px-4 py-2 text-body-sm font-semibold text-white"
           >
             {showCreate ? '닫기' : '+ 새 디자인'}
           </button>
           <button
-            onClick={() => {
-              setShowRefine((v) => !v);
-              setShowCreate(false);
-            }}
-            className="rounded-md border border-secondary px-4 py-2 text-center text-body-sm font-semibold text-secondary hover:bg-secondary/5"
+            onClick={() => setShowBulkOptions((v) => !v)}
+            className="rounded-md border border-neutral-300 px-4 py-2 text-center text-body-sm font-semibold text-primary hover:bg-neutral-50"
           >
-            {showRefine ? '닫기' : '사진 다듬기'}
+            {showBulkOptions ? '닫기' : '옵션 관리'}
           </button>
         </div>
       </div>
+
+      {showBulkOptions && (
+        <OptionManager
+          folders={folders}
+          onClose={() => setShowBulkOptions(false)}
+          onDone={refetchAll}
+        />
+      )}
 
       {showCreate && (
         <CreateForm
@@ -171,20 +163,6 @@ export default function DesignsPage() {
           onCreated={() => {
             refetchAll();
             setShowCreate(false);
-          }}
-        />
-      )}
-
-      {showRefine && (
-        <RefineForm
-          designers={designers.data ?? []}
-          // 새 디자인과 동일: 폴더 안에서 열면 그 폴더 자동지정, 폴더 목록/미분류면 직접 선택.
-          defaultFolderId={open && !open.unfiled ? (open.folderId ?? '') : ''}
-          onStarted={(folder) => {
-            setShowRefine(false);
-            // 결과가 채워지는 폴더로 이동해 진행상황 배너를 보여준다.
-            setOpen({ label: folder.name, folderId: folder.id });
-            refetchAll();
           }}
         />
       )}
@@ -438,30 +416,14 @@ function NewFolderCard() {
 
 function FolderDesigns({ view, onBack }: { view: FolderView; onBack: () => void }) {
   const qc = useQueryClient();
-  // 이 폴더의 백그라운드 정렬 작업 진행상황 — stores/sort-jobs (탭 이동해도 유지됨).
-  const job = useSortJobs((s) => (view.folderId ? s.jobs[view.folderId] : undefined));
-  const clearJob = useSortJobs((s) => s.clearJob);
-  const markDone = useSortJobs((s) => s.markDone);
-  const jobActive = job?.status === 'uploading' || job?.status === 'processing';
   const q = useQuery({
     queryKey: ['designs', view.unfiled ? 'unfiled' : 'folder', view.folderId ?? 'none'],
     queryFn: () =>
       collectAll<Design>((cursor) =>
         designsApi.listDesigns({ folder_id: view.folderId, unfiled: view.unfiled, limit: 50, cursor }),
       ),
-    // 업로드/정렬 처리 중이면 새로 생성되는 디자인이 실시간으로 보이도록 주기적으로 갱신.
-    refetchInterval: jobActive ? 2000 : false,
   });
   const designs = q.data ?? [];
-
-  // 정렬 진행률: 폴더에 늘어난 디자인 수로 계산(백엔드가 백그라운드로 생성).
-  const sortProduced = job ? Math.max(0, designs.length - job.baseCount) : 0;
-  const sortDone = job ? Math.min(job.total, sortProduced) : 0;
-  useEffect(() => {
-    if (job?.status === 'processing' && job.total > 0 && sortDone >= job.total && view.folderId) {
-      markDone(view.folderId);
-    }
-  }, [job?.status, job?.total, sortDone, view.folderId, markDone]);
 
   const designersQuery = useQuery({ queryKey: ['designers'], queryFn: () => designersApi.listDesigners() });
   const [bulkFiles, setBulkFiles] = useState<File[] | null>(null); // 비어있지 않으면 일괄 모달 오픈
@@ -486,71 +448,6 @@ function FolderDesigns({ view, onBack }: { view: FolderView; onBack: () => void 
         <h2 className="text-heading-md font-bold">{view.label}</h2>
         <span className="text-body-sm text-primary-50">{designs.length}개</span>
       </div>
-
-      {/* 디자인 정렬 진행상황 배너 */}
-      {job && (
-        <div
-          className={`flex items-center gap-3 rounded-lg border p-4 ${
-            job.status === 'error'
-              ? 'border-danger/40 bg-danger-bg'
-              : jobActive
-                ? 'border-secondary/40 bg-secondary/5'
-                : 'border-neutral-200 bg-white'
-          }`}
-        >
-          {jobActive ? (
-            // TODO: 사장님이 제공할 로딩 PNG로 교체하세요.
-            //   예: <img src="/loading-snail.png" alt="다듬는 중" className="h-9 w-9 shrink-0 animate-spin" />
-            //   지금은 자리표시용 원형 스피너입니다(회전 애니메이션 동일).
-            <div
-              className="h-9 w-9 shrink-0 animate-spin rounded-full border-4 border-secondary/20 border-t-secondary"
-              role="status"
-              aria-label="다듬는 중"
-            />
-          ) : job.status === 'error' ? (
-            <span className="text-2xl">⚠️</span>
-          ) : designs[0]?.thumbnail_url ? (
-            // 완료: 방금 다듬어진 결과 사진(목록 최상단 = 가장 최근 생성)을 미리보기로.
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={designs[0].thumbnail_url}
-              alt="다듬은 결과"
-              className="h-12 w-12 shrink-0 rounded-md border border-neutral-200 object-cover"
-            />
-          ) : (
-            <span className="text-2xl">✅</span>
-          )}
-          <div className="min-w-0 flex-1">
-            <p className="text-body-sm font-semibold text-primary">
-              {job.status === 'uploading'
-                ? `사진 올리는 중… ${job.uploaded}/${job.total}`
-                : job.status === 'processing'
-                  ? `다듬는 중.. ${sortDone}/${job.total}`
-                  : job.status === 'error'
-                    ? '다듬기를 시작하지 못했어요'
-                    : '완료되었어요.'}
-            </p>
-            <p className="text-caption text-primary-50">
-              {job.status === 'uploading'
-                ? '원본 사진을 올리고 있어요.'
-                : job.status === 'processing'
-                  ? '사진 한 장당 약 1분 걸릴 수 있어요. 이 화면을 떠나도 계속 처리돼요. 완료되면 여기에 나타나요.'
-                  : job.status === 'error'
-                    ? (job.error ?? '잠시 후 다시 시도해 주세요.')
-                    : '아래에서 확인해 보세요.'}
-            </p>
-          </div>
-          {(job.status === 'done' || job.status === 'error') && (
-            <button
-              type="button"
-              onClick={() => view.folderId && clearJob(view.folderId)}
-              className="shrink-0 rounded-md border border-neutral-300 px-3 py-1.5 text-caption font-semibold text-primary-50 hover:text-primary"
-            >
-              {job.status === 'done' ? '확인' : '닫기'}
-            </button>
-          )}
-        </div>
-      )}
 
       {canBulk && (
         <>
@@ -589,6 +486,362 @@ function FolderDesigns({ view, onBack }: { view: FolderView; onBack: () => void 
           ))}
         </ul>
       )}
+    </div>
+  );
+}
+
+/**
+ * 옵션 관리 — 샵 전체/폴더/디자인 범위를 골라 "자주 쓰는 옵션"을 일괄 등록하거나
+ * 이미 있는 옵션을 그 자리에서 수정·삭제한다. 등록/수정 결과는 전부 평범한
+ * design_options row라(별도 테이블 없음) 이후 디자인별 화면에서도 자유롭게 손댈 수 있다.
+ */
+function OptionManager({
+  folders,
+  onClose,
+  onDone,
+}: {
+  folders: DesignFolder[];
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const allDesignsQuery = useQuery({
+    queryKey: ['designs', 'all-for-options'],
+    queryFn: () => collectAll<Design>((cursor) => designsApi.listDesigns({ limit: 50, cursor })),
+  });
+  const allDesigns = useMemo(() => allDesignsQuery.data ?? [], [allDesignsQuery.data]);
+
+  const [scopeType, setScopeType] = useState<'shop' | 'folder' | 'design'>('shop');
+  const [scopeFolderId, setScopeFolderId] = useState('');
+  const [scopeDesignId, setScopeDesignId] = useState('');
+
+  const scopedDesigns = useMemo(() => {
+    if (scopeType === 'folder') return allDesigns.filter((d) => d.folder_id === scopeFolderId);
+    if (scopeType === 'design') return allDesigns.filter((d) => d.id === scopeDesignId);
+    return allDesigns;
+  }, [allDesigns, scopeType, scopeFolderId, scopeDesignId]);
+
+  // --- 프리셋 일괄 등록 ---
+  const [mode, setMode] = useState<'missing-only' | 'all'>('missing-only');
+  const [selectedPresets, setSelectedPresets] = useState<Set<string>>(
+    () => new Set(COMMON_OPTION_PRESETS.map((p) => p.name)),
+  );
+  const [applying, setApplying] = useState(false);
+  const [applyResult, setApplyResult] = useState<{ designCount: number; optionCount: number } | null>(
+    null,
+  );
+  const [applyError, setApplyError] = useState<string | null>(null);
+
+  const togglePreset = (name: string) => {
+    setSelectedPresets((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
+  };
+
+  async function applyPresets(presetNames: string[]) {
+    setApplying(true);
+    setApplyError(null);
+    setApplyResult(null);
+    try {
+      const targets =
+        mode === 'missing-only'
+          ? scopedDesigns.filter((d) => (d.options?.length ?? 0) === 0)
+          : scopedDesigns;
+      const presets = COMMON_OPTION_PRESETS.filter((p) => presetNames.includes(p.name));
+
+      let optionCount = 0;
+      for (const design of targets) {
+        const baseSort = design.options?.length ?? 0;
+        for (let i = 0; i < presets.length; i += 1) {
+          const preset = presets[i];
+          const row: OptionRow = {
+            uid: '',
+            kind: preset.kind,
+            name: preset.name,
+            priceDelta: OPTION_PRICE_DEFAULT,
+            durationDelta: OPTION_DURATION_DEFAULT,
+          };
+          await designsApi.createOption(design.id, toOptionBody(row, baseSort + i));
+          optionCount += 1;
+        }
+      }
+      setApplyResult({ designCount: targets.length, optionCount });
+      await allDesignsQuery.refetch();
+      onDone();
+    } catch (e) {
+      setApplyError(toUserMessage(e));
+    } finally {
+      setApplying(false);
+    }
+  }
+
+  // --- 기존 옵션 수정/삭제 ---
+  const [rowError, setRowError] = useState<string | null>(null);
+  const [savingKey, setSavingKey] = useState<string | null>(null);
+
+  async function patchOption(
+    designId: string,
+    optionId: string,
+    body: { kind?: OptionKind; name?: string; price_delta?: number; duration_delta_min?: number },
+  ) {
+    const key = `${designId}:${optionId}`;
+    setSavingKey(key);
+    setRowError(null);
+    try {
+      await designsApi.updateOption(designId, optionId, body);
+      await allDesignsQuery.refetch();
+    } catch (e) {
+      setRowError(toUserMessage(e));
+    } finally {
+      setSavingKey(null);
+    }
+  }
+
+  async function removeOption(designId: string, optionId: string) {
+    const key = `${designId}:${optionId}`;
+    setSavingKey(key);
+    setRowError(null);
+    try {
+      await designsApi.deleteOption(designId, optionId);
+      await allDesignsQuery.refetch();
+    } catch (e) {
+      setRowError(toUserMessage(e));
+    } finally {
+      setSavingKey(null);
+    }
+  }
+
+  const designsWithOptions = scopedDesigns.filter((d) => (d.options?.length ?? 0) > 0);
+  const totalOptionCount = designsWithOptions.reduce((s, d) => s + (d.options?.length ?? 0), 0);
+
+  return (
+    <div className="space-y-6 rounded-lg border border-neutral-200 bg-white p-4">
+      <div>
+        <h2 className="text-body-sm font-semibold text-primary">옵션 관리</h2>
+        <p className="mt-1 text-caption text-primary-50">
+          범위를 고르고, 자주 쓰는 옵션을 일괄 등록하거나 기존 옵션을 바로 수정·삭제할 수
+          있어요. 저장되면 각 디자인 수정 화면에서도 그대로 보입니다.
+        </p>
+      </div>
+
+      {/* 범위 선택 */}
+      <div className="space-y-2">
+        <label className="flex flex-wrap items-center gap-2 text-body-sm text-primary">
+          <input type="radio" checked={scopeType === 'shop'} onChange={() => setScopeType('shop')} />
+          샵 전체
+        </label>
+        <label className="flex flex-wrap items-center gap-2 text-body-sm text-primary">
+          <input
+            type="radio"
+            checked={scopeType === 'folder'}
+            onChange={() => setScopeType('folder')}
+          />
+          폴더 선택
+          {scopeType === 'folder' && (
+            <select
+              value={scopeFolderId}
+              onChange={(e) => setScopeFolderId(e.target.value)}
+              className="rounded-md border border-neutral-300 px-2 py-1 text-caption"
+            >
+              <option value="">폴더를 고르세요</option>
+              {folders.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.name}
+                </option>
+              ))}
+            </select>
+          )}
+        </label>
+        <label className="flex flex-wrap items-center gap-2 text-body-sm text-primary">
+          <input
+            type="radio"
+            checked={scopeType === 'design'}
+            onChange={() => setScopeType('design')}
+          />
+          디자인 선택
+          {scopeType === 'design' && (
+            <select
+              value={scopeDesignId}
+              onChange={(e) => setScopeDesignId(e.target.value)}
+              className="rounded-md border border-neutral-300 px-2 py-1 text-caption"
+            >
+              <option value="">디자인을 고르세요</option>
+              {allDesigns.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.title}
+                </option>
+              ))}
+            </select>
+          )}
+        </label>
+        <p className="text-caption text-primary-50">
+          {allDesignsQuery.isLoading ? '디자인 불러오는 중…' : `대상 디자인 ${scopedDesigns.length}개`}
+        </p>
+      </div>
+
+      {/* 프리셋 일괄 등록 */}
+      <div className="space-y-2 border-t border-neutral-200 pt-4">
+        <p className="text-body-sm font-semibold text-primary">자주 쓰는 옵션 일괄 등록</p>
+        <div className="space-y-1">
+          <label className="flex items-center gap-2 text-caption text-primary">
+            <input
+              type="radio"
+              checked={mode === 'missing-only'}
+              onChange={() => setMode('missing-only')}
+            />
+            옵션이 하나도 없는 디자인만
+          </label>
+          <label className="flex items-center gap-2 text-caption text-primary">
+            <input type="radio" checked={mode === 'all'} onChange={() => setMode('all')} />
+            대상 전체에 추가 (기존 옵션은 그대로 두고 뒤에 덧붙임 — 중복될 수 있어요)
+          </label>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {COMMON_OPTION_PRESETS.map((preset) => (
+            <button
+              key={preset.name}
+              type="button"
+              onClick={() => togglePreset(preset.name)}
+              className={`rounded-full border px-3 py-1 text-caption ${
+                selectedPresets.has(preset.name)
+                  ? 'border-secondary bg-secondary/10 text-secondary'
+                  : 'border-neutral-300 text-primary-50'
+              }`}
+            >
+              {preset.name}
+            </button>
+          ))}
+        </div>
+        {applyError && <p className="text-caption text-red-600">{applyError}</p>}
+        {applyResult && (
+          <p className="text-caption text-secondary">
+            디자인 {applyResult.designCount}개에 옵션 {applyResult.optionCount}개 추가
+            완료했습니다.
+          </p>
+        )}
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => void applyPresets([...selectedPresets])}
+            disabled={applying || selectedPresets.size === 0 || scopedDesigns.length === 0}
+            className="rounded-md bg-secondary px-4 py-2 text-body-sm font-semibold text-white disabled:opacity-50"
+          >
+            {applying ? '적용 중…' : '선택한 옵션 적용'}
+          </button>
+          <button
+            type="button"
+            onClick={() => void applyPresets(COMMON_OPTION_PRESETS.map((p) => p.name))}
+            disabled={applying || scopedDesigns.length === 0}
+            className="rounded-md border border-secondary px-4 py-2 text-body-sm font-semibold text-secondary disabled:opacity-50"
+          >
+            {applying ? '적용 중…' : '전체 7개 한 번에 등록'}
+          </button>
+        </div>
+      </div>
+
+      {/* 기존 옵션 수정/삭제 */}
+      <div className="space-y-3 border-t border-neutral-200 pt-4">
+        <p className="text-body-sm font-semibold text-primary">현재 옵션 ({totalOptionCount}개)</p>
+        {rowError && <p className="text-caption text-red-600">{rowError}</p>}
+        {allDesignsQuery.isLoading ? (
+          <p className="text-caption text-primary-50">불러오는 중…</p>
+        ) : designsWithOptions.length === 0 ? (
+          <p className="text-caption text-primary-50">이 범위엔 옵션이 있는 디자인이 없어요.</p>
+        ) : (
+          <div className="space-y-4">
+            {designsWithOptions.map((design) => (
+              <div key={design.id} className="rounded-md border border-neutral-200 p-3">
+                <p className="mb-2 text-caption font-semibold text-primary">{design.title}</p>
+                <div className="space-y-2">
+                  {(design.options ?? []).map((option) => {
+                    const key = `${design.id}:${option.id}`;
+                    const saving = savingKey === key;
+                    return (
+                      <div key={option.id} className="flex flex-wrap items-center gap-2">
+                        <select
+                          value={option.kind}
+                          onChange={(e) =>
+                            void patchOption(design.id, option.id, {
+                              kind: e.target.value as OptionKind,
+                            })
+                          }
+                          disabled={saving}
+                          className="rounded-md border border-neutral-300 px-2 py-1 text-caption"
+                        >
+                          {OPTION_KINDS.map((k) => (
+                            <option key={k.value} value={k.value}>
+                              {k.label}
+                            </option>
+                          ))}
+                        </select>
+                        <input
+                          key={`${option.id}-${option.name}`}
+                          defaultValue={option.name}
+                          onBlur={(e) => {
+                            const next = e.target.value.trim();
+                            if (next && next !== option.name) {
+                              void patchOption(design.id, option.id, { name: next });
+                            }
+                          }}
+                          disabled={saving}
+                          className="min-w-[6rem] flex-1 rounded-md border border-neutral-300 px-2 py-1 text-caption"
+                        />
+                        <div className="flex items-center gap-1.5">
+                          <span className="shrink-0 text-caption text-primary-50">+</span>
+                          <Stepper
+                            value={option.price_delta}
+                            onChange={(v) =>
+                              void patchOption(design.id, option.id, { price_delta: Math.max(0, v) })
+                            }
+                            step={PRICE_STEP}
+                            suffix="원"
+                            ariaLabel="추가금액"
+                          />
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="shrink-0 text-caption text-primary-50">+</span>
+                          <Stepper
+                            value={option.duration_delta_min}
+                            onChange={(v) =>
+                              void patchOption(design.id, option.id, {
+                                duration_delta_min: clampOptionDuration(v),
+                              })
+                            }
+                            step={OPTION_DURATION_STEP}
+                            suffix="분"
+                            ariaLabel="추가시간"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => void removeOption(design.id, option.id)}
+                          disabled={saving}
+                          className="grid h-8 w-8 shrink-0 place-items-center rounded-md border border-neutral-300 text-primary-50 hover:bg-neutral-50"
+                          aria-label="옵션 삭제"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="flex gap-2 border-t border-neutral-200 pt-4">
+        <button
+          type="button"
+          onClick={onClose}
+          className="rounded-md border border-neutral-300 px-4 py-2 text-body-sm text-primary"
+        >
+          닫기
+        </button>
+      </div>
     </div>
   );
 }
@@ -925,266 +1178,6 @@ function CreateForm({
   );
 }
 
-/* ───────────── 사진 다듬기(구 디자인 정렬) ───────────── */
-
-const REFINE_INSTAGRAM_URL =
-  'https://www.instagram.com/s_nail_official?utm_source=ig_web_button_share_sheet&igsh=ZDNlZDc0MzIxNw==';
-
-/**
- * "사진 다듬기" 폼. 새 디자인 등록(CreateForm)과 같은 UI/설정을 쓰되,
- *  - 다듬을 사진은 딱 1장,
- *  - 등록 대신 백엔드 정렬(sort-jobs.startJob)로 넘겨 배경/정렬을 자동 처리한다.
- * 폴더 지정 규칙은 새 디자인과 동일(FolderField: 바깥이면 직접 선택/생성, 안이면 자동지정).
- */
-function RefineForm({
-  designers,
-  defaultFolderId = '',
-  onStarted,
-}: {
-  designers: Designer[];
-  defaultFolderId?: string;
-  onStarted: (folder: { id: string; name: string }) => void;
-}) {
-  const startJob = useSortJobs((s) => s.startJob);
-  const foldersQuery = useQuery({ queryKey: ['design-folders'], queryFn: () => designsApi.listFolders() });
-  const folders = useMemo(() => foldersQuery.data ?? [], [foldersQuery.data]);
-
-  const [file, setFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState('');
-  const [folderId, setFolderId] = useState(defaultFolderId);
-  const [settings, setSettings] = useState<DesignSettings>(() => defaultBulkSettings());
-  const [folderPreset, setFolderPreset] = useState<DesignSettings | null>(null);
-  const [formError, setFormError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-
-  // 미리보기 objectURL 누수 방지.
-  useEffect(() => () => { if (preview) URL.revokeObjectURL(preview); }, [preview]);
-
-  // 폴더를 고르면 그 폴더의 이전 공통설정을 불러올 수 있게 한다(새 디자인과 동일).
-  useEffect(() => {
-    if (!folderId) {
-      setFolderPreset(null);
-      return;
-    }
-    setFolderPreset(loadBulkSettings(`snail_bulk_settings:${folderId}`, designers));
-  }, [folderId, designers]);
-
-  // 진행률 기준선(baseCount): 정렬 시작 시점 폴더의 실제 디자인 수.
-  const folderDesignsQuery = useQuery({
-    queryKey: ['designs', 'folder', folderId || 'none', 'for-refine'],
-    queryFn: () =>
-      collectAll<Design>((cursor) => designsApi.listDesigns({ folder_id: folderId, limit: 50, cursor })),
-    enabled: !!folderId,
-  });
-
-  const pickFile = (list: FileList | null) => {
-    const f = list?.[0];
-    if (!f || !f.type.startsWith('image/')) return;
-    setPreview((prev) => {
-      if (prev) URL.revokeObjectURL(prev);
-      return URL.createObjectURL(f);
-    });
-    setFile(f);
-    setFormError(null);
-  };
-  const clearFile = () => {
-    setPreview((prev) => {
-      if (prev) URL.revokeObjectURL(prev);
-      return '';
-    });
-    setFile(null);
-  };
-
-  const onSubmit = () => {
-    setFormError(null);
-    if (!file) {
-      setFormError('다듬을 사진 1장을 올려주세요.');
-      return;
-    }
-    if (!folderId) {
-      setFormError('결과가 담길 폴더를 선택하거나 새로 만들어주세요.');
-      return;
-    }
-    const price = Number(settings.price);
-    if (settings.price.trim() === '' || !Number.isFinite(price) || price < 0) {
-      setFormError('가격을 입력해주세요.');
-      return;
-    }
-    const multiDesigner = designers.length >= 2;
-    if (multiDesigner) {
-      if (Object.keys(settings.picked).length === 0) {
-        setFormError('이 디자인을 할 수 있는 디자이너를 1명 이상 선택해주세요.');
-        return;
-      }
-    } else if (designers.length === 0) {
-      setFormError('먼저 디자이너 탭에서 디자이너를 등록해주세요.');
-      return;
-    }
-
-    const folder = folders.find((f) => f.id === folderId);
-    const baseCount = folderDesignsQuery.data?.length ?? folder?.design_count ?? 0;
-    setSubmitting(true);
-    // 원본 업로드→백엔드 정렬 요청은 스토어가 백그라운드로 처리(탭 이동해도 유지) — await 하지 않는다.
-    void startJob({
-      folderId,
-      folderName: folder?.name ?? '폴더',
-      files: [file],
-      settings,
-      designers,
-      baseCount,
-    });
-    saveBulkSettings(`snail_bulk_settings:${folderId}`, settings);
-    onStarted({ id: folderId, name: folder?.name ?? '폴더' });
-  };
-
-  return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        onSubmit();
-      }}
-      className="space-y-5 rounded-lg border border-neutral-200 bg-white p-5"
-      noValidate
-    >
-      <h2 className="text-body-sm font-semibold text-primary">사진 다듬기</h2>
-
-      {/* 다듬을 사진 (1장) */}
-      <div>
-        <div className="mb-1 flex items-center gap-2">
-          <label className="text-body-sm font-medium">다듬을 사진</label>
-          <span className="text-danger">*</span>
-          <span className="text-caption text-primary-50">1장</span>
-        </div>
-        <p className="mb-2 text-caption text-primary-50">
-          네일 팁 사진 1장을 올리면 배경·정렬을 자동으로 다듬어 폴더에 넣어드려요.
-        </p>
-        <div className="flex flex-wrap gap-2">
-          {file ? (
-            <div className="relative h-24 w-24 overflow-hidden rounded-md border border-neutral-200">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={preview} alt={file.name} className="h-full w-full object-cover" />
-              <button
-                type="button"
-                onClick={clearFile}
-                className="absolute right-0 top-0 bg-black/50 px-1 text-caption text-white"
-                aria-label="삭제"
-              >
-                ×
-              </button>
-            </div>
-          ) : (
-            <UploadTile label="사진 올리기" onFiles={pickFile} />
-          )}
-        </div>
-      </div>
-
-      {/* 폴더 (새 디자인과 동일) */}
-      <FolderField value={folderId} onChange={setFolderId} />
-      {folderPreset && (
-        <div className="flex flex-wrap items-center gap-2 rounded-md bg-secondary/10 px-3 py-2 text-caption text-primary">
-          <span className="flex-1">이 폴더에 저장된 이전 설정(가격·디자이너·태그·추가옵션)이 있어요.</span>
-          <button
-            type="button"
-            onClick={() => {
-              setSettings(folderPreset);
-              setFolderPreset(null);
-            }}
-            className="rounded-md bg-secondary px-3 py-1.5 font-semibold text-white"
-          >
-            이전 설정 불러오기
-          </button>
-          <button
-            type="button"
-            onClick={() => setFolderPreset(null)}
-            className="px-2 py-1 font-semibold text-primary-50"
-          >
-            닫기
-          </button>
-        </div>
-      )}
-
-      {designers.length === 0 && (
-        <p className="text-caption text-primary-50">
-          등록된 디자이너가 없습니다.{' '}
-          <Link href="/dashboard/designers" className="text-secondary underline">
-            디자이너
-          </Link>{' '}
-          탭에서 먼저 추가하세요.
-        </p>
-      )}
-
-      {/* 가격·디자이너별 소요시간/가격·설명·태그·추가옵션 (새 디자인과 동일) */}
-      <DesignSettingsFields
-        designers={designers}
-        value={settings}
-        onChange={(p) => setSettings((prev) => ({ ...prev, ...p }))}
-      />
-
-      {/* 베타 안내 + 문의 */}
-      <RefineGuide />
-
-      {formError && <p className="rounded-md bg-danger-bg px-3 py-2 text-body-sm text-danger">{formError}</p>}
-
-      <button
-        type="submit"
-        disabled={submitting}
-        className="rounded-md bg-secondary px-5 py-2 text-body-sm font-semibold text-white disabled:opacity-50"
-      >
-        {submitting ? '다듬는 중…' : '다듬기'}
-      </button>
-    </form>
-  );
-}
-
-/** 사진 다듬기 베타 안내 문구 + 인스타 문의. */
-function RefineGuide() {
-  return (
-    <div className="space-y-3 rounded-lg bg-neutral-50 px-4 py-3">
-      <ul className="space-y-1.5 text-caption text-primary-50">
-        <li>
-          • 현재 베타 기간이라 이미지 정확도를 올리고 있어요. 이미지가 잘 나오지 않았을 경우, 원본과 결과물을 첨부해
-          DM으로 피드백해 주시면 운영자가 직접 가공해서 전해드려요.
-        </li>
-        <li>• 원본 이미지의 팁이 가지런하고 간격이 조금 있으며, 조명이 밝고 해상도가 높을수록 정확도가 올라가요.</li>
-        <li>• 네일 쉐입이 달라지거나 이미지가 깨지는 등 오류가 생길 수 있어요. 재시도할 수 있어요.</li>
-        <li>• 투명한 팁은 잘 표현되지 않을 수 있어요.</li>
-      </ul>
-      <div className="flex items-center gap-2 border-t border-neutral-200 pt-2">
-        <span className="text-caption font-semibold text-primary">문의</span>
-        <a
-          href={REFINE_INSTAGRAM_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 rounded-full border border-secondary px-3 py-1 text-caption font-semibold text-secondary hover:bg-secondary/5"
-        >
-          <InstagramIcon />
-          @s_nail_official
-        </a>
-      </div>
-    </div>
-  );
-}
-
-/** 인스타그램 글리프(외부 리소스 없이 인라인 SVG). */
-function InstagramIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className="h-3.5 w-3.5"
-      aria-hidden="true"
-    >
-      <rect x="2" y="2" width="20" height="20" rx="5" />
-      <circle cx="12" cy="12" r="4" />
-      <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none" />
-    </svg>
-  );
-}
-
 /* ───────────── 폴더 선택/만들기 ───────────── */
 
 function FolderField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
@@ -1463,23 +1456,8 @@ function DesignCard({ design }: { design: Design }) {
     queryKey: ['design', design.id],
     queryFn: () => designsApi.getDesign(design.id),
     initialData: design,
-    refetchInterval: (q) => {
-      const s = q.state.data?.ai_analysis_status;
-      const active = s === 'pending' || s === 'in_progress';
-      return active ? 3000 : false;
-    },
   });
   const d = data ?? design;
-
-  const reanalyze = useMutation({
-    mutationFn: () => designsApi.reanalyze(d.id),
-    onSuccess: () => {
-      setActionError(null);
-      qc.invalidateQueries({ queryKey: ['design', d.id] });
-      qc.invalidateQueries({ queryKey: ['designs'] });
-    },
-    onError: (e) => setActionError(toUserMessage(e)),
-  });
 
   const remove = useMutation({
     mutationFn: () => designsApi.deleteDesign(d.id),
@@ -1504,8 +1482,7 @@ function DesignCard({ design }: { design: Design }) {
     onError: (e) => setMoveErr(toUserMessage(e)),
   });
 
-  // 디자인별 공개/비공개 전환. 공개 조건(백엔드 검증): 샵 공개 + 오너 승인 (AI 분석과 무관).
-  // AI는 백그라운드로 계속 돌며 완료 시 검색 랭킹만 보강 — 공개(노출)를 막지 않는다.
+  // 디자인별 공개/비공개 전환. 공개 조건(백엔드 검증): 샵 공개 + 오너 승인.
   const publish = useMutation({
     mutationFn: (visibility: 'active' | 'hidden') => designsApi.changeVisibility(d.id, { visibility }),
     onSuccess: () => {
@@ -1633,9 +1610,7 @@ function DesignCard({ design }: { design: Design }) {
         </div>
       )}
 
-      {/* 앱 노출(디자인별 공개) — 샵 공개와 별개로 디자인마다 공개해야 앱 피드에 노출된다.
-          공개는 AI 분석과 무관(백엔드가 노출을 AI에서 분리). AI가 아직/실패여도 바로 공개할 수 있고,
-          AI는 백그라운드로 돌며 완료 시 검색 랭킹만 보강한다. */}
+      {/* 앱 노출(디자인별 공개) — 샵 공개와 별개로 디자인마다 공개해야 앱 피드에 노출된다. */}
       {!editing && (
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <span className="text-caption text-primary-50">👁 앱 노출</span>
@@ -1667,26 +1642,6 @@ function DesignCard({ design }: { design: Design }) {
           )}
           {d.visibility !== 'active' && (
             <span className="text-caption text-primary-50">· 샵도 공개 상태여야 앱에 노출돼요</span>
-          )}
-          {(d.ai_analysis_status === 'pending' || d.ai_analysis_status === 'in_progress') && (
-            <span className="text-caption text-primary-50">· AI 분석 중(공개엔 영향 없어요)</span>
-          )}
-        </div>
-      )}
-
-      {d.ai_analysis_status === 'failed' && (
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <div className="rounded-md bg-danger-bg p-2 text-caption text-danger">
-            {d.ai_error_message ?? 'AI 분석에 실패했습니다.'}
-          </div>
-          {!editing && (
-            <button
-              onClick={() => reanalyze.mutate()}
-              disabled={reanalyze.isPending}
-              className="rounded-md bg-secondary px-3 py-1.5 text-caption font-semibold text-white disabled:opacity-50"
-            >
-              {reanalyze.isPending ? '요청 중…' : '재분석'}
-            </button>
           )}
         </div>
       )}

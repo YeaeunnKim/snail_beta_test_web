@@ -8,9 +8,7 @@ type AnalyticsProperties = Record<string, AnalyticsValue>;
 
 export type OwnerAnalyticsEvent =
   | 'owner_login_succeeded'
-  | 'reservation_status_changed'
-  | 'design_sort_requested'
-  | 'design_sort_completed';
+  | 'reservation_status_changed';
 
 let initialized = false;
 let identityResolved = false;
