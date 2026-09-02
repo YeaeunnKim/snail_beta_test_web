@@ -13,8 +13,10 @@ import { config } from '@/lib/config';
  * 1.1 = 사업자 정보 조항 + 예약금·취소·환불 조항 신설분(2026-08-23 시행).
  * 약관 1.2 / 처리방침 1.3 = 예약금 수취 주체를 매장 → 회사로 변경(PG 선결제),
  *   부분환불 폐지, 처리방침에 PG 위탁사 추가. 시행 2026-09-30.
+ * 약관 1.3 = 확정 후 취소를 "시술 전날 23:59 까지 전액 환불 / 당일 취소는 환불 불가" 로
+ *   고정(2026-09-03). 카드사 환불정책 요건 대응. 시행일은 2026-09-30 그대로.
  */
-export const TERMS_VERSION = process.env.NEXT_PUBLIC_TERMS_VERSION ?? '1.2';
+export const TERMS_VERSION = process.env.NEXT_PUBLIC_TERMS_VERSION ?? '1.3';
 export const PRIVACY_VERSION = process.env.NEXT_PUBLIC_PRIVACY_VERSION ?? '1.3';
 
 /**
