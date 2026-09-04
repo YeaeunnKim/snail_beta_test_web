@@ -33,6 +33,13 @@ export interface ImageCropperProps {
   aspect?: number;
   /** 상단에 노출할 안내 타이틀(예: "사진 2/5 크롭") */
   title?: string;
+  /** 타이틀 아래 안내 문구. 미지정 시 기본 조작 안내를 쓴다. */
+  description?: string;
+  /**
+   * true면 자체 배경(fixed inset-0 오버레이)을 그리지 않고 내용만 렌더링한다.
+   * 이미 모달인 화면(예: 등록 팝업) 안에 끼워 넣을 때 배경이 이중으로 겹치는 것을 막기 위함.
+   */
+  embedded?: boolean;
 }
 
 /** 값을 [0, bounds] 범위로 자르고, 박스 크기가 최소값 미만/이미지 범위 초과가 되지 않도록 보정한다. */
@@ -44,7 +51,16 @@ function clampRect(r: CropRect, bounds: { w: number; h: number }): CropRect {
   return { x, y, w, h };
 }
 
-export function ImageCropper({ file, onCropped, onCancel, onSkip, aspect, title }: ImageCropperProps) {
+export function ImageCropper({
+  file,
+  onCropped,
+  onCancel,
+  onSkip,
+  aspect,
+  title,
+  description,
+  embedded,
+}: ImageCropperProps) {
   const [imgUrl, setImgUrl] = useState<string | null>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);
   const [displaySize, setDisplaySize] = useState<{ w: number; h: number } | null>(null);
@@ -140,14 +156,13 @@ export function ImageCropper({ file, onCropped, onCancel, onSkip, aspect, title 
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" role="dialog" aria-modal="true">
-      <div className="max-h-[90vh] w-full max-w-sm overflow-y-auto rounded-2xl bg-white p-4">
-        <p className="mb-1 text-body-sm font-semibold text-primary">{title ?? '사진 크롭'}</p>
-        <p className="mb-3 text-caption text-primary-50">
-          박스를 끌어 위치를 옮기고, 우측 하단 손잡이로 크기를 조절한 뒤 확정하세요.
-        </p>
-        <div
+  const content = (
+    <>
+      <p className="mb-1 text-body-sm font-semibold text-primary">{title ?? '사진 크롭'}</p>
+      <p className="mb-3 text-caption text-primary-50">
+        {description ?? '박스를 끌어 위치를 옮기고, 우측 하단 손잡이로 크기를 조절한 뒤 확정하세요.'}
+      </p>
+      <div
           className="relative mx-auto touch-none select-none"
           style={displaySize ? { width: displaySize.w, height: displaySize.h } : undefined}
           onPointerMove={onPointerMove}
@@ -185,36 +200,45 @@ export function ImageCropper({ file, onCropped, onCancel, onSkip, aspect, title 
             </div>
           )}
         </div>
-        {error && <p className="mt-2 text-caption text-danger">{error}</p>}
-        <div className="mt-4 flex flex-wrap gap-2">
+      {error && <p className="mt-2 text-caption text-danger">{error}</p>}
+      <div className="mt-4 flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={confirm}
+          disabled={busy || !rect}
+          className="flex-1 rounded-md bg-secondary py-2.5 text-body-sm font-semibold text-white disabled:opacity-50"
+        >
+          {busy ? '처리 중…' : '크롭 확정'}
+        </button>
+        {onSkip && (
           <button
             type="button"
-            onClick={confirm}
-            disabled={busy || !rect}
-            className="flex-1 rounded-md bg-secondary py-2.5 text-body-sm font-semibold text-white disabled:opacity-50"
-          >
-            {busy ? '처리 중…' : '크롭 확정'}
-          </button>
-          {onSkip && (
-            <button
-              type="button"
-              onClick={onSkip}
-              disabled={busy}
-              className="rounded-md border border-neutral-300 px-3 py-2.5 text-body-sm font-semibold text-primary disabled:opacity-50"
-            >
-              원본 그대로
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={onCancel}
+            onClick={onSkip}
             disabled={busy}
-            className="rounded-md border border-neutral-300 px-3 py-2.5 text-body-sm font-semibold text-primary-50 disabled:opacity-50"
+            className="rounded-md border border-neutral-300 px-3 py-2.5 text-body-sm font-semibold text-primary disabled:opacity-50"
           >
-            취소
+            원본 그대로
           </button>
-        </div>
+        )}
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={busy}
+          className="rounded-md border border-neutral-300 px-3 py-2.5 text-body-sm font-semibold text-primary-50 disabled:opacity-50"
+        >
+          취소
+        </button>
       </div>
+    </>
+  );
+
+  if (embedded) {
+    return <div className="w-full">{content}</div>;
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" role="dialog" aria-modal="true">
+      <div className="max-h-[90vh] w-full max-w-sm overflow-y-auto rounded-2xl bg-white p-4">{content}</div>
     </div>
   );
 }

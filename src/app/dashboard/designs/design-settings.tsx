@@ -98,25 +98,25 @@ export const clampPrice = (n: number) => Math.max(0, Math.round(n));
 
 export interface DesignSettings {
   price: string;
-  introPrice: string; // 이달의 아트 인트로가(비우면 정상가)
   duration: number;
   description: string;
   tags: string[];
-  picked: Record<string, number>; // designerId → 소요시간(분). 다인샵에서 선택된 디자이너.
+  // 디자이너별로 다르게 적용할지. 꺼져 있으면 등록된 모든 디자이너가 동일한 정상가·소요시간으로
+  // 이 디자인을 하고, picked/pickedPrice는 저장 시 무시된다(디자인 세부 화면과 동일한 규칙).
+  perDesigner: boolean;
+  picked: Record<string, number>; // designerId → 소요시간(분). perDesigner일 때만 쓰인다.
   pickedPrice: Record<string, number>; // designerId → 가격(원). picked와 같은 키를 유지.
-  options: OptionRow[]; // 추가옵션(연장/제거/케어 등)
 }
 
 export function defaultBulkSettings(): DesignSettings {
   return {
     price: '',
-    introPrice: '',
     duration: 120,
     description: '',
     tags: [],
+    perDesigner: false,
     picked: {},
     pickedPrice: {},
-    options: defaultOptionRows(),
   };
 }
 
@@ -131,26 +131,14 @@ export function loadBulkSettings(key: string, designers: Designer[]): DesignSett
     for (const [k, v] of Object.entries(s.picked ?? {})) if (ids.has(k)) picked[k] = v;
     const pickedPrice: Record<string, number> = {};
     for (const [k, v] of Object.entries(s.pickedPrice ?? {})) if (ids.has(k)) pickedPrice[k] = v;
-    const options: OptionRow[] = Array.isArray(s.options)
-      ? s.options.map((o) => ({
-          uid: crypto.randomUUID(),
-          kind: (OPTION_KINDS.some((k) => k.value === o.kind) ? o.kind : 'extend') as OptionKind,
-          name: o.name ?? '',
-          priceDelta: Math.max(0, Math.round(o.priceDelta) || 0),
-          // 시간 항목이 생기기 전에 저장된 설정에는 durationDelta가 없다 → 0분(추가시간 없음).
-          // 그때 실제로 만들어진 옵션도 0분이라 값이 서로 맞는다.
-          durationDelta: clampOptionDuration(o.durationDelta ?? 0),
-        }))
-      : defaultOptionRows();
     return {
       price: s.price ?? '',
-      introPrice: s.introPrice ?? '',
       duration: s.duration ?? 120,
       description: s.description ?? '',
       tags: s.tags ?? [],
+      perDesigner: s.perDesigner ?? false,
       picked,
       pickedPrice,
-      options,
     };
   } catch {
     return null;
@@ -310,22 +298,26 @@ export function DesignSettingsFields({
   designers,
   value,
   onChange,
+  priceRequired = true,
+  priceDisabled = false,
+  priceHint,
 }: {
   designers: Designer[];
   value: DesignSettings;
   onChange: (patch: Partial<DesignSettings>) => void;
+  /** false면 정상가 라벨의 필수(*) 표시를 뺀다 — 대량등록에서 파일명으로 전부 개별 가격이 인식된 경우용. */
+  priceRequired?: boolean;
+  /** true면 정상가 입력칸 자체를 비활성화한다 — 선택한 사진 전체의 가격이 파일명에서 인식된 경우용. */
+  priceDisabled?: boolean;
+  /** 정상가 입력칸 아래에 보여줄 안내 문구(예: 파일명 인식 개수 안내). */
+  priceHint?: string;
 }) {
   const multiDesigner = designers.length >= 2;
-  const { price, introPrice, duration, description, tags, picked, pickedPrice, options } = value;
+  const { price, duration, description, tags, perDesigner, picked, pickedPrice } = value;
   const basePrice = clampPrice(Number(price) || 0);
-  const introNum = Number(introPrice);
-  const introPct =
-    introPrice.trim() !== '' && basePrice > 0 && introNum > 0 && introNum < basePrice
-      ? Math.round((1 - introNum / basePrice) * 100)
-      : null;
   const labelCls = 'mb-1 block text-caption font-semibold text-primary-50';
   const fieldCls =
-    'w-full rounded-md border border-neutral-300 px-3 py-2 text-body-sm outline-none focus:border-secondary';
+    'w-full rounded-md border border-neutral-300 px-3 py-2 text-body-sm outline-none focus:border-secondary disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-primary-50';
 
   const toggleDesigner = (id: string) => {
     const nextPicked = { ...picked };
@@ -339,14 +331,6 @@ export function DesignSettingsFields({
     }
     onChange({ picked: nextPicked, pickedPrice: nextPrice });
   };
-  // 정상가를 바꾸면 인트로가도 같은 값으로 따라 채운다.
-  // 단 인트로가가 정상가와 다르게 들어가 있으면(사장님이 할인가를 직접 넣은 상태) 건드리지 않는다.
-  // "손댔는지"를 별도 플래그로 들고 있지 않고 현재 값만으로 판정하므로,
-  // 이전 설정 불러오기로 할인가가 채워진 경우에도 자동으로 보존된다.
-  const setPrice = (next: string) => {
-    const introFollowsPrice = introPrice.trim() === '' || introPrice === price;
-    onChange(introFollowsPrice ? { price: next, introPrice: next } : { price: next });
-  };
 
   const setDesignerDuration = (id: string, minutes: number) =>
     onChange({ picked: { ...picked, [id]: clampDuration(minutes) } });
@@ -355,93 +339,96 @@ export function DesignSettingsFields({
 
   return (
     <>
-      <div className={multiDesigner ? '' : 'flex flex-wrap gap-3'}>
-        <div className={multiDesigner ? '' : 'min-w-[8rem] flex-1'}>
-          <label className={labelCls}>
-            정상가(원) <span className="text-danger">*</span>
-          </label>
-          <input
-            type="number"
-            min={0}
-            step={PRICE_INPUT_STEP}
-            value={price}
-            onChange={(e) => setPrice(e.target.value)}
-            className={fieldCls}
-          />
-        </div>
-        <div className={multiDesigner ? 'mt-3' : 'min-w-[8rem] flex-1'}>
-          <label className={labelCls}>이달의 아트 인트로가(원)</label>
-          <input
-            type="number"
-            min={0}
-            step={PRICE_INPUT_STEP}
-            value={introPrice}
-            onChange={(e) => onChange({ introPrice: e.target.value })}
-            placeholder="비우면 정상가"
-            className={fieldCls}
-          />
-          {introPct !== null && (
-            <p className="mt-1 text-caption font-semibold text-secondary">정상가 대비 {introPct}% 할인</p>
-          )}
-        </div>
-        {!multiDesigner && (
-          <div>
-            <label className={labelCls}>기본 소요시간</label>
-            <Stepper value={duration} onChange={(v) => onChange({ duration: clampDuration(v) })} suffix="분" />
-          </div>
-        )}
+      <div>
+        <label className={labelCls}>
+          정상가(원) {priceRequired && <span className="text-danger">*</span>}
+        </label>
+        <input
+          type="number"
+          min={0}
+          step={PRICE_INPUT_STEP}
+          value={price}
+          disabled={perDesigner || priceDisabled}
+          onChange={(e) => onChange({ price: e.target.value })}
+          className={fieldCls}
+        />
+        {priceHint && <p className="mt-1 text-caption text-primary-50">{priceHint}</p>}
+      </div>
+
+      <div>
+        <label className={labelCls}>소요 시간(분)</label>
+        <input
+          type="number"
+          min={DURATION_MIN}
+          max={DURATION_MAX}
+          step={DURATION_STEP}
+          value={duration}
+          disabled={perDesigner}
+          onChange={(e) => onChange({ duration: Number(e.target.value) })}
+          onBlur={(e) => onChange({ duration: clampDuration(Number(e.target.value)) })}
+          className={fieldCls}
+        />
       </div>
 
       {multiDesigner && (
         <div>
-          <label className={labelCls}>
-            디자이너별 소요시간 · 가격 <span className="text-danger">*</span>
+          <label className="flex items-center gap-2 text-body-sm text-primary">
+            <input
+              type="checkbox"
+              checked={perDesigner}
+              onChange={(e) => onChange({ perDesigner: e.target.checked })}
+            />
+            디자이너별로 다르게 적용
           </label>
-          <p className="mb-2 text-caption text-primary-50">
-            체크한 디자이너만 이 디자인을 할 수 있어요. 소요시간·가격을 디자이너별로 다르게 조정할 수 있어요. 미조정 시
-            기본값(소요시간 {duration}분 · 가격 {basePrice.toLocaleString('ko-KR')}원).
-          </p>
-          <div className="space-y-2">
-            {designers.map((dz) => {
-              const checked = dz.id in picked;
-              return (
-                <div
-                  key={dz.id}
-                  className={`flex flex-wrap items-center gap-3 rounded-md border p-2 ${
-                    checked ? 'border-secondary/40 bg-secondary/5' : 'border-neutral-200'
-                  }`}
-                >
-                  <label className="flex items-center gap-2 text-caption font-semibold">
-                    <input type="checkbox" checked={checked} onChange={() => toggleDesigner(dz.id)} />
-                    {dz.name}
-                  </label>
-                  {checked && (
-                    <div className="ml-auto flex flex-wrap items-center justify-end gap-x-3 gap-y-2">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-caption text-primary-50">시간</span>
-                        <Stepper
-                          value={picked[dz.id]}
-                          onChange={(v) => setDesignerDuration(dz.id, v)}
-                          suffix="분"
-                          ariaLabel="소요시간 직접 입력"
-                        />
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-caption text-primary-50">가격</span>
-                        <Stepper
-                          value={pickedPrice[dz.id] ?? basePrice}
-                          onChange={(v) => setDesignerPrice(dz.id, v)}
-                          step={PRICE_STEP}
-                          suffix="원"
-                          ariaLabel="가격 직접 입력"
-                        />
-                      </div>
+          {perDesigner && (
+            <div className="mt-2 space-y-2">
+              <p className="text-caption text-primary-50">
+                체크한 디자이너만 이 디자인을 할 수 있어요. 소요시간·가격을 디자이너별로 다르게 조정할 수 있어요.
+                미조정 시 기본값(소요시간 {duration}분 · 가격 {basePrice.toLocaleString('ko-KR')}원).
+              </p>
+              <div className="space-y-2">
+                {designers.map((dz) => {
+                  const checked = dz.id in picked;
+                  return (
+                    <div
+                      key={dz.id}
+                      className={`flex flex-wrap items-center gap-3 rounded-md border p-2 ${
+                        checked ? 'border-secondary/40 bg-secondary/5' : 'border-neutral-200'
+                      }`}
+                    >
+                      <label className="flex items-center gap-2 text-caption font-semibold">
+                        <input type="checkbox" checked={checked} onChange={() => toggleDesigner(dz.id)} />
+                        {dz.name}
+                      </label>
+                      {checked && (
+                        <div className="ml-auto flex flex-wrap items-center justify-end gap-x-3 gap-y-2">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-caption text-primary-50">시간</span>
+                            <Stepper
+                              value={picked[dz.id]}
+                              onChange={(v) => setDesignerDuration(dz.id, v)}
+                              suffix="분"
+                              ariaLabel="소요시간 직접 입력"
+                            />
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-caption text-primary-50">가격</span>
+                            <Stepper
+                              value={pickedPrice[dz.id] ?? basePrice}
+                              onChange={(v) => setDesignerPrice(dz.id, v)}
+                              step={PRICE_STEP}
+                              suffix="원"
+                              ariaLabel="가격 직접 입력"
+                            />
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -459,8 +446,6 @@ export function DesignSettingsFields({
         <label className={labelCls}>사장님 태그</label>
         <TagInput tags={tags} onChange={(t) => onChange({ tags: t })} />
       </div>
-
-      <OptionsField options={options} onChange={(next) => onChange({ options: next })} />
     </>
   );
 }
