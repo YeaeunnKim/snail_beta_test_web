@@ -11,7 +11,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { designsApi } from '@/services';
-import type { Design, Designer, OptionPresetInput, OptionPresetOption } from '@/services';
+import type { Design, Designer } from '@/services';
 
 export const MAX_OWNER_TAGS = 10;
 export const TAG_MAXLEN = 40;
@@ -24,9 +24,6 @@ export const OPTION_PRICE_DEFAULT = 50000; // 추가옵션 기본 추가금액(�
 export const OPTION_DURATION_DEFAULT = 30; // 추가옵션 기본 추가시간(분)
 export const OPTION_DURATION_STEP = 30; // 추가옵션 시간 +/- 단위(분)
 export const OPTION_DURATION_MAX = 600; // 추가옵션 추가시간 상한(분)
-export const MAX_DESIGN_OPTIONS = 20; // 백엔드 design_service.MAX_DESIGN_OPTIONS 와 동일
-export const MAX_OPTION_PRESETS = 10; // 백엔드 schemas.shops.MAX_OPTION_PRESETS 와 동일
-export const MAX_PRESET_OPTIONS = 20; // 백엔드 schemas.shops.MAX_PRESET_OPTIONS 와 동일
 
 // 옵션의 시간은 기본 소요시간에 "더해지는" 값(가격이 price_delta인 것과 같다).
 // 그래서 최소 30분인 clampDuration을 쓰면 안 되고 0분(추가시간 없음)을 허용해야 한다.
@@ -54,28 +51,6 @@ export const COMMON_OPTION_PRESETS = [
   { kind: 'extend', name: '전체 연장' },
   { kind: 'extend', name: '부분 연장(개수 요청사항에 기재)' },
 ] as const satisfies readonly { kind: OptionKind; name: string }[];
-
-/**
- * 옵션 관리 화면의 "옵션 프리셋"이 샵에 하나도 없을 때 최초 1회 시드용으로 만드는
- * "기본 세트". COMMON_OPTION_PRESETS(이름·종류)에 기본 가격·시간을 붙여 만든다.
- * 옵션마다 새 uuid 키를 발급한다 — 이후 이 키로 design_options.template_key가 연결된다.
- */
-export function seedOptionPreset(): OptionPresetInput {
-  return {
-    id: crypto.randomUUID(),
-    name: '기본 세트',
-    options: COMMON_OPTION_PRESETS.map(
-      (p, i): OptionPresetOption => ({
-        key: crypto.randomUUID(),
-        kind: p.kind,
-        name: p.name,
-        price_delta: OPTION_PRICE_DEFAULT,
-        duration_delta_min: OPTION_DURATION_DEFAULT,
-        sort_order: i,
-      }),
-    ),
-  };
-}
 
 /** 폼에서 편집하는 추가옵션 한 줄. id가 있으면 기존(수정 대상) 옵션. */
 export interface OptionRow {
