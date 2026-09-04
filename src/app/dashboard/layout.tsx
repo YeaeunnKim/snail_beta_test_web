@@ -94,6 +94,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <Link
               key={tab.href}
               href={tab.href}
+              onClick={() => {
+                // 디자인 탭: 이미 이 경로에 있으면 Link가 내비게이션을 안 하므로(같은 URL),
+                // 폴더 목록 화면으로 강제로 되돌리라는 이벤트를 쏴서 DesignsPage가 직접 리셋하게 한다.
+                if (tab.href === '/dashboard/designs' && pathname.startsWith(tab.href)) {
+                  window.dispatchEvent(new Event('snail:designs-tab-reset'));
+                }
+              }}
               className={`text-caption flex flex-1 flex-col items-center gap-0.5 py-2.5 font-semibold ${
                 active ? 'text-secondary' : 'text-primary-50'
               }`}

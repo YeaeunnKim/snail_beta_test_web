@@ -15,6 +15,7 @@ import { toUserMessage } from '@/lib/error-messages';
 import { BusinessHoursField } from '@/components/business-hours-field';
 import { fromEntries, toEntries, type BusinessHoursValue } from '@/lib/business-hours';
 import { SHOP_REGIONS, isKnownRegion } from '@/lib/regions';
+import { useLockBodyScroll } from '@/hooks/use-lock-body-scroll';
 
 type PaymentMethod = 'on_site' | 'bank_transfer_guide';
 type DesignerRow = { id?: string; name: string };
@@ -24,6 +25,7 @@ const inputCls =
 const labelCls = 'mb-1 block text-caption font-semibold text-primary-50';
 
 export function ShopEditModal({ shop, onClose }: { shop: Shop; onClose: () => void }) {
+  useLockBodyScroll();
   const qc = useQueryClient();
 
   const [name, setName] = useState(shop.name);
