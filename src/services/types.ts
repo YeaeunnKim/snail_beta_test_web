@@ -44,11 +44,6 @@ export type DesignOption = Schemas['DesignOptionPublic'];
 export type DesignOptionCreate = Schemas['DesignOptionCreate'];
 export type DesignOptionUpdate = Schemas['DesignOptionUpdate'];
 export type DesignVisibilityUpdate = Schemas['DesignVisibilityUpdate'];
-// 옵션 프리셋(부모) — shop.option_presets 에 저장. Input/Output은 필드가 동일해
-// 실질적으로 호환된다(요청 본문 구성에도 OptionPreset을 그대로 쓴다).
-export type OptionPreset = Schemas['OptionPreset-Output'];
-export type OptionPresetInput = Schemas['OptionPreset-Input'];
-export type OptionPresetOption = Schemas['OptionPresetOption'];
 
 // 예약
 export type Reservation = Schemas['ReservationOwner'];
