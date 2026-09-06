@@ -146,15 +146,15 @@ regions: 건대, 보문, 성수, 신림, 압구정, 홍대, 성신여대, 망원
 - [x] 이 select는 RHF가 아니라 `useState` 제어 컴포넌트다. 여기서는 로딩 중 `disabled` 걸어도 된다.
 - [x] `pnpm typecheck && pnpm lint` 초록 확인 후 커밋.
 
-## Task 5 — 하드코딩 상수 제거
+## Task 5 — 하드코딩 상수 제거 — 완료
 
-- [ ] `rg "SHOP_REGIONS|from '@/lib/regions'"` 로 `lib/regions.ts` 참조가 0인지 확인한다.
+- [x] `rg "SHOP_REGIONS|from '@/lib/regions'"` 로 `lib/regions.ts` 참조가 0인지 확인한다.
       (`isKnownRegion`이라는 이름의 인라인 상수/변수 자체는 Task 4에서 남아 있어도 된다 —
       찾는 건 "하드코딩 목록을 보는 곳"이지 이름이 아니다.)
-- [ ] `src/lib/regions.ts` 삭제.
-- [ ] **폴백 상수를 남기지 마라.** 남기면 똑같은 드리프트가 다시 생긴다.
+- [x] `src/lib/regions.ts` 삭제.
+- [x] **폴백 상수를 남기지 마라.** 남기면 똑같은 드리프트가 다시 생긴다.
       API 실패 시엔 폴백이 아니라 안내 문구를 띄운다(Task 3·4에서 이미 처리).
-- [ ] `pnpm typecheck && pnpm lint && pnpm build` 전부 초록 확인 후 커밋.
+- [x] `pnpm typecheck && pnpm lint && pnpm build` 전부 초록 확인 후 커밋.
 
 ---
 
