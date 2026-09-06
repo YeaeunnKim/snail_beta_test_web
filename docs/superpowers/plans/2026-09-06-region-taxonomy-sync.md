@@ -81,9 +81,9 @@ regions: 건대, 보문, 성수, 신림, 압구정, 홍대, 성신여대, 망원
       기존 배럴의 나열 순서 관례를 따른다.
 - [x] `pnpm typecheck && pnpm lint` 초록 확인 후 커밋.
 
-## Task 2 — `useRegions` 훅
+## Task 2 — `useRegions` 훅 — 완료
 
-- [ ] `src/hooks/use-regions.ts` 신규 생성. `src/hooks/use-my-shop.ts`의 형식을 그대로 따른다
+- [x] `src/hooks/use-regions.ts` 신규 생성. `src/hooks/use-my-shop.ts`의 형식을 그대로 따른다
       (`'use client'`, 파일 상단 한국어 주석, `*_KEY` 상수 export).
 
   ```ts
@@ -108,10 +108,10 @@ regions: 건대, 보문, 성수, 신림, 압구정, 홍대, 성신여대, 망원
   }
   ```
 
-- [ ] **`staleTime`을 오버라이드하지 않는다.** `src/lib/query-client.ts`의 전역 기본값이 30초이고,
+- [x] **`staleTime`을 오버라이드하지 않는다.** `src/lib/query-client.ts`의 전역 기본값이 30초이고,
       백엔드 스냅샷 캐시 TTL이 60초(`CACHE_TTL_SECONDS`)이며 운영자 변이 시
       `invalidate_cache()`가 돈다. 전역 기본값이면 최악 90초 안에 따라온다 — 충분하다.
-- [ ] `pnpm typecheck && pnpm lint` 초록 확인 후 커밋.
+- [x] `pnpm typecheck && pnpm lint` 초록 확인 후 커밋.
 
 ## Task 3 — 온보딩 지역 드롭다운 (`src/app/onboarding/page.tsx`)
 
