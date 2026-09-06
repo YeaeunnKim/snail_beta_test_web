@@ -20,7 +20,7 @@ import { toUserMessage } from '@/lib/error-messages';
 import { resolveAuthedHome } from '@/lib/auth-routing';
 import { BusinessHoursField } from '@/components/business-hours-field';
 import { defaultBusinessHours, toEntries, type BusinessHoursValue } from '@/lib/business-hours';
-import { SHOP_REGIONS } from '@/lib/regions';
+import { useRegions } from '@/hooks/use-regions';
 import { DEPOSIT_AMOUNT_MAX, DEPOSIT_AMOUNT_MAX_MESSAGE } from '@/lib/payment-policy';
 
 const onboardingSchema = z
@@ -110,6 +110,7 @@ export default function OnboardingPage() {
   const designerArray = useFieldArray({ control, name: 'designers' });
   const isMulti = watch('isMulti');
   const paymentMethod = watch('paymentMethod');
+  const regionsQuery = useRegions();
 
   useEffect(() => {
     if (status === 'idle' || status === 'loading') return;
@@ -359,12 +360,18 @@ export default function OnboardingPage() {
               지역 <span className="text-primary-50">(선택)</span>
             </label>
             <select className={`${inputCls} bg-white`} {...register('region')}>
-              <option value="">지역 선택</option>
-              {SHOP_REGIONS.map((r) => (
-                <option key={r} value={r}>
-                  {r}
-                </option>
-              ))}
+              {regionsQuery.isLoading && <option value="">지역 불러오는 중…</option>}
+              {regionsQuery.isError && <option value="">지역을 불러오지 못했어요</option>}
+              {regionsQuery.isSuccess && (
+                <>
+                  <option value="">지역 선택</option>
+                  {regionsQuery.data.map((r) => (
+                    <option key={r} value={r}>
+                      {r}
+                    </option>
+                  ))}
+                </>
+              )}
             </select>
           </div>
 

@@ -113,16 +113,16 @@ regions: 건대, 보문, 성수, 신림, 압구정, 홍대, 성신여대, 망원
       `invalidate_cache()`가 돈다. 전역 기본값이면 최악 90초 안에 따라온다 — 충분하다.
 - [x] `pnpm typecheck && pnpm lint` 초록 확인 후 커밋.
 
-## Task 3 — 온보딩 지역 드롭다운 (`src/app/onboarding/page.tsx`)
+## Task 3 — 온보딩 지역 드롭다운 (`src/app/onboarding/page.tsx`) — 완료
 
-- [ ] `import { SHOP_REGIONS } from '@/lib/regions';` 제거, `useRegions()` 사용.
-- [ ] `SHOP_REGIONS.map` (약 363행) → API에서 받은 목록으로 교체.
-- [ ] **이 select는 React Hook Form `register('region')`으로 묶여 있다. `disabled` 속성을 걸지 마라** —
+- [x] `import { SHOP_REGIONS } from '@/lib/regions';` 제거, `useRegions()` 사용.
+- [x] `SHOP_REGIONS.map` (약 363행) → API에서 받은 목록으로 교체.
+- [x] **이 select는 React Hook Form `register('region')`으로 묶여 있다. `disabled` 속성을 걸지 마라** —
       RHF v7에서 disabled 필드가 제출값에서 빠지는 함정이 있다.
       로딩/에러는 placeholder `<option>` 문구로만 표현한다:
       로딩 중 `지역 불러오는 중…`, 실패 시 `지역을 불러오지 못했어요`.
-- [ ] 지역은 `(선택)` 항목이다. **목록을 못 받아도 온보딩 제출 자체는 막히면 안 된다.**
-- [ ] `pnpm typecheck && pnpm lint` 초록 확인 후 커밋.
+- [x] 지역은 `(선택)` 항목이다. **목록을 못 받아도 온보딩 제출 자체는 막히면 안 된다.**
+- [x] `pnpm typecheck && pnpm lint` 초록 확인 후 커밋.
 
 ## Task 4 — 샵정보수정 모달 (`src/components/shop-edit-modal.tsx`)
 
