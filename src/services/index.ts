@@ -16,5 +16,6 @@ export * as chatApi from './chat';
 export * as notificationsApi from './notifications';
 export * as snailsApi from './snails';
 export * as uploadsApi from './uploads';
+export * as taxonomyApi from './taxonomy';
 
 export * from './types';

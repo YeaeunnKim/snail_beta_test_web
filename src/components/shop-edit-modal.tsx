@@ -14,7 +14,7 @@ import { MY_SHOP_KEY } from '@/hooks/use-my-shop';
 import { toUserMessage } from '@/lib/error-messages';
 import { BusinessHoursField } from '@/components/business-hours-field';
 import { fromEntries, toEntries, type BusinessHoursValue } from '@/lib/business-hours';
-import { SHOP_REGIONS, isKnownRegion } from '@/lib/regions';
+import { useRegions } from '@/hooks/use-regions';
 import { useLockBodyScroll } from '@/hooks/use-lock-body-scroll';
 
 type PaymentMethod = 'on_site' | 'bank_transfer_guide';
@@ -41,6 +41,9 @@ export function ShopEditModal({ shop, onClose }: { shop: Shop; onClose: () => vo
   const [bankAccount, setBankAccount] = useState(shop.bank_account_number ?? '');
   const [hours, setHours] = useState<BusinessHoursValue>(() => fromEntries(shop.business_hours));
   const [err, setErr] = useState<string | null>(null);
+  const regionsQuery = useRegions();
+  const regions = regionsQuery.data ?? [];
+  const isKnownRegion = regions.includes(region);
 
   const designersQuery = useQuery({ queryKey: ['designers'], queryFn: () => designersApi.listDesigners() });
   const [rows, setRows] = useState<DesignerRow[] | null>(null);
@@ -136,15 +139,22 @@ export function ShopEditModal({ shop, onClose }: { shop: Shop; onClose: () => vo
             <label className={labelCls}>지역</label>
             <select
               className={`${inputCls} bg-white`}
-              value={isKnownRegion(region) ? region : ''}
+              value={isKnownRegion ? region : ''}
               onChange={(e) => setRegion(e.target.value)}
+              disabled={regionsQuery.isLoading}
             >
-              <option value="">지역 선택</option>
-              {SHOP_REGIONS.map((r) => (
-                <option key={r} value={r}>
-                  {r}
-                </option>
-              ))}
+              {regionsQuery.isLoading && <option value="">지역 불러오는 중…</option>}
+              {regionsQuery.isError && <option value="">지역을 불러오지 못했어요</option>}
+              {regionsQuery.isSuccess && (
+                <>
+                  <option value="">지역 선택</option>
+                  {regions.map((r) => (
+                    <option key={r} value={r}>
+                      {r}
+                    </option>
+                  ))}
+                </>
+              )}
             </select>
           </div>
 
