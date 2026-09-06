@@ -124,13 +124,13 @@ regions: 건대, 보문, 성수, 신림, 압구정, 홍대, 성신여대, 망원
 - [x] 지역은 `(선택)` 항목이다. **목록을 못 받아도 온보딩 제출 자체는 막히면 안 된다.**
 - [x] `pnpm typecheck && pnpm lint` 초록 확인 후 커밋.
 
-## Task 4 — 샵정보수정 모달 (`src/components/shop-edit-modal.tsx`)
+## Task 4 — 샵정보수정 모달 (`src/components/shop-edit-modal.tsx`) — 완료
 
 원 설계 결정을 그대로 따른다: **`isKnownRegion`의 "목록에 없으면 빈 선택" 동작은 유지**한다.
 바꾸는 건 그 목록의 출처뿐이다 — 하드코딩 상수 대신 API 값을 본다.
 
-- [ ] `import { SHOP_REGIONS, isKnownRegion } from '@/lib/regions';` 제거, `useRegions()` 사용.
-- [ ] `isKnownRegion` 함수 자체를 인라인으로 대체한다(별도 파일로 옮기지 않는다 — 한 곳에서만 쓰는
+- [x] `import { SHOP_REGIONS, isKnownRegion } from '@/lib/regions';` 제거, `useRegions()` 사용.
+- [x] `isKnownRegion` 함수 자체를 인라인으로 대체한다(별도 파일로 옮기지 않는다 — 한 곳에서만 쓰는
       한 줄짜리 판정이라 `lib/regions.ts` 삭제와 함께 굳이 새 유틸 파일을 만들 이유가 없다):
 
   ```tsx
@@ -143,8 +143,8 @@ regions: 건대, 보문, 성수, 신림, 압구정, 홍대, 성신여대, 망원
 
   `value={isKnownRegion(region) ? region : ''}` (139행) 의 렌더 결과는 이 변경 전후로 동일해야
   한다 — 바뀌는 건 "무엇과 비교하는가"뿐, "없으면 빈칸"이라는 동작 자체는 그대로다.
-- [ ] 이 select는 RHF가 아니라 `useState` 제어 컴포넌트다. 여기서는 로딩 중 `disabled` 걸어도 된다.
-- [ ] `pnpm typecheck && pnpm lint` 초록 확인 후 커밋.
+- [x] 이 select는 RHF가 아니라 `useState` 제어 컴포넌트다. 여기서는 로딩 중 `disabled` 걸어도 된다.
+- [x] `pnpm typecheck && pnpm lint` 초록 확인 후 커밋.
 
 ## Task 5 — 하드코딩 상수 제거
 
