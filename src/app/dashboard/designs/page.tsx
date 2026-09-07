@@ -13,11 +13,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { designersApi, designsApi, uploadsApi } from '@/services';
-import type { Design, Designer, DesignFolder } from '@/services';
+import { designersApi, designsApi, shopApi, uploadsApi } from '@/services';
+import type { Design, Designer, DesignFolder, ShopUpdate } from '@/services';
 import { collectAll } from '@/lib/api-client';
+import { ApiError } from '@/lib/api-error';
 import { toUserMessage } from '@/lib/error-messages';
-import { useMyShop } from '@/hooks/use-my-shop';
+import { MY_SHOP_KEY, useMyShop } from '@/hooks/use-my-shop';
 import { useLockBodyScroll } from '@/hooks/use-lock-body-scroll';
 // 설정 입력 관련 상수·타입·헬퍼·컴포넌트는 ./design-settings 로 추출해
 // 새 디자인/대량 등록/수정 화면이 ★완전히 동일하게★ 재사용한다.
@@ -103,6 +104,28 @@ function compareTitleAsc(a: string, b: string): number {
   const ga = scriptGroup(a[0]);
   const gb = scriptGroup(b[0]);
   return ga !== gb ? ga - gb : a.localeCompare(b, 'ko');
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * 사진 여러 장을 한 번에 등록할 때, 백엔드 업로드 API 레이트리밋(분당 30건)에 걸려도
+ * 사용자가 다시 파일을 고르지 않고 자동으로 이어지도록 429는 잠시 기다렸다 재시도한다.
+ * 그 외 에러(파일 형식 오류 등)는 재시도해도 소용없으니 바로 올린다.
+ */
+async function withRateLimitRetry<T>(fn: () => Promise<T>, maxRetries = 4): Promise<T> {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      return await fn();
+    } catch (e) {
+      const isRateLimited = e instanceof ApiError && e.status === 429;
+      if (!isRateLimited || attempt >= maxRetries) throw e;
+      // 레이트리밋 집계 창(분 단위 고정 윈도)이 넘어가도록 넉넉히 기다렸다 재시도한다.
+      await sleep(20_000);
+    }
+  }
 }
 
 export default function DesignsPage() {
@@ -886,6 +909,7 @@ function FolderDesigns({
               files={bulkFiles}
               startNumber={nextDesignNumber(view.label, designs)}
               designers={designersQuery.data ?? []}
+              existingTitles={designs.map((d) => d.title)}
               onClose={() => setBulkFiles(null)}
               onCreated={refetchLists}
             />
@@ -1437,6 +1461,12 @@ const SECTION_TABS: { value: OptionKind; label: string }[] = [
   { value: 'care', label: '케어' },
 ];
 
+/** 옵션 하나가 켜고 끄는 형태인지 개수를 고르는 형태인지 (backend DesignOptionSelectionType). */
+type OptionSelectionType = 'toggle' | 'quantity';
+/** 카테고리(kind) 안에서 고객이 몇 개까지 고를 수 있는지 (backend OptionSelectionMode). */
+type OptionSelectionMode = 'single' | 'multi';
+const MAX_OPTION_QUANTITY = 99;
+
 /** 샵 공통 옵션 한 줄. 같은 이름의 design_options row를 모든 디자인에 걸쳐 묶어서 다룬다. */
 interface ShopOptionRow {
   name: string;
@@ -1445,6 +1475,8 @@ interface ShopOptionRow {
   durationDelta: number;
   isActive: boolean; // 앱 노출 여부 — 한 곳이라도 비활성이면 비활성으로 취급
   orderKey: number; // 섹션 내 정렬 기준 — 디자인들에 걸친 sort_order 중 최솟값
+  selectionType: OptionSelectionType;
+  maxQuantity: number | null;
 }
 
 /** 편집 중인(아직 저장 안 한) 옵션 한 줄. */
@@ -1454,6 +1486,10 @@ interface DraftRow {
   name: string;
   priceDelta: number;
   durationDelta: number;
+  // toggle(켜고 끄기, 기본) 또는 quantity(개수 선택 — 가격/시간이 "1개당" 값이 되고
+  // maxQuantity까지 고객이 개수를 고를 수 있음).
+  selectionType: OptionSelectionType;
+  maxQuantity: number | null;
   deleted: boolean;
 }
 
@@ -1482,6 +1518,7 @@ const emptyDraftByKind = (): Record<OptionKind, DraftRow[]> => ({ extend: [], re
  */
 function OptionManager({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
   useLockBodyScroll();
+  const qc = useQueryClient();
   const allDesignsQuery = useQuery({
     queryKey: ['designs', 'all-for-options'],
     queryFn: () => collectAll<Design>((cursor) => designsApi.listDesigns({ limit: 50, cursor })),
@@ -1502,6 +1539,8 @@ function OptionManager({ onClose, onDone }: { onClose: () => void; onDone: () =>
             durationDelta: option.duration_delta_min ?? 0,
             isActive: option.is_active,
             orderKey: option.sort_order,
+            selectionType: (option.selection_type ?? 'toggle') as OptionSelectionType,
+            maxQuantity: option.max_quantity ?? null,
           };
           map.set(option.name, row);
         } else {
@@ -1521,6 +1560,14 @@ function OptionManager({ onClose, onDone }: { onClose: () => void; onDone: () =>
     removal: false,
     care: false,
   });
+  // 카테고리(kind)별 고객 예약 시 단독선택/중복선택 — 샵 설정(shop.*_selection_mode)에서 초기화.
+  const shopQuery = useMyShop();
+  const [selectionMode, setSelectionMode] = useState<Record<OptionKind, OptionSelectionMode>>({
+    extend: 'multi',
+    removal: 'multi',
+    care: 'multi',
+  });
+  const [modeInitialized, setModeInitialized] = useState(false);
 
   useEffect(() => {
     if (initialized || !allDesignsQuery.isSuccess) return;
@@ -1536,6 +1583,8 @@ function OptionManager({ onClose, onDone }: { onClose: () => void; onDone: () =>
         name: r.name,
         priceDelta: r.priceDelta,
         durationDelta: r.durationDelta,
+        selectionType: r.selectionType,
+        maxQuantity: r.maxQuantity,
         deleted: false,
       }));
       active[kind] = rows.some((r) => r.isActive);
@@ -1544,6 +1593,17 @@ function OptionManager({ onClose, onDone }: { onClose: () => void; onDone: () =>
     setSectionActive(active);
     setInitialized(true);
   }, [initialized, allDesignsQuery.isSuccess, shopOptions]);
+
+  useEffect(() => {
+    if (modeInitialized || !shopQuery.data) return;
+    const shop = shopQuery.data;
+    setSelectionMode({
+      removal: shop.removal_selection_mode,
+      extend: shop.extend_selection_mode,
+      care: shop.care_selection_mode,
+    });
+    setModeInitialized(true);
+  }, [modeInitialized, shopQuery.data]);
 
   const updateRow = (kind: OptionKind, uid: string, patch: Partial<DraftRow>) =>
     setDraftByKind((prev) => ({
@@ -1561,6 +1621,8 @@ function OptionManager({ onClose, onDone }: { onClose: () => void; onDone: () =>
           name: '',
           priceDelta: OPTION_PRICE_DEFAULT,
           durationDelta: OPTION_DURATION_DEFAULT,
+          selectionType: 'toggle',
+          maxQuantity: null,
           deleted: false,
         },
       ],
@@ -1638,6 +1700,8 @@ function OptionManager({ onClose, onDone }: { onClose: () => void; onDone: () =>
               price_delta: Math.max(0, Math.round(r.priceDelta) || 0),
               duration_delta_min: clampOptionDuration(r.durationDelta),
               sort_order: i,
+              selection_type: r.selectionType,
+              max_quantity: r.selectionType === 'quantity' ? r.maxQuantity : null,
             };
             if (existing) {
               const changed =
@@ -1645,7 +1709,9 @@ function OptionManager({ onClose, onDone }: { onClose: () => void; onDone: () =>
                 existing.price_delta !== body.price_delta ||
                 existing.duration_delta_min !== body.duration_delta_min ||
                 existing.sort_order !== i ||
-                existing.is_active !== isActive;
+                existing.is_active !== isActive ||
+                (existing.selection_type ?? 'toggle') !== body.selection_type ||
+                (existing.max_quantity ?? null) !== body.max_quantity;
               if (changed) await designsApi.updateOption(design.id, existing.id, { ...body, is_active: isActive });
             } else {
               const created = await designsApi.createOption(design.id, { kind, ...body });
@@ -1654,6 +1720,29 @@ function OptionManager({ onClose, onDone }: { onClose: () => void; onDone: () =>
           }
         }
       }
+
+      // 카테고리별 단독/중복선택 모드 — 바뀐 값만 샵에 저장.
+      if (modeInitialized && shopQuery.data) {
+        const shop = shopQuery.data;
+        const modePatch: Pick<
+          ShopUpdate,
+          'removal_selection_mode' | 'extend_selection_mode' | 'care_selection_mode'
+        > = {};
+        if (selectionMode.removal !== shop.removal_selection_mode) {
+          modePatch.removal_selection_mode = selectionMode.removal;
+        }
+        if (selectionMode.extend !== shop.extend_selection_mode) {
+          modePatch.extend_selection_mode = selectionMode.extend;
+        }
+        if (selectionMode.care !== shop.care_selection_mode) {
+          modePatch.care_selection_mode = selectionMode.care;
+        }
+        if (Object.keys(modePatch).length > 0) {
+          await shopApi.updateMyShop(modePatch);
+          qc.invalidateQueries({ queryKey: MY_SHOP_KEY });
+        }
+      }
+
       await allDesignsQuery.refetch();
       onDone();
       onClose();
@@ -1742,7 +1831,22 @@ function OptionManager({ onClose, onDone }: { onClose: () => void; onDone: () =>
           const rows = draftByKind[tab.value].filter((r) => !r.deleted);
           return (
           <div key={tab.value} className="space-y-2 border-t border-neutral-200 pt-4">
-            <p className="text-body-sm font-semibold text-primary">{tab.label}</p>
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-body-sm font-semibold text-primary">{tab.label}</p>
+              <label className="flex items-center gap-1.5 text-caption font-semibold text-primary">
+                <input
+                  type="checkbox"
+                  checked={selectionMode[tab.value] === 'multi'}
+                  onChange={(e) =>
+                    setSelectionMode((prev) => ({
+                      ...prev,
+                      [tab.value]: e.target.checked ? 'multi' : 'single',
+                    }))
+                  }
+                />
+                중복 선택 허용
+              </label>
+            </div>
             {rows.length === 0 ? (
               <p className="text-caption text-primary-50">아직 등록된 옵션이 없어요.</p>
             ) : (
@@ -1754,7 +1858,7 @@ function OptionManager({ onClose, onDone }: { onClose: () => void; onDone: () =>
                       if (el) rowRefs.current.set(row.uid, el);
                       else rowRefs.current.delete(row.uid);
                     }}
-                    className={`flex items-center gap-2 rounded-md border p-2 ${
+                    className={`flex flex-wrap items-center gap-2 rounded-md border p-2 ${
                       dragKind === tab.value && dragUid === row.uid
                         ? 'border-secondary bg-secondary/5'
                         : 'border-neutral-200'
@@ -1780,7 +1884,9 @@ function OptionManager({ onClose, onDone }: { onClose: () => void; onDone: () =>
                       className="min-w-[6rem] flex-1 rounded-md border border-neutral-300 px-2 py-1 text-caption"
                     />
                     <div className="flex items-center gap-1.5">
-                      <span className="shrink-0 text-caption text-primary-50">+</span>
+                      <span className="shrink-0 text-caption text-primary-50">
+                        {row.selectionType === 'quantity' ? '1개당 +' : '+'}
+                      </span>
                       <Stepper
                         value={row.priceDelta}
                         onChange={(v) => updateRow(tab.value, row.uid, { priceDelta: Math.max(0, v) })}
@@ -1790,7 +1896,9 @@ function OptionManager({ onClose, onDone }: { onClose: () => void; onDone: () =>
                       />
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <span className="shrink-0 text-caption text-primary-50">+</span>
+                      <span className="shrink-0 text-caption text-primary-50">
+                        {row.selectionType === 'quantity' ? '1개당 +' : '+'}
+                      </span>
                       <Stepper
                         value={row.durationDelta}
                         onChange={(v) =>
@@ -1801,6 +1909,44 @@ function OptionManager({ onClose, onDone }: { onClose: () => void; onDone: () =>
                         ariaLabel="추가시간"
                       />
                     </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        updateRow(tab.value, row.uid, {
+                          selectionType: row.selectionType === 'quantity' ? 'toggle' : 'quantity',
+                          maxQuantity: row.selectionType === 'quantity' ? null : (row.maxQuantity ?? 10),
+                        })
+                      }
+                      title="고객이 이 옵션을 켜고 끄기만 할지, 개수를 골라 여러 개 담을 수 있게 할지"
+                      className={`shrink-0 rounded-full border px-2.5 py-1 text-caption font-semibold ${
+                        row.selectionType === 'quantity'
+                          ? 'border-secondary bg-secondary/10 text-secondary'
+                          : 'border-neutral-300 text-primary-50'
+                      }`}
+                    >
+                      개수 선택
+                    </button>
+                    {row.selectionType === 'quantity' && (
+                      <div className="flex shrink-0 items-center gap-1">
+                        <span className="text-caption text-primary-50">최대</span>
+                        <input
+                          type="number"
+                          min={1}
+                          max={MAX_OPTION_QUANTITY}
+                          value={row.maxQuantity ?? ''}
+                          onChange={(e) => {
+                            const n = Math.round(Number(e.target.value));
+                            updateRow(tab.value, row.uid, {
+                              maxQuantity: Number.isFinite(n)
+                                ? Math.min(MAX_OPTION_QUANTITY, Math.max(1, n))
+                                : null,
+                            });
+                          }}
+                          className="w-14 rounded-md border border-neutral-300 px-1.5 py-1 text-caption"
+                        />
+                        <span className="text-caption text-primary-50">개</span>
+                      </div>
+                    )}
                     <button
                       type="button"
                       onClick={() => removeRow(tab.value, row.uid)}
@@ -1836,7 +1982,7 @@ function OptionManager({ onClose, onDone }: { onClose: () => void; onDone: () =>
           <button
             type="button"
             onClick={() => void handleSave()}
-            disabled={saving || !initialized}
+            disabled={saving || !initialized || !modeInitialized}
             className="rounded-md bg-secondary px-4 py-2 text-body-sm font-semibold text-white disabled:opacity-50"
           >
             {saving ? '저장 중…' : '저장'}
@@ -2546,15 +2692,7 @@ function DesignCard({
         <button type="button" onClick={onOpen} className="min-w-0 flex-1 text-left">
           <p className="truncate font-medium">{d.title}</p>
           <p className="mt-0.5 text-body-sm text-primary-50">
-            {d.intro_price != null && d.intro_price < d.base_price ? (
-              <>
-                <span className="line-through">{formatWon(d.base_price)}</span>{' '}
-                <span className="font-semibold text-secondary">{formatWon(d.intro_price)}</span>
-              </>
-            ) : (
-              formatWon(d.base_price)
-            )}{' '}
-            · 기본 {d.duration_minutes}분
+            {formatWon(d.base_price)} · 기본 {d.duration_minutes}분
           </p>
           {d.owner_tags.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-1">
@@ -2887,6 +3025,7 @@ function BulkAddModal({
   files,
   startNumber,
   designers,
+  existingTitles,
   onClose,
   onCreated,
 }: {
@@ -2895,6 +3034,9 @@ function BulkAddModal({
   files: File[];
   startNumber: number;
   designers: Designer[];
+  // 이 폴더에 이미 등록된 디자인 제목들 — 중복 등록(예: 실패분 재시도하며 실수로 전체 재선택)
+  // 경고에 쓴다.
+  existingTitles: string[];
   onClose: () => void;
   onCreated: () => void;
 }) {
@@ -2912,6 +3054,28 @@ function BulkAddModal({
   const allRecognized = filenameInfoActive && recognizedCount === files.length;
   const needsSharedPrice = !allRecognized;
 
+  const pad = (n: number) => String(n).padStart(3, '0');
+  // runCreate와 동일한 규칙으로 각 파일이 만들 제목을 미리 계산해, 이미 등록된 것과
+  // 겹치는지(재시도하며 실수로 성공분까지 다시 선택) 미리 경고한다.
+  const plannedTitles = useMemo(
+    () =>
+      files.map((f, i) => {
+        const info = filenameInfoActive ? parseFilenamePriceInfo(f.name) : null;
+        return info ? `${folderName}_${info.number}` : `${folderName}_${pad(startNumber + i)}`;
+      }),
+    [files, filenameInfoActive, folderName, startNumber],
+  );
+  const duplicateWarning = useMemo(() => {
+    const existing = new Set(existingTitles);
+    const seenInBatch = new Set<string>();
+    const dupes = new Set<string>();
+    for (const t of plannedTitles) {
+      if (existing.has(t) || seenInBatch.has(t)) dupes.add(t);
+      seenInBatch.add(t);
+    }
+    return dupes;
+  }, [plannedTitles, existingTitles]);
+
   const savedRef = useRef<DesignSettings | null | undefined>(undefined);
   if (savedRef.current === undefined) savedRef.current = loadBulkSettings(storageKey, designers);
   const hasSaved = !!savedRef.current;
@@ -2925,7 +3089,6 @@ function BulkAddModal({
   const [failures, setFailures] = useState<string[]>([]);
   const [err, setErr] = useState<string | null>(null);
 
-  const pad = (n: number) => String(n).padStart(3, '0');
   const titlePreview =
     files.length === 1
       ? `${folderName}_${pad(startNumber)}`
@@ -2983,7 +3146,7 @@ function BulkAddModal({
       const title = info ? `${folderName}_${info.number}` : `${folderName}_${pad(startNumber + i)}`;
       const filePrice = info ? info.price : price;
       try {
-        const up = await uploadsApi.uploadFile(files[i], 'design');
+        const up = await withRateLimitRetry(() => uploadsApi.uploadFile(files[i], 'design'));
         await designsApi.createDesign({
           title,
           description: s.description.trim() || null,
@@ -3032,6 +3195,15 @@ function BulkAddModal({
           <br />
           제목: <span className="font-semibold text-primary">{titlePreview}</span> (자동)
         </p>
+
+        {duplicateWarning.size > 0 && (
+          <p className="mt-2 rounded-md bg-warning-bg px-3 py-2 text-caption text-warning">
+            ⚠️ 이미 등록되어 있거나 이번 선택 안에서 이름이 겹치는 파일이 {duplicateWarning.size}개 있어요
+            (예: {Array.from(duplicateWarning).slice(0, 3).join(', ')}
+            {duplicateWarning.size > 3 ? ' 외' : ''}). 그대로 등록하면 같은 디자인이 중복으로 만들어질 수
+            있어요 — 실패했던 파일만 다시 올리는 게 아니라면 목록을 다시 확인해주세요.
+          </p>
+        )}
 
         {/* 등록 진행 중 */}
         {running ? (
