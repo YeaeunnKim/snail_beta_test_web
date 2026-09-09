@@ -43,6 +43,9 @@ export type DesignDesigner = Schemas['DesignDesignerPublic'];
 export type DesignOption = Schemas['DesignOptionPublic'];
 export type DesignOptionCreate = Schemas['DesignOptionCreate'];
 export type DesignOptionUpdate = Schemas['DesignOptionUpdate'];
+export type ShopOptionCategory = Schemas['ShopOptionCategoryPublic'];
+export type ShopOptionCategoryCreate = Schemas['ShopOptionCategoryCreate'];
+export type ShopOptionCategoryUpdate = Schemas['ShopOptionCategoryUpdate'];
 export type DesignVisibilityUpdate = Schemas['DesignVisibilityUpdate'];
 
 // 예약

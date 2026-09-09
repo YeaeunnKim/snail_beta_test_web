@@ -17,5 +17,6 @@ export * as notificationsApi from './notifications';
 export * as snailsApi from './snails';
 export * as uploadsApi from './uploads';
 export * as taxonomyApi from './taxonomy';
+export * as shopOptionCategoriesApi from './shop-option-categories';
 
 export * from './types';
