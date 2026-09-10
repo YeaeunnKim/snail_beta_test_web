@@ -1468,6 +1468,23 @@ const MAX_OPTION_QUANTITY = 99;
 // 백엔드 MAX_SHOP_OPTION_CATEGORIES(app/schemas/shop_option_categories.py)와 맞춘다.
 const MAX_SHOP_OPTION_CATEGORIES = 10;
 
+/** 신규 샵이 제거/연장/케어를 처음 켤 때 보여줄 기본 옵션 구성 — 그대로 저장해도 되고
+ * 수정/삭제해도 된다(강제 아님, 시작점일 뿐). */
+const DEFAULT_SECTION_TEMPLATE: Record<OptionKind, Omit<DraftRow, 'uid' | 'originalName' | 'deleted'>[]> = {
+  removal: [
+    { name: '자샵 제거', priceDelta: 10000, durationDelta: 0, selectionType: 'toggle', maxQuantity: null },
+    { name: '타샵 제거', priceDelta: 20000, durationDelta: 0, selectionType: 'toggle', maxQuantity: null },
+  ],
+  extend: [
+    { name: '개별 연장', priceDelta: 10000, durationDelta: 0, selectionType: 'quantity', maxQuantity: 10 },
+    { name: '전체 연장', priceDelta: 100000, durationDelta: 0, selectionType: 'toggle', maxQuantity: null },
+  ],
+  care: [
+    { name: '랩핑', priceDelta: 0, durationDelta: 0, selectionType: 'quantity', maxQuantity: 10 },
+    { name: '리페어', priceDelta: 10000, durationDelta: 0, selectionType: 'quantity', maxQuantity: 10 },
+  ],
+};
+
 /** 샵 공통 옵션 한 줄. 같은 이름의 design_options row를 모든 디자인에 걸쳐 묶어서 다룬다. */
 interface ShopOptionRow {
   name: string;
@@ -1601,19 +1618,30 @@ function OptionManager({ onClose, onDone }: { onClose: () => void; onDone: () =>
       const rows = shopOptions
         .filter((r) => r.sectionKey === section.key)
         .sort((a, b) => a.orderKey - b.orderKey || a.name.localeCompare(b.name, 'ko'));
-      bySection[section.key] = rows.map((r) => ({
-        uid: crypto.randomUUID(),
-        originalName: r.name,
-        name: r.name,
-        priceDelta: r.priceDelta,
-        durationDelta: r.durationDelta,
-        selectionType: r.selectionType,
-        maxQuantity: r.maxQuantity,
-        deleted: false,
-      }));
-      // 고정 3종은 옵션이 하나라도 켜져 있어야 기본 노출, 커스텀 카테고리는 사장님이 직접
-      // 만든 것이니 항상 노출(끄는 개념이 없음).
-      active[section.key] = section.kind !== null ? rows.some((r) => r.isActive) : true;
+      if (rows.length === 0 && section.kind !== null) {
+        // 이 샵에서 아직 한 번도 옵션을 넣어본 적 없는 고정 카테고리 — 빈 칸 대신 표준
+        // 기본 구성을 시작점으로 채워둔다(그대로 저장 or 자유롭게 수정/삭제 가능).
+        bySection[section.key] = DEFAULT_SECTION_TEMPLATE[section.kind].map((template) => ({
+          ...template,
+          uid: crypto.randomUUID(),
+          originalName: null,
+          deleted: false,
+        }));
+      } else {
+        bySection[section.key] = rows.map((r) => ({
+          uid: crypto.randomUUID(),
+          originalName: r.name,
+          name: r.name,
+          priceDelta: r.priceDelta,
+          durationDelta: r.durationDelta,
+          selectionType: r.selectionType,
+          maxQuantity: r.maxQuantity,
+          deleted: false,
+        }));
+      }
+      // 고정 3종·커스텀 카테고리 모두 동일하게, 활성 옵션이 하나라도 있어야 켜진 상태로
+      // 보여준다(끄기 = 그 카테고리의 모든 옵션을 is_active=false로, 삭제는 아님).
+      active[section.key] = rows.some((r) => r.isActive);
     }
     setDraftBySection(bySection);
     setSectionActive(active);
@@ -1924,8 +1952,8 @@ function OptionManager({ onClose, onDone }: { onClose: () => void; onDone: () =>
           </button>
         </div>
         <div className="space-y-6 overflow-y-auto p-6 pt-4">
-      {/* 섹션 온/오프(고정 3종만) + 커스텀 카테고리 추가. 고정 섹션을 끄면 그 옵션 전체가
-          앱에서 비활성화(삭제 아님)되고, 커스텀 카테고리는 항상 아래에 표시된다. */}
+      {/* 섹션 온/오프 — 고정 3종과 커스텀 카테고리 모두 동일하게 토글 가능. 끄면 그
+          카테고리의 옵션 전체가 앱에서 비활성화(삭제 아님)된다. + 는 새 카테고리 추가. */}
       <div className="flex flex-wrap items-center gap-1.5">
         {SECTION_TABS.map((tab) => {
           const on = sectionActive[tab.value];
@@ -1941,6 +1969,23 @@ function OptionManager({ onClose, onDone }: { onClose: () => void; onDone: () =>
               }`}
             >
               {tab.label}
+            </button>
+          );
+        })}
+        {categories.map((category) => {
+          const on = sectionActive[category.id];
+          return (
+            <button
+              key={category.id}
+              type="button"
+              onClick={() => setSectionActive((prev) => ({ ...prev, [category.id]: !prev[category.id] }))}
+              className={`rounded-full border px-4 py-1.5 text-body-sm font-semibold ${
+                on
+                  ? 'border-secondary bg-secondary text-white'
+                  : 'border-neutral-300 text-primary-50 hover:border-secondary hover:text-secondary'
+              }`}
+            >
+              {category.name}
             </button>
           );
         })}
