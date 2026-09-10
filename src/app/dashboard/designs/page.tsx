@@ -13,7 +13,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { designersApi, designsApi, shopApi, uploadsApi } from '@/services';
+import { designersApi, designsApi, shopApi, shopOptionCategoriesApi, uploadsApi } from '@/services';
 import type { Design, Designer, DesignFolder, ShopUpdate } from '@/services';
 import { collectAll } from '@/lib/api-client';
 import { ApiError } from '@/lib/api-error';
@@ -28,7 +28,6 @@ import {
   DURATION_STEP,
   OPTION_DURATION_DEFAULT,
   OPTION_DURATION_STEP,
-  OPTION_KINDS,
   OPTION_PRICE_DEFAULT,
   PRICE_INPUT_STEP,
   PRICE_STEP,
@@ -1466,11 +1465,14 @@ type OptionSelectionType = 'toggle' | 'quantity';
 /** 카테고리(kind) 안에서 고객이 몇 개까지 고를 수 있는지 (backend OptionSelectionMode). */
 type OptionSelectionMode = 'single' | 'multi';
 const MAX_OPTION_QUANTITY = 99;
+// 백엔드 MAX_SHOP_OPTION_CATEGORIES(app/schemas/shop_option_categories.py)와 맞춘다.
+const MAX_SHOP_OPTION_CATEGORIES = 10;
 
 /** 샵 공통 옵션 한 줄. 같은 이름의 design_options row를 모든 디자인에 걸쳐 묶어서 다룬다. */
 interface ShopOptionRow {
   name: string;
-  kind: OptionKind;
+  // 'extend' | 'removal' | 'care' 고정 3종 또는 커스텀 카테고리 id.
+  sectionKey: string;
   priceDelta: number;
   durationDelta: number;
   isActive: boolean; // 앱 노출 여부 — 한 곳이라도 비활성이면 비활성으로 취급
@@ -1501,8 +1503,6 @@ function moveItem<T>(arr: T[], from: number, to: number): T[] {
   return next;
 }
 
-const emptyDraftByKind = (): Record<OptionKind, DraftRow[]> => ({ extend: [], removal: [], care: [] });
-
 /**
  * 옵션 관리 — 샵 전체 공용. 개별 디자인·폴더 단위로는 더 이상 옵션을 따로 두지 않고,
  * 샵에 있는 모든 디자인에 동일하게 적용한다(디자인 등록/수정 화면에는 옵션 입력이 없다).
@@ -1516,6 +1516,13 @@ const emptyDraftByKind = (): Record<OptionKind, DraftRow[]> => ({ extend: [], re
  * row를 하나로 묶어서 다룬다. 섹션 온/오프는 그 kind의 모든 옵션 row의 `is_active`를
  * 일괄로 켜고 끄는 것으로 구현한다(옵션 자체는 삭제하지 않음).
  */
+interface OptionManagerSection {
+  key: string; // 'extend' | 'removal' | 'care' 또는 커스텀 카테고리 id
+  label: string;
+  kind: OptionKind | null; // null이면 커스텀 카테고리
+  categoryId: string | null;
+}
+
 function OptionManager({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
   useLockBodyScroll();
   const qc = useQueryClient();
@@ -1525,16 +1532,40 @@ function OptionManager({ onClose, onDone }: { onClose: () => void; onDone: () =>
   });
   const allDesigns = useMemo(() => allDesignsQuery.data ?? [], [allDesignsQuery.data]);
 
-  // 디자인들의 옵션을 이름 기준으로 묶어 "샵 공통 옵션" 목록을 만든다 — 초안 초기화에만 쓰인다.
+  // 사장님이 만든 커스텀 카테고리 — 고정 3종(제거/연장/케어)과 나란히 표시한다.
+  const categoriesQuery = useQuery({
+    queryKey: ['shop-option-categories'],
+    queryFn: () => shopOptionCategoriesApi.listCategories(),
+  });
+  const categories = useMemo(() => categoriesQuery.data ?? [], [categoriesQuery.data]);
+
+  const sections = useMemo<OptionManagerSection[]>(() => {
+    const fixed = SECTION_TABS.map((tab) => ({
+      key: tab.value as string,
+      label: tab.label,
+      kind: tab.value,
+      categoryId: null,
+    }));
+    const custom = categories
+      .slice()
+      .sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name, 'ko'))
+      .map((c) => ({ key: c.id, label: c.name, kind: null, categoryId: c.id }));
+    return [...fixed, ...custom];
+  }, [categories]);
+
+  // 디자인들의 옵션을 (섹션, 이름) 기준으로 묶어 "샵 공통 옵션" 목록을 만든다 — 초안 초기화에만 쓰인다.
   const shopOptions = useMemo<ShopOptionRow[]>(() => {
     const map = new Map<string, ShopOptionRow>();
     for (const design of allDesigns) {
       for (const option of design.options ?? []) {
-        let row = map.get(option.name);
+        const sectionKey = option.kind ?? option.custom_category_id;
+        if (!sectionKey) continue;
+        const mapKey = `${sectionKey}::${option.name}`;
+        let row = map.get(mapKey);
         if (!row) {
           row = {
             name: option.name,
-            kind: (OPTION_KINDS.some((k) => k.value === option.kind) ? option.kind : 'extend') as OptionKind,
+            sectionKey,
             priceDelta: option.price_delta,
             durationDelta: option.duration_delta_min ?? 0,
             isActive: option.is_active,
@@ -1542,7 +1573,7 @@ function OptionManager({ onClose, onDone }: { onClose: () => void; onDone: () =>
             selectionType: (option.selection_type ?? 'toggle') as OptionSelectionType,
             maxQuantity: option.max_quantity ?? null,
           };
-          map.set(option.name, row);
+          map.set(mapKey, row);
         } else {
           row.orderKey = Math.min(row.orderKey, option.sort_order);
           if (!option.is_active) row.isActive = false;
@@ -1554,30 +1585,23 @@ function OptionManager({ onClose, onDone }: { onClose: () => void; onDone: () =>
 
   // --- 로컬 초안: 이 모달을 여는 동안의 편집 상태. "저장"을 눌러야 실제 반영된다 ---
   const [initialized, setInitialized] = useState(false);
-  const [draftByKind, setDraftByKind] = useState<Record<OptionKind, DraftRow[]>>(emptyDraftByKind());
-  const [sectionActive, setSectionActive] = useState<Record<OptionKind, boolean>>({
-    extend: false,
-    removal: false,
-    care: false,
-  });
-  // 카테고리(kind)별 고객 예약 시 단독선택/중복선택 — 샵 설정(shop.*_selection_mode)에서 초기화.
+  const [draftBySection, setDraftBySection] = useState<Record<string, DraftRow[]>>({});
+  const [sectionActive, setSectionActive] = useState<Record<string, boolean>>({});
+  // 카테고리별 고객 예약 시 단독선택/중복선택 — 고정 3종은 shop.*_selection_mode, 커스텀은
+  // ShopOptionCategory.selection_mode에서 초기화.
   const shopQuery = useMyShop();
-  const [selectionMode, setSelectionMode] = useState<Record<OptionKind, OptionSelectionMode>>({
-    extend: 'multi',
-    removal: 'multi',
-    care: 'multi',
-  });
+  const [selectionMode, setSelectionMode] = useState<Record<string, OptionSelectionMode>>({});
   const [modeInitialized, setModeInitialized] = useState(false);
 
   useEffect(() => {
-    if (initialized || !allDesignsQuery.isSuccess) return;
-    const byKind = emptyDraftByKind();
-    const active: Record<OptionKind, boolean> = { extend: false, removal: false, care: false };
-    for (const kind of Object.keys(byKind) as OptionKind[]) {
+    if (initialized || !allDesignsQuery.isSuccess || !categoriesQuery.isSuccess) return;
+    const bySection: Record<string, DraftRow[]> = {};
+    const active: Record<string, boolean> = {};
+    for (const section of sections) {
       const rows = shopOptions
-        .filter((r) => r.kind === kind)
+        .filter((r) => r.sectionKey === section.key)
         .sort((a, b) => a.orderKey - b.orderKey || a.name.localeCompare(b.name, 'ko'));
-      byKind[kind] = rows.map((r) => ({
+      bySection[section.key] = rows.map((r) => ({
         uid: crypto.randomUUID(),
         originalName: r.name,
         name: r.name,
@@ -1587,34 +1611,82 @@ function OptionManager({ onClose, onDone }: { onClose: () => void; onDone: () =>
         maxQuantity: r.maxQuantity,
         deleted: false,
       }));
-      active[kind] = rows.some((r) => r.isActive);
+      // 고정 3종은 옵션이 하나라도 켜져 있어야 기본 노출, 커스텀 카테고리는 사장님이 직접
+      // 만든 것이니 항상 노출(끄는 개념이 없음).
+      active[section.key] = section.kind !== null ? rows.some((r) => r.isActive) : true;
     }
-    setDraftByKind(byKind);
+    setDraftBySection(bySection);
     setSectionActive(active);
     setInitialized(true);
-  }, [initialized, allDesignsQuery.isSuccess, shopOptions]);
+  }, [initialized, allDesignsQuery.isSuccess, categoriesQuery.isSuccess, shopOptions, sections]);
+
+  // 모달을 연 이후 새 카테고리를 만들면(사용자가 방금 "+"로 추가) 그 섹션의 빈 초안을
+  // 끼워 넣는다 — 이미 편집 중인 다른 섹션은 건드리지 않는다.
+  useEffect(() => {
+    if (!initialized) return;
+    setDraftBySection((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const section of sections) {
+        if (!(section.key in next)) {
+          next[section.key] = [];
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+    setSectionActive((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const section of sections) {
+        if (!(section.key in next)) {
+          next[section.key] = true;
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [initialized, sections]);
 
   useEffect(() => {
-    if (modeInitialized || !shopQuery.data) return;
+    if (modeInitialized || !shopQuery.data || !categoriesQuery.isSuccess) return;
     const shop = shopQuery.data;
-    setSelectionMode({
+    const mode: Record<string, OptionSelectionMode> = {
       removal: shop.removal_selection_mode,
       extend: shop.extend_selection_mode,
       care: shop.care_selection_mode,
-    });
+    };
+    for (const category of categories) mode[category.id] = category.selection_mode;
+    setSelectionMode(mode);
     setModeInitialized(true);
-  }, [modeInitialized, shopQuery.data]);
+  }, [modeInitialized, shopQuery.data, categoriesQuery.isSuccess, categories]);
 
-  const updateRow = (kind: OptionKind, uid: string, patch: Partial<DraftRow>) =>
-    setDraftByKind((prev) => ({
+  // 새 카테고리의 선택모드도 나중에 끼워 넣는다(위 초안 병합 effect와 같은 이유).
+  useEffect(() => {
+    if (!modeInitialized) return;
+    setSelectionMode((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const category of categories) {
+        if (!(category.id in next)) {
+          next[category.id] = category.selection_mode;
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [modeInitialized, categories]);
+
+  const updateRow = (sectionKey: string, uid: string, patch: Partial<DraftRow>) =>
+    setDraftBySection((prev) => ({
       ...prev,
-      [kind]: prev[kind].map((r) => (r.uid === uid ? { ...r, ...patch } : r)),
+      [sectionKey]: prev[sectionKey].map((r) => (r.uid === uid ? { ...r, ...patch } : r)),
     }));
-  const addRow = (kind: OptionKind) =>
-    setDraftByKind((prev) => ({
+  const addRow = (sectionKey: string) =>
+    setDraftBySection((prev) => ({
       ...prev,
-      [kind]: [
-        ...prev[kind],
+      [sectionKey]: [
+        ...prev[sectionKey],
         {
           uid: crypto.randomUUID(),
           originalName: null,
@@ -1627,32 +1699,32 @@ function OptionManager({ onClose, onDone }: { onClose: () => void; onDone: () =>
         },
       ],
     }));
-  const removeRow = (kind: OptionKind, uid: string) =>
-    setDraftByKind((prev) => ({
+  const removeRow = (sectionKey: string, uid: string) =>
+    setDraftBySection((prev) => ({
       ...prev,
-      [kind]: prev[kind]
+      [sectionKey]: prev[sectionKey]
         .map((r) => (r.uid === uid ? { ...r, deleted: true } : r))
         .filter((r) => r.originalName !== null || r.uid !== uid), // 저장 전 새 줄은 바로 제거, 기존 줄은 삭제 표시만
     }));
 
   // --- 섹션 내 드래그 정렬 (로컬 상태만 바꾸고, 저장 시 sort_order로 반영) ---
-  const [dragKind, setDragKind] = useState<OptionKind | null>(null);
+  const [dragSection, setDragSection] = useState<string | null>(null);
   const [dragUid, setDragUid] = useState<string | null>(null);
   const rowRefs = useRef(new Map<string, HTMLDivElement>());
 
-  const startDrag = (e: React.PointerEvent, kind: OptionKind, uid: string) => {
+  const startDrag = (e: React.PointerEvent, sectionKey: string, uid: string) => {
     e.preventDefault();
     e.currentTarget.setPointerCapture(e.pointerId);
-    setDragKind(kind);
+    setDragSection(sectionKey);
     setDragUid(uid);
   };
   const endDrag = () => {
-    setDragKind(null);
+    setDragSection(null);
     setDragUid(null);
   };
-  const onDragMove = (e: React.PointerEvent, kind: OptionKind, uid: string) => {
-    if (dragKind !== kind || dragUid !== uid) return;
-    const rows = draftByKind[kind];
+  const onDragMove = (e: React.PointerEvent, sectionKey: string, uid: string) => {
+    if (dragSection !== sectionKey || dragUid !== uid) return;
+    const rows = draftBySection[sectionKey];
     const from = rows.findIndex((r) => r.uid === uid);
     if (from < 0) return;
     for (let i = 0; i < rows.length; i += 1) {
@@ -1664,11 +1736,55 @@ function OptionManager({ onClose, onDone }: { onClose: () => void; onDone: () =>
       const passedDown = i > from && e.clientY > middle;
       const passedUp = i < from && e.clientY < middle;
       if (passedDown || passedUp) {
-        setDraftByKind((prev) => ({ ...prev, [kind]: moveItem(prev[kind], from, i) }));
+        setDraftBySection((prev) => ({ ...prev, [sectionKey]: moveItem(prev[sectionKey], from, i) }));
         return;
       }
     }
   };
+
+  // --- 새 카테고리 만들기 ---
+  const [creatingCategory, setCreatingCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [newCategoryMulti, setNewCategoryMulti] = useState(true);
+  const [categoryError, setCategoryError] = useState<string | null>(null);
+  const [savingCategory, setSavingCategory] = useState(false);
+
+  async function handleCreateCategory() {
+    const name = newCategoryName.trim();
+    if (!name) return;
+    setSavingCategory(true);
+    setCategoryError(null);
+    try {
+      await shopOptionCategoriesApi.createCategory({
+        name,
+        selection_mode: newCategoryMulti ? 'multi' : 'single',
+      });
+      await categoriesQuery.refetch();
+      setNewCategoryName('');
+      setNewCategoryMulti(true);
+      setCreatingCategory(false);
+    } catch (e) {
+      setCategoryError(toUserMessage(e));
+    } finally {
+      setSavingCategory(false);
+    }
+  }
+
+  async function handleDeleteCategory(categoryId: string, label: string) {
+    const count = (draftBySection[categoryId] ?? []).filter((r) => !r.deleted).length;
+    const msg =
+      count > 0
+        ? `"${label}" 카테고리를 삭제할까요? 안에 있는 옵션 ${count}개도 함께 삭제돼요.`
+        : `"${label}" 카테고리를 삭제할까요?`;
+    if (!window.confirm(msg)) return;
+    try {
+      await shopOptionCategoriesApi.deleteCategory(categoryId);
+      await categoriesQuery.refetch();
+      await allDesignsQuery.refetch();
+    } catch (e) {
+      setSaveError(toUserMessage(e));
+    }
+  }
 
   // --- 저장/취소 ---
   const [saving, setSaving] = useState(false);
@@ -1678,11 +1794,15 @@ function OptionManager({ onClose, onDone }: { onClose: () => void; onDone: () =>
     setSaving(true);
     setSaveError(null);
     try {
-      for (const kind of Object.keys(draftByKind) as OptionKind[]) {
-        const rows = draftByKind[kind];
-        const isActive = sectionActive[kind];
+      for (const section of sections) {
+        const rows = draftBySection[section.key] ?? [];
+        const isActive = sectionActive[section.key];
         for (const design of allDesigns) {
-          const existingByName = new Map((design.options ?? []).filter((o) => o.kind === kind).map((o) => [o.name, o]));
+          const existingByName = new Map(
+            (design.options ?? [])
+              .filter((o) => (o.kind ?? o.custom_category_id) === section.key)
+              .map((o) => [o.name, o]),
+          );
           const keepNames = new Set(rows.filter((r) => !r.deleted).map((r) => r.originalName ?? r.name));
 
           // 초안에서 삭제 표시된(또는 더 이상 안 남은) 기존 옵션은 이 디자인에서도 삭제.
@@ -1714,14 +1834,17 @@ function OptionManager({ onClose, onDone }: { onClose: () => void; onDone: () =>
                 (existing.max_quantity ?? null) !== body.max_quantity;
               if (changed) await designsApi.updateOption(design.id, existing.id, { ...body, is_active: isActive });
             } else {
-              const created = await designsApi.createOption(design.id, { kind, ...body });
+              const created = await designsApi.createOption(design.id, {
+                ...(section.kind ? { kind: section.kind } : { custom_category_id: section.categoryId! }),
+                ...body,
+              });
               if (!isActive) await designsApi.updateOption(design.id, created.id, { is_active: false });
             }
           }
         }
       }
 
-      // 카테고리별 단독/중복선택 모드 — 바뀐 값만 샵에 저장.
+      // 고정 3종 단독/중복선택 모드 — 바뀐 값만 샵에 저장.
       if (modeInitialized && shopQuery.data) {
         const shop = shopQuery.data;
         const modePatch: Pick<
@@ -1741,6 +1864,18 @@ function OptionManager({ onClose, onDone }: { onClose: () => void; onDone: () =>
           await shopApi.updateMyShop(modePatch);
           qc.invalidateQueries({ queryKey: MY_SHOP_KEY });
         }
+      }
+
+      // 커스텀 카테고리 단독/중복선택 모드 — 바뀐 값만 저장.
+      if (modeInitialized) {
+        for (const category of categories) {
+          if (selectionMode[category.id] !== category.selection_mode) {
+            await shopOptionCategoriesApi.updateCategory(category.id, {
+              selection_mode: selectionMode[category.id],
+            });
+          }
+        }
+        if (categories.length > 0) qc.invalidateQueries({ queryKey: ['shop-option-categories'] });
       }
 
       await allDesignsQuery.refetch();
@@ -1789,7 +1924,8 @@ function OptionManager({ onClose, onDone }: { onClose: () => void; onDone: () =>
           </button>
         </div>
         <div className="space-y-6 overflow-y-auto p-6 pt-4">
-      {/* 섹션 온/오프 — 켜진 섹션만 아래에 목록으로 펼쳐진다. 끄면 그 섹션 옵션 전체가 앱에서 비활성화(삭제 아님). */}
+      {/* 섹션 온/오프(고정 3종만) + 커스텀 카테고리 추가. 고정 섹션을 끄면 그 옵션 전체가
+          앱에서 비활성화(삭제 아님)되고, 커스텀 카테고리는 항상 아래에 표시된다. */}
       <div className="flex flex-wrap items-center gap-1.5">
         {SECTION_TABS.map((tab) => {
           const on = sectionActive[tab.value];
@@ -1808,39 +1944,102 @@ function OptionManager({ onClose, onDone }: { onClose: () => void; onDone: () =>
             </button>
           );
         })}
-        <button
-          type="button"
-          disabled
-          title="새 섹션 추가는 아직 지원하지 않아요 (앱과 함께 맞춰야 하는 부분이라 별도 준비 중이에요)"
-          className="rounded-full border border-dashed border-neutral-300 px-3 py-1.5 text-body-sm font-semibold text-primary-50 opacity-50"
-        >
-          +
-        </button>
+        {creatingCategory ? (
+          <div className="flex flex-wrap items-center gap-1.5 rounded-full border border-secondary/40 bg-white px-2.5 py-1">
+            <input
+              autoFocus
+              value={newCategoryName}
+              onChange={(e) => setNewCategoryName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') void handleCreateCategory();
+                if (e.key === 'Escape') setCreatingCategory(false);
+              }}
+              placeholder="카테고리 이름"
+              maxLength={40}
+              className="w-24 rounded border border-neutral-300 px-1.5 py-0.5 text-caption outline-none focus:border-secondary"
+            />
+            <label className="flex items-center gap-1 text-caption text-primary-50">
+              <input
+                type="checkbox"
+                checked={newCategoryMulti}
+                onChange={(e) => setNewCategoryMulti(e.target.checked)}
+              />
+              중복선택
+            </label>
+            <button
+              type="button"
+              onClick={() => void handleCreateCategory()}
+              disabled={savingCategory || !newCategoryName.trim()}
+              className="text-caption font-semibold text-secondary disabled:text-primary-50"
+            >
+              {savingCategory ? '추가 중…' : '추가'}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setCreatingCategory(false);
+                setNewCategoryName('');
+              }}
+              className="text-caption text-primary-50"
+            >
+              취소
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setCreatingCategory(true)}
+            disabled={categories.length >= MAX_SHOP_OPTION_CATEGORIES}
+            title={
+              categories.length >= MAX_SHOP_OPTION_CATEGORIES
+                ? `카테고리는 최대 ${MAX_SHOP_OPTION_CATEGORIES}개까지 만들 수 있어요`
+                : '새 카테고리 추가'
+            }
+            className="rounded-full border border-dashed border-neutral-300 px-3 py-1.5 text-body-sm font-semibold text-primary-50 hover:border-secondary hover:text-secondary disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            +
+          </button>
+        )}
       </div>
 
+      {categoryError && <p className="text-caption text-danger">{categoryError}</p>}
       {saveError && <p className="text-caption text-danger">{saveError}</p>}
 
       {/* 켜진 섹션만 순서대로 목록 표시 */}
       {(() => {
-        const totalActiveRows = (Object.keys(draftByKind) as OptionKind[]).reduce(
-          (sum, k) => sum + draftByKind[k].filter((r) => !r.deleted).length,
+        const totalActiveRows = sections.reduce(
+          (sum, s) => sum + (draftBySection[s.key] ?? []).filter((r) => !r.deleted).length,
           0,
         );
         const atCap = totalActiveRows >= MAX_DESIGN_OPTIONS;
-        return SECTION_TABS.filter((tab) => sectionActive[tab.value]).map((tab) => {
-          const rows = draftByKind[tab.value].filter((r) => !r.deleted);
-          return (
-          <div key={tab.value} className="space-y-2 border-t border-neutral-200 pt-4">
+        return sections
+          .filter((section) => sectionActive[section.key])
+          .map((section) => {
+            const rows = (draftBySection[section.key] ?? []).filter((r) => !r.deleted);
+            return (
+          <div key={section.key} className="space-y-2 border-t border-neutral-200 pt-4">
             <div className="flex items-center justify-between gap-2">
-              <p className="text-body-sm font-semibold text-primary">{tab.label}</p>
+              <div className="flex items-center gap-2">
+                <p className="text-body-sm font-semibold text-primary">{section.label}</p>
+                {section.categoryId && (
+                  <button
+                    type="button"
+                    onClick={() => void handleDeleteCategory(section.categoryId!, section.label)}
+                    className="text-caption text-danger/70 hover:text-danger"
+                    title="카테고리 삭제 (안의 옵션도 함께 삭제됨)"
+                  >
+                    카테고리 삭제
+                  </button>
+                )}
+              </div>
               <label className="flex items-center gap-1.5 text-caption font-semibold text-primary">
                 <input
                   type="checkbox"
-                  checked={selectionMode[tab.value] === 'multi'}
+                  checked={selectionMode[section.key] === 'multi'}
                   onChange={(e) =>
                     setSelectionMode((prev) => ({
                       ...prev,
-                      [tab.value]: e.target.checked ? 'multi' : 'single',
+                      [section.key]: e.target.checked ? 'multi' : 'single',
                     }))
                   }
                 />
@@ -1859,15 +2058,15 @@ function OptionManager({ onClose, onDone }: { onClose: () => void; onDone: () =>
                       else rowRefs.current.delete(row.uid);
                     }}
                     className={`flex flex-wrap items-center gap-2 rounded-md border p-2 ${
-                      dragKind === tab.value && dragUid === row.uid
+                      dragSection === section.key && dragUid === row.uid
                         ? 'border-secondary bg-secondary/5'
                         : 'border-neutral-200'
                     }`}
                   >
                     <button
                       type="button"
-                      onPointerDown={(e) => startDrag(e, tab.value, row.uid)}
-                      onPointerMove={(e) => onDragMove(e, tab.value, row.uid)}
+                      onPointerDown={(e) => startDrag(e, section.key, row.uid)}
+                      onPointerMove={(e) => onDragMove(e, section.key, row.uid)}
                       onPointerUp={endDrag}
                       onPointerCancel={endDrag}
                       className="grid h-8 w-5 shrink-0 cursor-grab touch-none select-none place-items-center rounded text-primary-50 hover:bg-neutral-100 active:cursor-grabbing"
@@ -1878,7 +2077,7 @@ function OptionManager({ onClose, onDone }: { onClose: () => void; onDone: () =>
                     </button>
                     <input
                       value={row.name}
-                      onChange={(e) => updateRow(tab.value, row.uid, { name: e.target.value })}
+                      onChange={(e) => updateRow(section.key, row.uid, { name: e.target.value })}
                       placeholder="옵션 이름 (예: 없음)"
                       maxLength={80}
                       className="min-w-[6rem] flex-1 rounded-md border border-neutral-300 px-2 py-1 text-caption"
@@ -1889,7 +2088,7 @@ function OptionManager({ onClose, onDone }: { onClose: () => void; onDone: () =>
                       </span>
                       <Stepper
                         value={row.priceDelta}
-                        onChange={(v) => updateRow(tab.value, row.uid, { priceDelta: Math.max(0, v) })}
+                        onChange={(v) => updateRow(section.key, row.uid, { priceDelta: Math.max(0, v) })}
                         step={PRICE_STEP}
                         suffix="원"
                         ariaLabel="추가금액"
@@ -1902,7 +2101,7 @@ function OptionManager({ onClose, onDone }: { onClose: () => void; onDone: () =>
                       <Stepper
                         value={row.durationDelta}
                         onChange={(v) =>
-                          updateRow(tab.value, row.uid, { durationDelta: clampOptionDuration(v) })
+                          updateRow(section.key, row.uid, { durationDelta: clampOptionDuration(v) })
                         }
                         step={OPTION_DURATION_STEP}
                         suffix="분"
@@ -1912,7 +2111,7 @@ function OptionManager({ onClose, onDone }: { onClose: () => void; onDone: () =>
                     <button
                       type="button"
                       onClick={() =>
-                        updateRow(tab.value, row.uid, {
+                        updateRow(section.key, row.uid, {
                           selectionType: row.selectionType === 'quantity' ? 'toggle' : 'quantity',
                           maxQuantity: row.selectionType === 'quantity' ? null : (row.maxQuantity ?? 10),
                         })
@@ -1936,7 +2135,7 @@ function OptionManager({ onClose, onDone }: { onClose: () => void; onDone: () =>
                           value={row.maxQuantity ?? ''}
                           onChange={(e) => {
                             const n = Math.round(Number(e.target.value));
-                            updateRow(tab.value, row.uid, {
+                            updateRow(section.key, row.uid, {
                               maxQuantity: Number.isFinite(n)
                                 ? Math.min(MAX_OPTION_QUANTITY, Math.max(1, n))
                                 : null,
@@ -1949,7 +2148,7 @@ function OptionManager({ onClose, onDone }: { onClose: () => void; onDone: () =>
                     )}
                     <button
                       type="button"
-                      onClick={() => removeRow(tab.value, row.uid)}
+                      onClick={() => removeRow(section.key, row.uid)}
                       className="grid h-8 w-8 shrink-0 place-items-center rounded-md border border-neutral-300 text-primary-50 hover:bg-neutral-50"
                       aria-label="옵션 삭제"
                     >
@@ -1961,7 +2160,7 @@ function OptionManager({ onClose, onDone }: { onClose: () => void; onDone: () =>
             )}
             <button
               type="button"
-              onClick={() => addRow(tab.value)}
+              onClick={() => addRow(section.key)}
               disabled={atCap}
               className="text-caption font-semibold text-secondary hover:underline disabled:cursor-not-allowed disabled:text-primary-50 disabled:no-underline"
             >
@@ -1969,12 +2168,12 @@ function OptionManager({ onClose, onDone }: { onClose: () => void; onDone: () =>
             </button>
             {atCap && (
               <p className="text-caption text-warning">
-                디자인 1개당 옵션은 최대 {MAX_DESIGN_OPTIONS}개까지예요(제거·연장·케어 합산). 더 추가하려면 기존 옵션을 먼저 지워주세요.
+                디자인 1개당 옵션은 최대 {MAX_DESIGN_OPTIONS}개까지예요(모든 카테고리 합산). 더 추가하려면 기존 옵션을 먼저 지워주세요.
               </p>
             )}
           </div>
-          );
-        });
+            );
+          });
       })()}
 
         </div>

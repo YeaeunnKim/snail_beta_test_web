@@ -2090,6 +2090,42 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/shops/me/option-categories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 내 샵 커스텀 옵션 카테고리 목록 */
+        get: operations["shop-option-categories_list_my_option_categories"];
+        put?: never;
+        /** 커스텀 옵션 카테고리 생성 */
+        post: operations["shop-option-categories_create_my_option_category"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/shops/me/option-categories/{category_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** 커스텀 옵션 카테고리 삭제 (안의 옵션도 함께 삭제됨) */
+        delete: operations["shop-option-categories_delete_my_option_category"];
+        options?: never;
+        head?: never;
+        /** 커스텀 옵션 카테고리 수정 */
+        patch: operations["shop-option-categories_update_my_option_category"];
+        trace?: never;
+    };
     "/api/v1/events": {
         parameters: {
             query?: never;
@@ -4167,6 +4203,11 @@ export interface components {
             duration_delta_min: number;
             /** Is Active */
             is_active: boolean;
+            /**
+             * Quantity
+             * @default 1
+             */
+            quantity?: number;
         };
         /** AdminReservationRequestDetail */
         AdminReservationRequestDetail: {
@@ -5200,10 +5241,15 @@ export interface components {
         /** DesignOptionCreate */
         DesignOptionCreate: {
             /**
-             * @description 디자인 옵션 종류. 허용값: extend, removal, care.
+             * @description 고정 3종(extend/removal/care) 중 하나. custom_category_id와 정확히 하나만 지정해야 한다.
              * @example extend
              */
-            kind: components["schemas"]["DesignOptionKind"];
+            kind?: components["schemas"]["DesignOptionKind"] | null;
+            /**
+             * Custom Category Id
+             * @description 사장님이 만든 커스텀 카테고리 id. kind와 정확히 하나만 지정해야 한다.
+             */
+            custom_category_id?: string | null;
             /** Name */
             name: string;
             /**
@@ -5247,10 +5293,15 @@ export interface components {
              */
             id: string;
             /**
-             * @description 디자인 옵션 종류. 허용값: extend, removal, care.
+             * @description 고정 3종(extend/removal/care) 중 하나. 커스텀 카테고리 옵션이면 null이고 custom_category_id가 대신 채워진다.
              * @example removal
              */
-            kind: components["schemas"]["DesignOptionKind"];
+            kind?: components["schemas"]["DesignOptionKind"] | null;
+            /**
+             * Custom Category Id
+             * @description 사장님이 만든 커스텀 카테고리 id. kind가 null일 때만 값이 있다.
+             */
+            custom_category_id?: string | null;
             /** Name */
             name: string;
             /** Price Delta */
@@ -5278,10 +5329,15 @@ export interface components {
         /** DesignOptionUpdate */
         DesignOptionUpdate: {
             /**
-             * @description 디자인 옵션 종류. 허용값: extend, removal, care.
+             * @description 고정 3종(extend/removal/care) 중 하나. custom_category_id와 동시에 지정할 수 없다.
              * @example care
              */
             kind?: components["schemas"]["DesignOptionKind"] | null;
+            /**
+             * Custom Category Id
+             * @description 사장님이 만든 커스텀 카테고리 id. kind와 동시에 지정할 수 없다.
+             */
+            custom_category_id?: string | null;
             /** Name */
             name?: string | null;
             /** Price Delta */
@@ -6461,6 +6517,10 @@ export interface components {
             designer_id?: string | null;
             /** Selected Option Ids */
             selected_option_ids?: string[];
+            /** Selected Option Quantities */
+            selected_option_quantities?: {
+                [key: string]: number;
+            };
             /** User Request */
             user_request?: string | null;
         };
@@ -6540,6 +6600,10 @@ export interface components {
             owner_reply?: string | null;
             /** Selected Option Ids */
             selected_option_ids?: string[];
+            /** Selected Option Quantities */
+            selected_option_quantities?: {
+                [key: string]: number;
+            };
             /** Total Price */
             total_price: number;
             payment_method_snapshot: components["schemas"]["PaymentMethod"];
@@ -6627,6 +6691,10 @@ export interface components {
             owner_reply?: string | null;
             /** Selected Option Ids */
             selected_option_ids?: string[];
+            /** Selected Option Quantities */
+            selected_option_quantities?: {
+                [key: string]: number;
+            };
             /** Total Price */
             total_price: number;
             payment_method_snapshot: components["schemas"]["PaymentMethod"];
@@ -6687,6 +6755,10 @@ export interface components {
             designer_id?: string | null;
             /** Selected Option Ids */
             selected_option_ids?: string[];
+            /** Selected Option Quantities */
+            selected_option_quantities?: {
+                [key: string]: number;
+            };
             /** User Request */
             user_request?: string | null;
             /** Contact Name */
@@ -7463,6 +7535,54 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+        };
+        /** ShopOptionCategoryCreate */
+        ShopOptionCategoryCreate: {
+            /** Name */
+            name: string;
+            /** @default multi */
+            selection_mode?: components["schemas"]["OptionSelectionMode"];
+            /**
+             * Sort Order
+             * @default 0
+             */
+            sort_order?: number;
+        };
+        /** ShopOptionCategoryPublic */
+        ShopOptionCategoryPublic: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Shop Id
+             * Format: uuid
+             */
+            shop_id: string;
+            /** Name */
+            name: string;
+            selection_mode: components["schemas"]["OptionSelectionMode"];
+            /** Sort Order */
+            sort_order: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** ShopOptionCategoryUpdate */
+        ShopOptionCategoryUpdate: {
+            /** Name */
+            name?: string | null;
+            selection_mode?: components["schemas"]["OptionSelectionMode"] | null;
+            /** Sort Order */
+            sort_order?: number | null;
         };
         /** ShopPublic */
         ShopPublic: {
@@ -19689,6 +19809,338 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SearchResult"];
+                };
+            };
+            /** @description UNAUTHORIZED */
+            401: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description NOT_FOUND */
+            404: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description CONFLICT */
+            409: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description VALIDATION_ERROR */
+            422: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    "shop-option-categories_list_my_option_categories": {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShopOptionCategoryPublic"][];
+                };
+            };
+            /** @description UNAUTHORIZED */
+            401: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description NOT_FOUND */
+            404: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description CONFLICT */
+            409: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description VALIDATION_ERROR */
+            422: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    "shop-option-categories_create_my_option_category": {
+        parameters: {
+            query?: never;
+            header: {
+                authorization?: string | null;
+                /** @description Required for mutating requests. */
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShopOptionCategoryCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShopOptionCategoryPublic"];
+                };
+            };
+            /** @description UNAUTHORIZED */
+            401: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description NOT_FOUND */
+            404: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description CONFLICT */
+            409: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description VALIDATION_ERROR */
+            422: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    "shop-option-categories_delete_my_option_category": {
+        parameters: {
+            query?: never;
+            header: {
+                authorization?: string | null;
+                /** @description Required for mutating requests. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                category_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description UNAUTHORIZED */
+            401: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description NOT_FOUND */
+            404: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description CONFLICT */
+            409: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description VALIDATION_ERROR */
+            422: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    "shop-option-categories_update_my_option_category": {
+        parameters: {
+            query?: never;
+            header: {
+                authorization?: string | null;
+                /** @description Required for mutating requests. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                category_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShopOptionCategoryUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShopOptionCategoryPublic"];
                 };
             };
             /** @description UNAUTHORIZED */
