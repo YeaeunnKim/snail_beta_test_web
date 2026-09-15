@@ -19,6 +19,7 @@ import { useLockBodyScroll } from '@/hooks/use-lock-body-scroll';
 
 type PaymentMethod = 'on_site' | 'bank_transfer_guide';
 type DesignerRow = { id?: string; name: string };
+type RefundTierRow = { daysBefore: string; refundPercent: string };
 
 const inputCls =
   'w-full rounded-lg border border-neutral-300 px-3 py-2.5 text-body-sm outline-none focus:border-secondary';
@@ -40,6 +41,21 @@ export function ShopEditModal({ shop, onClose }: { shop: Shop; onClose: () => vo
   const [bankHolder, setBankHolder] = useState(shop.bank_account_holder ?? '');
   const [bankAccount, setBankAccount] = useState(shop.bank_account_number ?? '');
   const [hours, setHours] = useState<BusinessHoursValue>(() => fromEntries(shop.business_hours));
+  const [phoneNumber, setPhoneNumber] = useState(shop.phone_number ?? '');
+  const [address, setAddress] = useState(shop.address ?? '');
+  const [addressDetail, setAddressDetail] = useState(shop.address_detail ?? '');
+  const [introduction, setIntroduction] = useState(shop.introduction ?? '');
+  const [instagramHandle, setInstagramHandle] = useState(shop.instagram_handle ?? '');
+  const [naverPlaceUrl, setNaverPlaceUrl] = useState(shop.naver_place_url ?? '');
+  const [naverBookingUrl, setNaverBookingUrl] = useState(shop.naver_booking_url ?? '');
+  const [kakaoUrl, setKakaoUrl] = useState(shop.kakao_url ?? '');
+  const [reservationPolicy, setReservationPolicy] = useState(shop.reservation_policy ?? '');
+  const [refundTiers, setRefundTiers] = useState<RefundTierRow[]>(() =>
+    (shop.refund_tiers ?? []).map((t) => ({
+      daysBefore: String(t.days_before),
+      refundPercent: String(t.refund_percent),
+    })),
+  );
   const [err, setErr] = useState<string | null>(null);
   const regionsQuery = useRegions();
   const regions = regionsQuery.data ?? [];
@@ -66,6 +82,21 @@ export function ShopEditModal({ shop, onClose }: { shop: Shop; onClose: () => vo
         bank_name: bank ? bankName.trim() || null : null,
         bank_account_number: bank ? bankAccount.trim() || null : null,
         bank_account_holder: bank ? bankHolder.trim() || null : null,
+        phone_number: phoneNumber.trim(),
+        address: address.trim(),
+        address_detail: addressDetail.trim() || null,
+        introduction: introduction.trim() || null,
+        instagram_handle: instagramHandle.trim() || null,
+        naver_place_url: naverPlaceUrl.trim() || null,
+        naver_booking_url: naverBookingUrl.trim() || null,
+        kakao_url: kakaoUrl.trim() || null,
+        reservation_policy: reservationPolicy.trim() || null,
+        refund_tiers: refundTiers
+          .filter((t) => t.daysBefore.trim() && t.refundPercent.trim())
+          .map((t) => ({
+            days_before: Math.max(0, Math.round(Number(t.daysBefore)) || 0),
+            refund_percent: Math.min(100, Math.max(0, Math.round(Number(t.refundPercent)) || 0)),
+          })),
       });
       await shopApi.setBusinessHours({ entries: toEntries(hours) });
       for (const r of rows ?? []) {
@@ -91,6 +122,18 @@ export function ShopEditModal({ shop, onClose }: { shop: Shop; onClose: () => vo
       setErr('샵 이름을 입력해주세요.');
       return;
     }
+    if (!phoneNumber.trim()) {
+      setErr('전화번호를 입력해주세요.');
+      return;
+    }
+    if (!address.trim()) {
+      setErr('주소를 입력해주세요.');
+      return;
+    }
+    if (refundTiers.some((t) => t.daysBefore.trim() && !t.refundPercent.trim())) {
+      setErr('환불 규정의 환불 비율을 입력해주세요.');
+      return;
+    }
     if (paymentMethod === 'bank_transfer_guide') {
       if (!depositAmount || Number(depositAmount) <= 0) return setErr('예약금을 입력해주세요.');
       if (!bankName.trim()) return setErr('은행명을 입력해주세요.');
@@ -108,6 +151,13 @@ export function ShopEditModal({ shop, onClose }: { shop: Shop; onClose: () => vo
   const setRow = (i: number, nm: string) =>
     setRows((prev) => (prev ?? []).map((r, idx) => (idx === i ? { ...r, name: nm } : r)));
   const addRow = () => setRows((prev) => [...(prev ?? []), { name: '' }]);
+
+  const addRefundTier = () =>
+    setRefundTiers((prev) => [...prev, { daysBefore: '', refundPercent: '' }]);
+  const removeRefundTier = (i: number) =>
+    setRefundTiers((prev) => prev.filter((_, idx) => idx !== i));
+  const setRefundTier = (i: number, patch: Partial<RefundTierRow>) =>
+    setRefundTiers((prev) => prev.map((t, idx) => (idx === i ? { ...t, ...patch } : t)));
 
   return (
     <div
@@ -132,6 +182,33 @@ export function ShopEditModal({ shop, onClose }: { shop: Shop; onClose: () => vo
           <div>
             <label className={labelCls}>샵 이름</label>
             <input className={inputCls} value={name} onChange={(e) => setName(e.target.value)} />
+          </div>
+
+          {/* 전화번호 */}
+          <div>
+            <label className={labelCls}>전화번호</label>
+            <input
+              className={inputCls}
+              value={phoneNumber}
+              onChange={(e) => setPhoneNumber(e.target.value)}
+              placeholder="예: 02-0000-0000"
+            />
+          </div>
+
+          {/* 주소 */}
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <label className={labelCls}>주소</label>
+              <input className={inputCls} value={address} onChange={(e) => setAddress(e.target.value)} />
+            </div>
+            <div className="flex-1">
+              <label className={labelCls}>상세주소</label>
+              <input
+                className={inputCls}
+                value={addressDetail}
+                onChange={(e) => setAddressDetail(e.target.value)}
+              />
+            </div>
           </div>
 
           {/* 지역 — 자유입력 불가, 아래 목록에서만 선택 */}
@@ -220,6 +297,113 @@ export function ShopEditModal({ shop, onClose }: { shop: Shop; onClose: () => vo
                 </div>
               </div>
             )}
+          </div>
+
+          {/* 소개글 */}
+          <div>
+            <label className={labelCls}>소개글</label>
+            <textarea
+              className={`${inputCls} min-h-24 resize-y`}
+              value={introduction}
+              onChange={(e) => setIntroduction(e.target.value)}
+              placeholder="샵을 소개하는 문구를 입력해주세요."
+            />
+          </div>
+
+          {/* SNS / 외부 링크 */}
+          <div className="space-y-3">
+            <label className="mb-1 block text-body-sm font-medium text-primary">SNS / 외부 링크</label>
+            <div>
+              <label className={labelCls}>인스타그램 아이디</label>
+              <input
+                className={inputCls}
+                value={instagramHandle}
+                onChange={(e) => setInstagramHandle(e.target.value)}
+                placeholder="예: snail_nail"
+              />
+            </div>
+            <div>
+              <label className={labelCls}>네이버 플레이스 링크</label>
+              <input
+                className={inputCls}
+                value={naverPlaceUrl}
+                onChange={(e) => setNaverPlaceUrl(e.target.value)}
+                placeholder="https://naver.me/..."
+              />
+            </div>
+            <div>
+              <label className={labelCls}>네이버 예약 링크</label>
+              <input
+                className={inputCls}
+                value={naverBookingUrl}
+                onChange={(e) => setNaverBookingUrl(e.target.value)}
+                placeholder="https://booking.naver.com/..."
+              />
+            </div>
+            <div>
+              <label className={labelCls}>카카오 채널 링크</label>
+              <input
+                className={inputCls}
+                value={kakaoUrl}
+                onChange={(e) => setKakaoUrl(e.target.value)}
+                placeholder="https://pf.kakao.com/..."
+              />
+            </div>
+          </div>
+
+          {/* 예약 안내 문구 */}
+          <div>
+            <label className={labelCls}>예약 안내 문구</label>
+            <textarea
+              className={`${inputCls} min-h-20 resize-y`}
+              value={reservationPolicy}
+              onChange={(e) => setReservationPolicy(e.target.value)}
+              placeholder="예: 노쇼 시 다음 예약이 제한될 수 있습니다."
+            />
+          </div>
+
+          {/* 환불 규정 */}
+          <div>
+            <label className="mb-1 block text-body-sm font-medium text-primary">환불 규정</label>
+            <p className="mb-2 text-caption text-primary-50">
+              시술일 며칠 전까지 취소하면 몇 %를 환불할지 정해주세요. 비워두면 기본 규정(전날까지
+              전액 환불)이 적용돼요.
+            </p>
+            <div className="space-y-2">
+              {refundTiers.map((tier, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min={0}
+                    className={inputCls}
+                    value={tier.daysBefore}
+                    onChange={(e) => setRefundTier(i, { daysBefore: e.target.value })}
+                    placeholder="며칠 전"
+                  />
+                  <span className="text-caption text-primary-50">일 전까지</span>
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    className={inputCls}
+                    value={tier.refundPercent}
+                    onChange={(e) => setRefundTier(i, { refundPercent: e.target.value })}
+                    placeholder="환불 %"
+                  />
+                  <span className="text-caption text-primary-50">%</span>
+                  <button
+                    type="button"
+                    onClick={() => removeRefundTier(i)}
+                    className="shrink-0 text-caption text-danger"
+                  >
+                    삭제
+                  </button>
+                </div>
+              ))}
+            </div>
+            <button type="button" onClick={addRefundTier} className="mt-2 text-caption font-semibold text-secondary">
+              + 환불 규정 추가
+            </button>
           </div>
 
           {/* 디자이너 */}
