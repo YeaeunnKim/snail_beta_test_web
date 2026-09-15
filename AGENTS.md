@@ -8,7 +8,11 @@
 - 원본: `snail_owner_web`; 현재 repo: `snail_beta_test_web`.
 - 스택: Next.js 15.1.6 App Router, React 19, TypeScript 5.7 strict, pnpm 11.5.0, Tailwind v4.
 - 상태/데이터: Zustand, TanStack Query, React Hook Form + Zod, openapi-typescript.
-- 작업 원칙: work-order의 `ALLOWED-FILES`에 있는 파일만 수정한다. 의존성 추가, git 커밋/브랜치/푸시는 금지.
+- 작업 원칙: 의존성 추가는 사용자가 지시할 때만. 커밋·푸시는 사용자가 요청할 때만 한다.
+
+- **세션 부팅 순서**: ① 이 파일 → ② [docs/CODEMAP.md](docs/CODEMAP.md)(기능→파일 지도).
+  코드 전체 탐색은 CODEMAP 을 읽은 뒤에만 한다. 파일을 추가·이동하면 CODEMAP 갱신이 DoD 이고
+  `pnpm check:codemap` 이 CI 에서 강제한다.
 
 ## 1. 실행·검증
 
@@ -24,7 +28,7 @@ pnpm build
 - CI: `.github/workflows/ci.yml` (main PR/push) — `pnpm install --frozen-lockfile → typecheck → lint`. `build`는 초기 제외(TODO).
 - 자동 유닛 테스트 러너는 없다.
 - 브라우저 런타임 검증이 필요하면 `.claude/skills/verify/`의 approved-owner 세션 주입 Playwright 하네스를 우선 확인한다(owner 웹에서 이식한 코드 정독본 — 첫 구동 시 셀렉터 대조 필요).
-- `package.json`의 의존성/스크립트는 work-order가 명시하지 않으면 바꾸지 않는다.
+- `package.json`의 의존성/스크립트는 사용자가 지시하지 않으면 바꾸지 않는다.
 
 ## 1.1 배포 규칙
 
@@ -93,7 +97,8 @@ src/
 - `GET /shops/me/designs` 응답이 `ListResponse` envelope로 바뀌었지만 `src/types/api.d.ts`가 stale이면 `designs.map is not a function` 크래시가 날 수 있다. 자세한 내용은 `docs/OWNER_WEB_GAPS.md`.
 - 베타에는 `BETA_AUTO_APPROVE_OWNERS` 자동승인 플로우가 있다. 가입 즉시 승인되는 경로를 기존 사업자 인증 전제로 덮어쓰지 않는다.
 - `src/app/dashboard/designs/page.tsx`는 약 1,218줄의 대형 파일이고 인라인 컴포넌트가 많다. 편집 시 blast-radius가 크므로 작은 단위로 확인한다.
-- `backend-context/`와 `src/types/api.d.ts` 계약 수정은 사령관 지시 없이는 하지 않는다.
+- `backend-context/`와 `src/types/api.d.ts`는 **생성물**이다. 직접 고치지 말고
+  `backend specification`의 `tools/sync_contract.ps1` + `pnpm generate:types`로 다시 만든다.
 
 ## 5. 코드 스타일
 
