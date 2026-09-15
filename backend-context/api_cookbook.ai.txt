@@ -1,0 +1,240 @@
+# api_cookbook.ai.txt — 작업지향 레시피
+
+Generated at: 백엔드 코드에서 자동 생성 (수동 편집 금지)
+
+이 파일은 비개발자와 AI에게 "무엇을 어떤 순서로 호출해야 하는지"를 복붙 가능한 흐름으로 준다. 상세 스키마는 `docs/openapi.json`, 에러/enum 전체 계약은 `docs/api_contract_reference.html`도 함께 본다.
+
+# Recipe A — 유저앱: 디자인 검색해서 예약하는 화면
+
+1. `POST /api/v1/auth/apple`로 토큰 획득.
+2. `GET /api/v1/designs?q=프렌치&region=강남&colors=핑크&moods=러블리&sort=popular&limit=20`.
+3. 사용자가 디자인 카드 선택 → `GET /api/v1/designs/11111111-1111-4111-8111-111111111111`.
+4. 옵션 선택 후 `GET /api/v1/designs/11111111-1111-4111-8111-111111111111/availability?date=2026-06-01&option_ids=77777777-7777-4777-8777-777777777777`.
+5. 슬롯 선택 후 `POST /api/v1/reservations` with Idempotency-Key.
+6. 예약 완료 화면은 `ReservationMe.status`, `payment_method_snapshot`, `deposit_amount_snapshot`, `bank_snapshot`으로 분기.
+
+예약 생성 body:
+```json
+{
+  "design_id": "11111111-1111-4111-8111-111111111111",
+  "start_at": "2026-06-01T02:00:00Z",
+  "designer_id": "33333333-3333-4333-8333-333333333333",
+  "selected_option_ids": [
+    "77777777-7777-4777-8777-777777777777"
+  ],
+  "user_request": "손톱 길이는 짧게 부탁드려요."
+}
+```
+
+예약 생성 response:
+```json
+{
+  "id": "66666666-6666-4666-8666-666666666666",
+  "shop_id": "22222222-2222-4222-8222-222222222222",
+  "design_id": "11111111-1111-4111-8111-111111111111",
+  "designer_id": "33333333-3333-4333-8333-333333333333",
+  "assigned_by": "user",
+  "start_at": "2026-06-01T02:00:00Z",
+  "end_at": "2026-06-01T03:30:00Z",
+  "status": "pending",
+  "user_request": "손톱 길이는 짧게 부탁드려요.",
+  "selected_option_ids": [
+    "77777777-7777-4777-8777-777777777777"
+  ],
+  "total_price": 109000,
+  "payment_method_snapshot": "bank_transfer_guide",
+  "deposit_amount_snapshot": 10000,
+  "bank_snapshot": {
+    "bank_name": "스네일은행",
+    "bank_account_number": "123-456-7890",
+    "bank_account_holder": "로컬 사장님"
+  },
+  "reservation_policy_snapshot": "예약 변경은 하루 전까지 연락해주세요.",
+  "rejected_reason": null,
+  "cancelled_reason": null,
+  "user_payment_notified_at": null,
+  "owner_payment_confirmed_at": null,
+  "reminder_sent_at": null,
+  "completed_at": null,
+  "no_show_at": null,
+  "shop": {
+    "id": "22222222-2222-4222-8222-222222222222",
+    "name": "스네일 네일 강남",
+    "region": "강남",
+    "thumbnail_url": "https://cdn.example.com/shops/thumbnail.jpg"
+  },
+  "designer": {
+    "id": "33333333-3333-4333-8333-333333333333",
+    "name": "민지",
+    "position": "수석 디자이너",
+    "profile_image_url": "https://cdn.example.com/designers/minji.jpg"
+  },
+  "design": {
+    "id": "11111111-1111-4111-8111-111111111111",
+    "title": "핑크 프렌치 리본 네일",
+    "base_price": 79000,
+    "duration_minutes": 90,
+    "thumbnail_url": "https://cdn.example.com/designs/thumbnail.jpg"
+  },
+  "created_at": "2026-05-28T09:10:00Z",
+  "updated_at": "2026-05-28T09:10:00Z"
+}
+```
+
+# Recipe B — 사장님 웹: 디자인 등록하고 공개하는 화면
+
+1. `POST /api/v1/auth/owner/login`.
+2. `GET /api/v1/owners/me`로 인증 상태 확인.
+3. `POST /api/v1/shops/me/uploads` with `target_type=business_license`로 사업자등록증 파일 업로드.
+4. 반환된 `object_key`로 `POST /api/v1/owners/me/business-verification` 제출.
+5. `POST /api/v1/shops/me` 또는 `GET/PATCH /api/v1/shops/me`.
+6. `POST /api/v1/shops/me/designers`로 담당 디자이너를 만든다.
+7. `POST /api/v1/shops/me/uploads` with `target_type=design`로 디자인 이미지 업로드.
+8. 반환된 object key로 `POST /api/v1/shops/me/designs`.
+9. `GET /api/v1/shops/me/designs/11111111-1111-4111-8111-111111111111`를 새로고침해 `ai_analysis_status=done`을 확인.
+10. `POST /api/v1/shops/me/designs/11111111-1111-4111-8111-111111111111/options`.
+11. `POST /api/v1/shops/me/designs/11111111-1111-4111-8111-111111111111/visibility`로 active 전환.
+
+사업자 인증 body:
+```json
+{
+  "business_registration_number": "123-45-67890",
+  "document_object_key": "business_license/ab/license.pdf"
+}
+```
+
+디자인 생성 body:
+```json
+{
+  "title": "핑크 프렌치 리본 네일",
+  "description": "은은한 핑크 베이스에 리본 포인트를 더한 디자인",
+  "base_price": 79000,
+  "duration_minutes": 90,
+  "designer_ids": [
+    "33333333-3333-4333-8333-333333333333"
+  ],
+  "image_upload_keys": [
+    "design/ab/original-1.jpg"
+  ],
+  "owner_tags": [
+    "프렌치",
+    "리본"
+  ]
+}
+```
+
+옵션 생성 body:
+```json
+{
+  "kind": "extend",
+  "name": "연장 10개",
+  "price_delta": 30000,
+  "duration_delta_min": 30,
+  "sort_order": 1
+}
+```
+
+# Recipe C — 사장님 웹: 예약 처리 보드
+
+1. `GET /api/v1/shops/me/reservations?status=pending&from=2026-06-01&to=2026-06-30&limit=20`.
+2. pending 예약은 `POST /api/v1/shops/me/reservations/{reservation_id}/accept` 또는 `/reject`.
+3. 계좌이체 예약이 `payment_pending`이면 `POST /confirm-payment`.
+4. 방문 완료 후 `POST /complete`, 미방문은 정책에 맞춰 `POST /no-show`.
+
+예약 목록 response:
+```json
+{
+  "data": [
+    {
+      "id": "66666666-6666-4666-8666-666666666666",
+      "shop_id": "22222222-2222-4222-8222-222222222222",
+      "design_id": "11111111-1111-4111-8111-111111111111",
+      "designer_id": "33333333-3333-4333-8333-333333333333",
+      "assigned_by": "user",
+      "start_at": "2026-06-01T02:00:00Z",
+      "end_at": "2026-06-01T03:30:00Z",
+      "status": "pending",
+      "user_request": "손톱 길이는 짧게 부탁드려요.",
+      "selected_option_ids": [
+        "77777777-7777-4777-8777-777777777777"
+      ],
+      "total_price": 109000,
+      "payment_method_snapshot": "bank_transfer_guide",
+      "deposit_amount_snapshot": 10000,
+      "bank_snapshot": {
+        "bank_name": "스네일은행",
+        "bank_account_number": "123-456-7890",
+        "bank_account_holder": "로컬 사장님"
+      },
+      "reservation_policy_snapshot": "예약 변경은 하루 전까지 연락해주세요.",
+      "rejected_reason": null,
+      "cancelled_reason": null,
+      "user_payment_notified_at": null,
+      "owner_payment_confirmed_at": null,
+      "reminder_sent_at": null,
+      "completed_at": null,
+      "no_show_at": null,
+      "shop": {
+        "id": "22222222-2222-4222-8222-222222222222",
+        "name": "스네일 네일 강남",
+        "region": "강남",
+        "thumbnail_url": "https://cdn.example.com/shops/thumbnail.jpg"
+      },
+      "designer": {
+        "id": "33333333-3333-4333-8333-333333333333",
+        "name": "민지",
+        "position": "수석 디자이너",
+        "profile_image_url": "https://cdn.example.com/designers/minji.jpg"
+      },
+      "design": {
+        "id": "11111111-1111-4111-8111-111111111111",
+        "title": "핑크 프렌치 리본 네일",
+        "base_price": 79000,
+        "duration_minutes": 90,
+        "thumbnail_url": "https://cdn.example.com/designs/thumbnail.jpg"
+      },
+      "created_at": "2026-05-28T09:10:00Z",
+      "updated_at": "2026-05-28T09:10:00Z",
+      "user_id": "44444444-4444-4444-8444-444444444444",
+      "user": {
+        "id": "44444444-4444-4444-8444-444444444444",
+        "nickname": "apple_user",
+        "profile_image_url": "https://cdn.example.com/users/me.jpg"
+      }
+    }
+  ],
+  "page": {
+    "next_cursor": null,
+    "has_next": false
+  },
+  "request_id": "req_01HYZ000000000000000000000"
+}
+```
+
+# Recipe D — LLM 모듈: 디자인 분석 파이프라인
+
+1. 워커가 `analyze_design(ctx, design_id)` 시작.
+2. `Design.ai_analysis_status=in_progress`.
+3. 대상 이미지 URL 선택: `processed_url or original_url`.
+4. Transform/vision describe 성공 → `LlmJob(transform).status=succeeded`.
+5. 필요 시 `upload_and_attach_processed_image()`로 processed_url 저장.
+6. Classify 성공 → `Design.ai_tags`, `color_palette`, `style_category`, `nail_shape`, `ai_confidence` 저장.
+7. Embed 성공 → `Design.embedding` 저장.
+8. `Design.ai_analysis_status=done`, `search_indexed_at=now`.
+9. 예외가 max retry 이후에도 계속되면 `ai_analysis_status=failed`, `ai_error_code`, `ai_error_message` 저장.
+
+# AI 검증 프롬프트
+
+AI 도구에 `docs/frontend_app.ai.txt`와 이 cookbook만 주고 다음을 요청한다:
+
+> React Native로 "디자인 검색해서 예약하는 화면"을 구현해줘. 검색 필터, 디자인 카드, 옵션 선택, 날짜별 availability, 예약 생성, 에러 처리까지 포함해줘.
+
+올바른 답변은 최소한 다음 호출을 사용해야 한다:
+- `POST /api/v1/auth/apple`
+- `GET /api/v1/designs`
+- `GET /api/v1/designs/{design_id}`
+- `GET /api/v1/designs/{design_id}/availability`
+- `POST /api/v1/reservations`
+- `Authorization: Bearer <token>`
+- `Idempotency-Key` on mutation except upload endpoints whose OpenAPI parameters omit it
+- `ErrorResponse.error.code` 분기

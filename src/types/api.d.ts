@@ -2108,6 +2108,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/shops/{shop_id}/option-categories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 공개 샵 커스텀 옵션 카테고리 목록 (고객 앱용)
+         * @description 고객 앱이 디자인 옵션의 `custom_category_id`를 이름/선택방식으로 풀어보는 용도.
+         *     `shop_service.get_public_shop`가 먼저 그 샵이 실제로 공개(active) 상태인지 확인한다
+         *     (비공개 샵이면 여기서 404).
+         */
+        get: operations["shop-option-categories_list_public_option_categories"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/shops/me/option-categories/{category_id}": {
         parameters: {
             query?: never;
@@ -4194,7 +4216,9 @@ export interface components {
              * Format: uuid
              */
             id: string;
-            kind: components["schemas"]["DesignOptionKind"];
+            kind?: components["schemas"]["DesignOptionKind"] | null;
+            /** Custom Category Id */
+            custom_category_id?: string | null;
             /** Name */
             name: string;
             /** Price Delta */
@@ -7645,6 +7669,9 @@ export interface components {
             images?: components["schemas"]["ShopImagePublic"][];
             /** Business Hours */
             business_hours?: components["schemas"]["BusinessHourEntry"][];
+            removal_selection_mode: components["schemas"]["OptionSelectionMode"];
+            extend_selection_mode: components["schemas"]["OptionSelectionMode"];
+            care_selection_mode: components["schemas"]["OptionSelectionMode"];
             /**
              * Created At
              * Format: date-time
@@ -19973,6 +20000,85 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ShopOptionCategoryPublic"];
+                };
+            };
+            /** @description UNAUTHORIZED */
+            401: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description NOT_FOUND */
+            404: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description CONFLICT */
+            409: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description VALIDATION_ERROR */
+            422: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    "shop-option-categories_list_public_option_categories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shop_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShopOptionCategoryPublic"][];
                 };
             };
             /** @description UNAUTHORIZED */

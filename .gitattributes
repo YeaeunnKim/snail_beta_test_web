@@ -1,0 +1,24 @@
+# 기본: 텍스트 파일은 저장소에 LF로 정규화 (체크아웃 시 OS에 맞춤)
+* text=auto eol=lf
+
+# 명시적으로 LF를 강제하는 소스/설정 파일
+*.ts   text eol=lf
+*.tsx  text eol=lf
+*.js   text eol=lf
+*.jsx  text eol=lf
+*.json text eol=lf
+*.css  text eol=lf
+*.md   text eol=lf
+*.yml  text eol=lf
+*.yaml text eol=lf
+
+# 바이너리(줄바꿈 처리 금지)
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.ttf  binary
+*.otf  binary
+*.woff binary
+*.woff2 binary

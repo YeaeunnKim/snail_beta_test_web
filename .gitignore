@@ -49,7 +49,6 @@ coverage/
 .nyc_output/
 
 # Backend API context (synced per developer)
-backend-context/
 
 # E2E 연동 점검 토큰 (scripts/e2e-check.mjs 가 발급, 커밋 금지)
 scripts/.e2e-token.json
