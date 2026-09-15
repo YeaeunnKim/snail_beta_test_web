@@ -9,3 +9,15 @@ on:
 jobs:
   verify:
     uses: glamnowlab-team/.github/.github/workflows/web-ci.yml@main
+    with:
+      contract-drift-check: true
+
+  codemap:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: CODEMAP freshness gate
+        run: node scripts/check-codemap.mjs
