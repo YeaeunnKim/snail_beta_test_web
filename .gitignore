@@ -58,8 +58,5 @@ scripts/.e2e-token.json
 *.log
 *.orig
 .worktrees/
-.orch/reports/
-.orch/last-report.md
-.orch/last-review.md
 
 .env*
