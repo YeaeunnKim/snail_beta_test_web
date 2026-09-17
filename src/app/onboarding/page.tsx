@@ -3,7 +3,9 @@
 /**
  * 베타 샵 설정 (첫 로그인 후).
  *
- * 받는 것: 샵 이름 · 운영 형태(1인샵/다인샵 + 디자이너 이름) · 결제 방식(현장/계좌이체 시 예약금·은행·예금주·계좌번호) · 지역(선택).
+ * 받는 것: 샵 이름 · 운영 형태(1인샵/다인샵 + 디자이너 이름) · 예약금·정산 계좌(은행·예금주·계좌번호) · 지역(선택).
+ * 모든 샵은 예약금을 Toss PG로 선결제받는 구조라 결제 방식 선택은 없다(payment_method는
+ * 항상 bank_transfer_guide로 고정 전송).
  *   POST /shops/me → PUT /shops/me/business-hours(09:00~22:00 매일) → 디자이너 N명 생성
  *
  * 가드: 미인증→/login, 미승인→상태별 홈, 이미 샵 있음→/dashboard.
@@ -28,7 +30,6 @@ const onboardingSchema = z
     shopName: z.string().min(1, '샵 이름을 입력해주세요.'),
     isMulti: z.boolean(),
     designers: z.array(z.object({ name: z.string() })),
-    paymentMethod: z.enum(['on_site', 'bank_transfer_guide']),
     depositAmount: z.coerce
       .number()
       .int()
@@ -50,15 +51,14 @@ const onboardingSchema = z
         if (d.name.trim() === '') ctx.addIssue({ code: 'custom', path: ['designers', i, 'name'], message: '이름을 입력해주세요.' });
       });
     }
-    if (v.paymentMethod === 'bank_transfer_guide') {
-      if (!v.depositAmount || v.depositAmount <= 0)
-        ctx.addIssue({ code: 'custom', path: ['depositAmount'], message: '예약금을 입력해주세요.' });
-      if (!v.bankName?.trim()) ctx.addIssue({ code: 'custom', path: ['bankName'], message: '은행명을 입력해주세요.' });
-      if (!v.bankAccountHolder?.trim())
-        ctx.addIssue({ code: 'custom', path: ['bankAccountHolder'], message: '예금주를 입력해주세요.' });
-      if (!v.bankAccountNumber?.trim())
-        ctx.addIssue({ code: 'custom', path: ['bankAccountNumber'], message: '계좌번호를 입력해주세요.' });
-    }
+    // 모든 샵이 예약금(Toss PG 선결제)을 받는다 — 결제 방식 선택 없이 항상 필수.
+    if (!v.depositAmount || v.depositAmount <= 0)
+      ctx.addIssue({ code: 'custom', path: ['depositAmount'], message: '예약금을 입력해주세요.' });
+    if (!v.bankName?.trim()) ctx.addIssue({ code: 'custom', path: ['bankName'], message: '은행명을 입력해주세요.' });
+    if (!v.bankAccountHolder?.trim())
+      ctx.addIssue({ code: 'custom', path: ['bankAccountHolder'], message: '예금주를 입력해주세요.' });
+    if (!v.bankAccountNumber?.trim())
+      ctx.addIssue({ code: 'custom', path: ['bankAccountNumber'], message: '계좌번호를 입력해주세요.' });
   });
 
 type OnboardingForm = z.infer<typeof onboardingSchema>;
@@ -91,7 +91,6 @@ export default function OnboardingPage() {
       shopName: '',
       isMulti: false,
       designers: [{ name: '' }],
-      paymentMethod: 'on_site',
       depositAmount: undefined,
       bankName: '',
       bankAccountNumber: '',
@@ -109,7 +108,6 @@ export default function OnboardingPage() {
   } = form;
   const designerArray = useFieldArray({ control, name: 'designers' });
   const isMulti = watch('isMulti');
-  const paymentMethod = watch('paymentMethod');
   const regionsQuery = useRegions();
 
   useEffect(() => {
@@ -150,7 +148,6 @@ export default function OnboardingPage() {
 
   const onSubmit = async (values: OnboardingForm) => {
     setSubmitError(null);
-    const bank = values.paymentMethod === 'bank_transfer_guide';
     try {
       if (!progressRef.current.shopId) {
         // 재시도 시 이전 시도가 성공했지만 응답이 유실됐을 수 있으므로, 생성 전에
@@ -167,11 +164,13 @@ export default function OnboardingPage() {
             address: values.region?.trim() || '베타 테스트',
             region: values.region?.trim() || null,
             phone_number: '000-0000-0000',
-            payment_method: values.paymentMethod,
-            deposit_amount: bank ? values.depositAmount ?? null : null,
-            bank_name: bank ? values.bankName?.trim() || null : null,
-            bank_account_number: bank ? values.bankAccountNumber?.trim() || null : null,
-            bank_account_holder: bank ? values.bankAccountHolder?.trim() || null : null,
+            // 결제 방식은 항상 예약금 선결제(bank_transfer_guide) 고정 — 모든 샵이
+            // Toss PG로 예약금을 받는다(2026-09-16 확정).
+            payment_method: 'bank_transfer_guide',
+            deposit_amount: values.depositAmount ?? null,
+            bank_name: values.bankName?.trim() || null,
+            bank_account_number: values.bankAccountNumber?.trim() || null,
+            bank_account_holder: values.bankAccountHolder?.trim() || null,
             auto_accept: false,
           });
         }
@@ -295,63 +294,55 @@ export default function OnboardingPage() {
             <BusinessHoursField value={hours} onChange={setHours} />
           </div>
 
-          {/* 결제 방식 */}
+          {/* 예약금 */}
           <div>
-            <label className="mb-1 block text-body-sm font-medium">결제 방식</label>
-            <div className="flex gap-2">
-              <ModeToggle active={paymentMethod === 'on_site'} onClick={() => setValue('paymentMethod', 'on_site')}>
-                현장 결제
-              </ModeToggle>
-              <ModeToggle
-                active={paymentMethod === 'bank_transfer_guide'}
-                onClick={() => setValue('paymentMethod', 'bank_transfer_guide')}
-              >
-                계좌이체
-              </ModeToggle>
-            </div>
+            <label className="mb-1 block text-body-sm font-medium">예약금(원)</label>
+            <input
+              type="number"
+              min={0}
+              max={DEPOSIT_AMOUNT_MAX}
+              className={inputCls}
+              placeholder="예: 20000"
+              {...register('depositAmount')}
+            />
+            {errors.depositAmount && <p className="mt-1 text-caption text-danger">{errors.depositAmount.message}</p>}
+            <p className="mt-1 text-caption text-primary-50">
+              고객이 예약할 때 결제하는 예약금이에요. 앱 내 결제(Toss)로 처리되며, 사장님
+              계좌로 바로 들어오지 않고 정산일에 모아서 지급돼요.
+            </p>
+          </div>
 
-            {paymentMethod === 'bank_transfer_guide' && (
-              <div className="mt-3 space-y-3 rounded-xl border border-neutral-200 bg-neutral-50 p-3">
-                <div>
-                  <label className="mb-1 block text-caption font-semibold text-primary-50">예약금(원)</label>
-                  <input
-                    type="number"
-                    min={0}
-                    max={DEPOSIT_AMOUNT_MAX}
-                    className={inputCls}
-                    placeholder="예: 20000"
-                    {...register('depositAmount')}
-                  />
-                  {errors.depositAmount && <p className="mt-1 text-caption text-danger">{errors.depositAmount.message}</p>}
+          {/* 정산받을 계좌 */}
+          <div>
+            <label className="mb-1 block text-body-sm font-medium">정산받을 계좌</label>
+            <div className="space-y-3 rounded-xl border border-neutral-200 bg-neutral-50 p-3">
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <label className="mb-1 block text-caption font-semibold text-primary-50">은행</label>
+                  <input className={inputCls} placeholder="예: 국민" {...register('bankName')} />
+                  {errors.bankName && <p className="mt-1 text-caption text-danger">{errors.bankName.message}</p>}
                 </div>
-                <div className="flex gap-2">
-                  <div className="flex-1">
-                    <label className="mb-1 block text-caption font-semibold text-primary-50">은행</label>
-                    <input className={inputCls} placeholder="예: 국민" {...register('bankName')} />
-                    {errors.bankName && <p className="mt-1 text-caption text-danger">{errors.bankName.message}</p>}
-                  </div>
-                  <div className="flex-1">
-                    <label className="mb-1 block text-caption font-semibold text-primary-50">예금주</label>
-                    <input className={inputCls} placeholder="예: 김수진" {...register('bankAccountHolder')} />
-                    {errors.bankAccountHolder && (
-                      <p className="mt-1 text-caption text-danger">{errors.bankAccountHolder.message}</p>
-                    )}
-                  </div>
-                </div>
-                <div>
-                  <label className="mb-1 block text-caption font-semibold text-primary-50">계좌번호</label>
-                  <input
-                    inputMode="numeric"
-                    className={inputCls}
-                    placeholder="예: 12345678901234"
-                    {...register('bankAccountNumber')}
-                  />
-                  {errors.bankAccountNumber && (
-                    <p className="mt-1 text-caption text-danger">{errors.bankAccountNumber.message}</p>
+                <div className="flex-1">
+                  <label className="mb-1 block text-caption font-semibold text-primary-50">예금주</label>
+                  <input className={inputCls} placeholder="예: 김수진" {...register('bankAccountHolder')} />
+                  {errors.bankAccountHolder && (
+                    <p className="mt-1 text-caption text-danger">{errors.bankAccountHolder.message}</p>
                   )}
                 </div>
               </div>
-            )}
+              <div>
+                <label className="mb-1 block text-caption font-semibold text-primary-50">계좌번호</label>
+                <input
+                  inputMode="numeric"
+                  className={inputCls}
+                  placeholder="예: 12345678901234"
+                  {...register('bankAccountNumber')}
+                />
+                {errors.bankAccountNumber && (
+                  <p className="mt-1 text-caption text-danger">{errors.bankAccountNumber.message}</p>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* 지역 — 자유입력 불가, 아래 목록에서만 선택 */}
