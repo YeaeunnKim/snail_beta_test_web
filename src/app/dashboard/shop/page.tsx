@@ -218,7 +218,12 @@ function FieldRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="flex gap-3">
       <span className="w-20 shrink-0 text-caption font-semibold text-primary-50">{label}</span>
-      <span className="min-w-0 flex-1 whitespace-pre-line text-body-sm text-primary">{value}</span>
+      <span
+        className="min-w-0 flex-1 truncate text-body-sm text-primary"
+        title={typeof value === 'string' ? value : undefined}
+      >
+        {value}
+      </span>
     </div>
   );
 }
@@ -805,7 +810,7 @@ function ReservationInfoSection({ shop }: { shop: Shop }) {
           />
           <div>
             <p className="mb-1 text-caption font-semibold text-primary-50">예약 안내 문구</p>
-            <p className="whitespace-pre-line text-body-sm text-primary">{shop.reservation_policy || '미입력'}</p>
+            <p className="whitespace-pre-line break-words text-body-sm text-primary">{shop.reservation_policy || '미입력'}</p>
           </div>
           <div>
             <p className="mb-1 text-caption font-semibold text-primary-50">환불 규정</p>
