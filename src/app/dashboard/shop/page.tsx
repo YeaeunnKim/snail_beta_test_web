@@ -31,6 +31,15 @@ const inputCls =
   'w-full rounded-lg border border-neutral-300 px-3 py-2.5 text-body-sm outline-none focus:border-secondary';
 const labelCls = 'mb-1 block text-caption font-semibold text-primary-50';
 
+/** 필수 입력 라벨 — 이름/전화번호/지역/주소/영업시간(2026-09-18 확정, 상세주소는 제외). */
+function RequiredMark() {
+  return (
+    <span className="ml-0.5 text-danger" aria-hidden="true">
+      *
+    </span>
+  );
+}
+
 const VISIBILITY_META: Record<Shop['visibility'], { label: string; cls: string; description: string }> = {
   active: { label: '공개 중', cls: 'bg-success-bg text-success', description: '고객 앱에서 샵이 노출됩니다.' },
   hidden: { label: '숨김', cls: 'bg-primary-10 text-primary-50', description: '고객 앱에서 샵이 보이지 않습니다.' },
@@ -327,6 +336,7 @@ function BasicInfoSection({ shop }: { shop: Shop }) {
   const attemptSave = () => {
     if (!name.trim()) return setErr('샵 이름을 입력해주세요.');
     if (!phoneNumber.trim()) return setErr('전화번호를 입력해주세요.');
+    if (!region.trim()) return setErr('지역을 선택해주세요.');
     if (!address.trim()) return setErr('주소를 입력해주세요.');
     setErr(null);
     save.mutate();
@@ -349,11 +359,11 @@ function BasicInfoSection({ shop }: { shop: Shop }) {
       {editing ? (
         <div className="space-y-3 border-t border-neutral-100 pt-3">
           <div>
-            <label className={labelCls}>샵 이름</label>
+            <label className={labelCls}>샵 이름<RequiredMark /></label>
             <input className={inputCls} value={name} onChange={(e) => setName(e.target.value)} />
           </div>
           <div>
-            <label className={labelCls}>전화번호</label>
+            <label className={labelCls}>전화번호<RequiredMark /></label>
             <input
               className={inputCls}
               inputMode="numeric"
@@ -363,7 +373,7 @@ function BasicInfoSection({ shop }: { shop: Shop }) {
             />
           </div>
           <div>
-            <label className={labelCls}>지역</label>
+            <label className={labelCls}>지역<RequiredMark /></label>
             <select
               className={`${inputCls} h-[42px] appearance-none bg-white`}
               value={isKnownRegion ? region : ''}
@@ -385,7 +395,7 @@ function BasicInfoSection({ shop }: { shop: Shop }) {
             </select>
           </div>
           <div>
-            <label className={labelCls}>주소</label>
+            <label className={labelCls}>주소<RequiredMark /></label>
             <div className="flex gap-2">
               <input className={`${inputCls} bg-neutral-50`} value={address} readOnly placeholder="주소 검색을 눌러주세요" />
               <button
@@ -611,7 +621,7 @@ function BusinessHoursSection({ shop }: { shop: Shop }) {
         </div>
       ) : (
         <div>
-          <p className="mb-2 text-caption font-semibold text-primary-50">영업 시간</p>
+          <p className="mb-2 text-caption font-semibold text-primary-50">영업 시간<RequiredMark /></p>
           <div className="space-y-1.5">
             {entriesByWeekday.map(({ value, label, entry }) => (
               <div key={value} className="flex items-center gap-3">
