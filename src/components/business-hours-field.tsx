@@ -50,7 +50,12 @@ export function BusinessHoursField({
       </div>
 
       <div>
-        <label className="mb-1 block text-caption font-semibold text-primary-50">요일별 조정</label>
+        <label className="mb-1 block text-caption font-semibold text-primary-50">
+          영업시간
+          <span className="ml-0.5 text-danger" aria-hidden="true">
+            *
+          </span>
+        </label>
         <div className="space-y-1.5">
           {value.days.map((d) => (
             <div key={d.weekday} className="flex items-center gap-2">
