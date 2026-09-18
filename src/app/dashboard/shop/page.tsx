@@ -52,6 +52,67 @@ function urlToObjectKey(url: string): string {
   }
 }
 
+/** 숫자만 남기고 국번 자릿수에 맞춰 자동으로 하이픈을 넣는다(02는 2자리 지역번호로 취급). */
+function formatKoreanPhone(input: string): string {
+  const digits = input.replace(/\D/g, '').slice(0, 11);
+  if (digits.startsWith('02')) {
+    if (digits.length <= 2) return digits;
+    if (digits.length <= 5) return `${digits.slice(0, 2)}-${digits.slice(2)}`;
+    if (digits.length <= 9) return `${digits.slice(0, 2)}-${digits.slice(2, 5)}-${digits.slice(5)}`;
+    return `${digits.slice(0, 2)}-${digits.slice(2, 6)}-${digits.slice(6, 10)}`;
+  }
+  if (digits.length <= 3) return digits;
+  if (digits.length <= 7) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+  if (digits.length <= 10) return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
+  return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7, 11)}`;
+}
+
+const DAUM_POSTCODE_SCRIPT_ID = 'daum-postcode-script';
+const DAUM_POSTCODE_SCRIPT_SRC = 'https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js';
+
+declare global {
+  interface Window {
+    daum?: {
+      Postcode: new (options: {
+        oncomplete: (data: { roadAddress?: string; jibunAddress?: string; address?: string }) => void;
+      }) => { open: () => void };
+    };
+  }
+}
+
+function loadDaumPostcodeScript(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (window.daum?.Postcode) {
+      resolve();
+      return;
+    }
+    const existing = document.getElementById(DAUM_POSTCODE_SCRIPT_ID) as HTMLScriptElement | null;
+    if (existing) {
+      existing.addEventListener('load', () => resolve());
+      existing.addEventListener('error', () => reject(new Error('주소 검색을 불러오지 못했어요.')));
+      return;
+    }
+    const script = document.createElement('script');
+    script.id = DAUM_POSTCODE_SCRIPT_ID;
+    script.src = DAUM_POSTCODE_SCRIPT_SRC;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('주소 검색을 불러오지 못했어요.'));
+    document.body.appendChild(script);
+  });
+}
+
+function openAddressSearch(onComplete: (address: string) => void, onError: (message: string) => void) {
+  loadDaumPostcodeScript()
+    .then(() => {
+      new window.daum!.Postcode({
+        oncomplete: (data) => {
+          onComplete(data.roadAddress || data.jibunAddress || data.address || '');
+        },
+      }).open();
+    })
+    .catch((e: Error) => onError(e.message));
+}
+
 export default function ShopPage() {
   const shopQuery = useMyShop();
 
@@ -146,7 +207,7 @@ function SectionShell({
 function FieldRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="flex gap-3">
-      <span className="w-20 shrink-0 text-body-sm font-semibold text-primary-50">{label}</span>
+      <span className="w-20 shrink-0 text-caption font-semibold text-primary-50">{label}</span>
       <span className="min-w-0 flex-1 whitespace-pre-line text-body-sm text-primary">{value}</span>
     </div>
   );
@@ -196,8 +257,8 @@ function VisibilityToggle({ shop }: { shop: Shop }) {
           }`}
         >
           <span
-            className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform ${
-              isActive ? 'translate-x-5' : 'translate-x-0.5'
+            className={`absolute left-0.5 top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform ${
+              isActive ? 'translate-x-5' : 'translate-x-0'
             }`}
           />
         </button>
@@ -293,12 +354,18 @@ function BasicInfoSection({ shop }: { shop: Shop }) {
           </div>
           <div>
             <label className={labelCls}>전화번호</label>
-            <input className={inputCls} value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} placeholder="예: 02-0000-0000" />
+            <input
+              className={inputCls}
+              inputMode="numeric"
+              value={phoneNumber}
+              onChange={(e) => setPhoneNumber(formatKoreanPhone(e.target.value))}
+              placeholder="예: 02-0000-0000"
+            />
           </div>
           <div>
             <label className={labelCls}>지역</label>
             <select
-              className={`${inputCls} bg-white`}
+              className={`${inputCls} h-[42px] appearance-none bg-white`}
               value={isKnownRegion ? region : ''}
               onChange={(e) => setRegion(e.target.value)}
               disabled={regionsQuery.isLoading}
@@ -317,15 +384,22 @@ function BasicInfoSection({ shop }: { shop: Shop }) {
               )}
             </select>
           </div>
-          <div className="flex gap-2">
-            <div className="flex-1">
-              <label className={labelCls}>주소</label>
-              <input className={inputCls} value={address} onChange={(e) => setAddress(e.target.value)} />
+          <div>
+            <label className={labelCls}>주소</label>
+            <div className="flex gap-2">
+              <input className={`${inputCls} bg-neutral-50`} value={address} readOnly placeholder="주소 검색을 눌러주세요" />
+              <button
+                type="button"
+                onClick={() => openAddressSearch(setAddress, setErr)}
+                className="shrink-0 rounded-lg border border-secondary px-3 text-caption font-semibold text-secondary"
+              >
+                주소 검색
+              </button>
             </div>
-            <div className="flex-1">
-              <label className={labelCls}>상세주소</label>
-              <input className={inputCls} value={addressDetail} onChange={(e) => setAddressDetail(e.target.value)} />
-            </div>
+          </div>
+          <div>
+            <label className={labelCls}>상세주소</label>
+            <input className={inputCls} value={addressDetail} onChange={(e) => setAddressDetail(e.target.value)} placeholder="예: 3층 301호" />
           </div>
           <div>
             <label className={labelCls}>소개글</label>
@@ -427,7 +501,7 @@ function ShopPhotosField({ shop }: { shop: Shop }) {
 
   return (
     <div>
-      <label className={labelCls}>샵 사진 · 첫 번째가 대표사진</label>
+      <label className={labelCls}>샵 사진</label>
       <div className="flex flex-wrap gap-2">
         {ordered.map((img, idx) => (
           <div key={img.id} className="relative h-24 w-24 overflow-hidden rounded-md border border-neutral-200">
@@ -540,9 +614,9 @@ function BusinessHoursSection({ shop }: { shop: Shop }) {
           <p className="mb-2 text-caption font-semibold text-primary-50">영업 시간</p>
           <div className="space-y-1.5">
             {entriesByWeekday.map(({ value, label, entry }) => (
-              <div key={value} className="flex gap-3 text-body-sm">
-                <span className="w-6 shrink-0 font-semibold text-primary">{label}</span>
-                <span className="text-primary">
+              <div key={value} className="flex items-center gap-3">
+                <span className="w-6 shrink-0 text-caption font-semibold text-primary-50">{label}</span>
+                <span className="text-body-sm text-primary">
                   {!entry || entry.is_closed ? '휴무' : `${hhmm(entry.open_time) ?? '--:--'} ~ ${hhmm(entry.close_time) ?? '--:--'}`}
                 </span>
               </div>
@@ -680,8 +754,8 @@ function ReservationInfoSection({ shop }: { shop: Shop }) {
               <div className="space-y-1">
                 {(shop.refund_tiers ?? []).map((t, i) => (
                   <div key={i} className="flex gap-3 text-body-sm">
-                    <span className="text-primary">{t.days_before}일 전</span>
-                    <span className="font-semibold text-primary">{t.refund_percent}%</span>
+                    <span className="font-semibold text-primary">{t.days_before}일 전</span>
+                    <span className="text-primary">{t.refund_percent}%</span>
                   </div>
                 ))}
               </div>
