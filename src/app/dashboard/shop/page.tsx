@@ -373,25 +373,35 @@ function BasicInfoSection({ shop }: { shop: Shop }) {
           </div>
           <div>
             <label className={labelCls}>지역<RequiredMark /></label>
-            <select
-              className={`${inputCls} h-[42px] appearance-none bg-white`}
-              value={isKnownRegion ? region : ''}
-              onChange={(e) => setRegion(e.target.value)}
-              disabled={regionsQuery.isLoading}
-            >
-              {regionsQuery.isLoading && <option value="">지역 불러오는 중…</option>}
-              {regionsQuery.isError && <option value="">지역을 불러오지 못했어요</option>}
-              {regionsQuery.isSuccess && (
-                <>
-                  <option value="">지역 선택</option>
-                  {regions.map((r) => (
-                    <option key={r} value={r}>
-                      {r}
-                    </option>
-                  ))}
-                </>
-              )}
-            </select>
+            <div className="relative">
+              <select
+                className={`${inputCls} h-[42px] appearance-none bg-white pr-9`}
+                value={isKnownRegion ? region : ''}
+                onChange={(e) => setRegion(e.target.value)}
+                disabled={regionsQuery.isLoading}
+              >
+                {regionsQuery.isLoading && <option value="">지역 불러오는 중…</option>}
+                {regionsQuery.isError && <option value="">지역을 불러오지 못했어요</option>}
+                {regionsQuery.isSuccess && (
+                  <>
+                    <option value="">지역 선택</option>
+                    {regions.map((r) => (
+                      <option key={r} value={r}>
+                        {r}
+                      </option>
+                    ))}
+                  </>
+                )}
+              </select>
+              <svg
+                className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary-50"
+                viewBox="0 0 20 20"
+                fill="none"
+                aria-hidden="true"
+              >
+                <path d="M5 7.5L10 12.5L15 7.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
           </div>
           <div>
             <label className={labelCls}>주소<RequiredMark /></label>
@@ -622,7 +632,6 @@ function BusinessHoursSection({ shop }: { shop: Shop }) {
     >
       {editing ? (
         <div>
-          <label className={labelCls}>영업 시간<RequiredMark /></label>
           <BusinessHoursField value={hours} onChange={setHours} />
           {err && <p className="mt-2 rounded-md bg-danger-bg px-3 py-2 text-caption text-danger">{err}</p>}
         </div>
