@@ -24,6 +24,7 @@ import { useRegions } from '@/hooks/use-regions';
 import { BusinessHoursField } from '@/components/business-hours-field';
 import { defaultBusinessHours, fromEntries, hhmm, toEntries, type BusinessHoursValue } from '@/lib/business-hours';
 import { WEEKDAYS } from '@/lib/weekday';
+import { DEPOSIT_AMOUNT_MAX, DEPOSIT_AMOUNT_MAX_MESSAGE, DEPOSIT_AMOUNT_MIN } from '@/lib/payment-policy';
 
 type RefundTierRow = { daysBefore: string; refundPercent: string };
 
@@ -660,12 +661,14 @@ function ReservationInfoSection({ shop }: { shop: Shop }) {
   const qc = useQueryClient();
   const [editing, setEditing] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [depositAmount, setDepositAmount] = useState<string>(shop.deposit_amount != null ? String(shop.deposit_amount) : '');
   const [reservationPolicy, setReservationPolicy] = useState(shop.reservation_policy ?? '');
   const [refundTiers, setRefundTiers] = useState<RefundTierRow[]>(() =>
     (shop.refund_tiers ?? []).map((t) => ({ daysBefore: String(t.days_before), refundPercent: String(t.refund_percent) })),
   );
 
   const startEdit = () => {
+    setDepositAmount(shop.deposit_amount != null ? String(shop.deposit_amount) : '');
     setReservationPolicy(shop.reservation_policy ?? '');
     setRefundTiers((shop.refund_tiers ?? []).map((t) => ({ daysBefore: String(t.days_before), refundPercent: String(t.refund_percent) })));
     setErr(null);
@@ -680,6 +683,11 @@ function ReservationInfoSection({ shop }: { shop: Shop }) {
   const save = useMutation({
     mutationFn: () =>
       shopApi.updateMyShop({
+        // 결제 방식 선택 없이 모든 샵이 예약금을 앱 내 Toss PG로 선결제받는 구조로
+        // 고정한다(2026-09-18 확정) — 여기서 예약금을 저장할 때마다 항상 같이 보내서,
+        // 예전에 현장결제(on_site)로 남아있던 샵도 자동으로 전환되게 한다.
+        payment_method: 'bank_transfer_guide',
+        deposit_amount: Math.round(Number(depositAmount)) || 0,
         reservation_policy: reservationPolicy.trim() || null,
         refund_tiers: refundTiers
           .filter((t) => t.daysBefore.trim() && t.refundPercent.trim())
@@ -696,6 +704,13 @@ function ReservationInfoSection({ shop }: { shop: Shop }) {
   });
 
   const attemptSave = () => {
+    const depositNum = Number(depositAmount);
+    if (!depositAmount.trim() || !Number.isFinite(depositNum) || depositNum < DEPOSIT_AMOUNT_MIN) {
+      return setErr(`예약금은 ${DEPOSIT_AMOUNT_MIN.toLocaleString()}원 이상 입력해주세요.`);
+    }
+    if (depositNum > DEPOSIT_AMOUNT_MAX) {
+      return setErr(DEPOSIT_AMOUNT_MAX_MESSAGE);
+    }
     if (refundTiers.some((t) => t.daysBefore.trim() && !t.refundPercent.trim())) {
       return setErr('환불 규정의 환불 비율을 입력해주세요.');
     }
@@ -717,6 +732,22 @@ function ReservationInfoSection({ shop }: { shop: Shop }) {
     >
       {editing ? (
         <div className="space-y-4">
+          <div>
+            <label className={labelCls}>예약금(원)<RequiredMark /></label>
+            <input
+              type="number"
+              min={DEPOSIT_AMOUNT_MIN}
+              max={DEPOSIT_AMOUNT_MAX}
+              className={inputCls}
+              value={depositAmount}
+              onChange={(e) => setDepositAmount(e.target.value)}
+              placeholder="예: 20000"
+            />
+            <p className="mt-1 text-caption text-primary-50">
+              고객이 예약할 때 결제하는 예약금이에요. 앱 내 결제(Toss)로 처리되며, 사장님
+              계좌로 바로 들어오지 않고 정산일에 모아서 지급돼요.
+            </p>
+          </div>
           <div>
             <label className={labelCls}>예약 안내 문구</label>
             <textarea
@@ -768,6 +799,10 @@ function ReservationInfoSection({ shop }: { shop: Shop }) {
         </div>
       ) : (
         <div className="space-y-3">
+          <FieldRow
+            label="예약금"
+            value={shop.deposit_amount != null ? `${shop.deposit_amount.toLocaleString()}원` : '미입력'}
+          />
           <div>
             <p className="mb-1 text-caption font-semibold text-primary-50">예약 안내 문구</p>
             <p className="whitespace-pre-line text-body-sm text-primary">{shop.reservation_policy || '미입력'}</p>
