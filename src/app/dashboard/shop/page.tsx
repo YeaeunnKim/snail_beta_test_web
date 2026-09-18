@@ -356,7 +356,7 @@ function BasicInfoSection({ shop }: { shop: Shop }) {
     >
       {editing ? (
         <div className="space-y-3">
-          <ShopPhotosField shop={shop} />
+          <ShopPhotosField shop={shop} editable />
           <div className="border-t border-neutral-100 pt-3">
             <label className={labelCls}>샵 이름<RequiredMark /></label>
             <input className={inputCls} value={name} onChange={(e) => setName(e.target.value)} />
@@ -422,19 +422,22 @@ function BasicInfoSection({ shop }: { shop: Shop }) {
           {err && <p className="rounded-md bg-danger-bg px-3 py-2 text-caption text-danger">{err}</p>}
         </div>
       ) : (
-        <div className="space-y-2 border-t border-neutral-100 pt-3">
-          <FieldRow label="샵 이름" value={shop.name} />
-          <FieldRow label="전화번호" value={shop.phone_number || '미입력'} />
-          <FieldRow label="지역" value={shop.region || '미입력'} />
-          <FieldRow label="주소" value={[shop.address, shop.address_detail].filter(Boolean).join(' ') || '미입력'} />
-          <FieldRow label="소개글" value={shop.introduction || '미입력'} />
+        <div className="space-y-3">
+          <ShopPhotosField shop={shop} editable={false} />
+          <div className="space-y-2 border-t border-neutral-100 pt-3">
+            <FieldRow label="샵 이름" value={shop.name} />
+            <FieldRow label="전화번호" value={shop.phone_number || '미입력'} />
+            <FieldRow label="지역" value={shop.region || '미입력'} />
+            <FieldRow label="주소" value={[shop.address, shop.address_detail].filter(Boolean).join(' ') || '미입력'} />
+            <FieldRow label="소개글" value={shop.introduction || '미입력'} />
+          </div>
         </div>
       )}
     </SectionShell>
   );
 }
 
-function ShopPhotosField({ shop }: { shop: Shop }) {
+function ShopPhotosField({ shop, editable }: { shop: Shop; editable: boolean }) {
   const qc = useQueryClient();
   const [error, setError] = useState<string | null>(null);
 
@@ -521,16 +524,18 @@ function ShopPhotosField({ shop }: { shop: Shop }) {
                 대표
               </span>
             )}
-            <button
-              type="button"
-              onClick={() => onDelete(img)}
-              disabled={busy}
-              className="absolute right-0 top-0 bg-black/50 px-1 text-caption text-white disabled:opacity-50"
-              aria-label="사진 삭제"
-            >
-              ×
-            </button>
-            {idx !== 0 && (
+            {editable && (
+              <button
+                type="button"
+                onClick={() => onDelete(img)}
+                disabled={busy}
+                className="absolute right-0 top-0 bg-black/50 px-1 text-caption text-white disabled:opacity-50"
+                aria-label="사진 삭제"
+              >
+                ×
+              </button>
+            )}
+            {editable && idx !== 0 && (
               <button
                 type="button"
                 onClick={() => makeThumbnail.mutate(img)}
@@ -542,26 +547,28 @@ function ShopPhotosField({ shop }: { shop: Shop }) {
             )}
           </div>
         ))}
-        <label
-          className={`flex h-24 w-24 flex-col items-center justify-center rounded-md border border-dashed border-neutral-300 text-primary-50 ${
-            busy ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:border-secondary'
-          }`}
-        >
-          <span className="text-2xl leading-none">+</span>
-          <span className="mt-1 text-caption">추가</span>
-          <input
-            type="file"
-            accept="image/*"
-            multiple
-            disabled={busy}
-            className="hidden"
-            onChange={(e) => {
-              const files = e.target.files ? Array.from(e.target.files).filter((f) => f.type.startsWith('image/')) : [];
-              if (files.length > 0) addImages.mutate(files);
-              e.target.value = '';
-            }}
-          />
-        </label>
+        {editable && (
+          <label
+            className={`flex h-24 w-24 flex-col items-center justify-center rounded-md border border-dashed border-neutral-300 text-primary-50 ${
+              busy ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:border-secondary'
+            }`}
+          >
+            <span className="text-2xl leading-none">+</span>
+            <span className="mt-1 text-caption">추가</span>
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              disabled={busy}
+              className="hidden"
+              onChange={(e) => {
+                const files = e.target.files ? Array.from(e.target.files).filter((f) => f.type.startsWith('image/')) : [];
+                if (files.length > 0) addImages.mutate(files);
+                e.target.value = '';
+              }}
+            />
+          </label>
+        )}
       </div>
       {addImages.isPending && <p className="mt-2 text-caption text-primary-50">사진 업로드 중…</p>}
       {error && <p className="mt-2 rounded-md bg-danger-bg px-3 py-2 text-caption text-danger">{error}</p>}
