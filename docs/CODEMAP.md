@@ -85,7 +85,6 @@ Next.js App Router. `(auth)`·`(gate)`는 URL에 나타나지 않는 그룹이�
 | `components/ui/page-stub.tsx` | 미구현 화면 자리표시 |
 | `components/ImageCropper.tsx` | 이미지 크롭(모바일 업로드) |
 | `components/business-hours-field.tsx`, `components/time-select.tsx` | 영업시간 입력 |
-| `components/shop-edit-modal.tsx` | 샵 정보 수정 모달 |
 | `components/day-timeline.tsx` | 일정 일 뷰 |
 | `components/reservation-detail.tsx`, `components/reservation-design.tsx` | 예약 상세·붙은 디자인/옵션 |
 | `components/auth-gate.tsx`, `components/auth-bootstrap.tsx` | 접근 제어·토큰 복원 |
