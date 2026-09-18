@@ -7,11 +7,16 @@
  * 누르면 그 섹션만 페이지 내에서 인라인 편집 모드로 바뀐다(팝업 없음). 저장하면 바로
  * 읽기 모드로 돌아온다.
  *
+ * 한 번에 하나의 섹션만 편집 가능하다(2026-09-18 확정) — 편집 중인 섹션을 두고 다른
+ * 섹션의 "정보 수정"을 누르면, 값이 바뀌어 있을 때만 "저장할까요?" 확인창을 띄운다.
+ * 예=저장 후 이동(저장 실패 시 이동하지 않고 에러를 보여줌), 아니오=변경사항 버리고 이동.
+ * 바뀐 게 없으면 그냥 조용히 이동한다.
+ *
  * 디자이너 관리와 예약금/정산 계좌 편집은 이 화면에서 뺐다(2026-09-17 확정) — 디자이너는
  * 디자인 쪽에서 별도로 다룰 예정이고, 예약금은 전부 Toss PG로 받는 구조라 사장님 계좌
  * 정보가 예약 흐름에 필요 없다(백엔드 데이터/필드 자체는 남아있다).
  */
-import { useMemo, useState } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { shopApi, uploadsApi } from '@/services';
@@ -26,6 +31,15 @@ import { defaultBusinessHours, fromEntries, hhmm, toEntries, type BusinessHoursV
 import { WEEKDAYS } from '@/lib/weekday';
 
 type RefundTierRow = { daysBefore: string; refundPercent: string };
+type SectionKey = 'basic' | 'hours' | 'reservation' | 'sns';
+
+/** 다른 섹션으로 전환하기 전에 부모가 호출한다 — 바뀐 값이 없으면 바로 닫고 true,
+ * 있으면 확인창을 띄워 저장/버림을 결정한다. 저장이 실패하면 false(전환 취소). */
+interface SectionHandle {
+  requestClose: () => Promise<boolean>;
+}
+
+const CONFIRM_SAVE_MESSAGE = '저장하지 않은 변경사항이 있어요. 저장할까요?\n(취소를 누르면 변경사항을 버리고 이동해요)';
 
 const inputCls =
   'w-full rounded-lg border border-neutral-300 px-3 py-2.5 text-body-sm outline-none focus:border-secondary';
@@ -142,16 +156,61 @@ export default function ShopPage() {
 }
 
 function ShopManageView({ shop }: { shop: Shop }) {
+  const [editingSection, setEditingSection] = useState<SectionKey | null>(null);
+  const basicRef = useRef<SectionHandle>(null);
+  const hoursRef = useRef<SectionHandle>(null);
+  const reservationRef = useRef<SectionHandle>(null);
+  const snsRef = useRef<SectionHandle>(null);
+  const refByKey: Record<SectionKey, React.RefObject<SectionHandle | null>> = {
+    basic: basicRef,
+    hours: hoursRef,
+    reservation: reservationRef,
+    sns: snsRef,
+  };
+
+  const requestEdit = async (key: SectionKey) => {
+    if (editingSection && editingSection !== key) {
+      const ok = await refByKey[editingSection].current?.requestClose();
+      if (ok === false) return;
+    }
+    setEditingSection(key);
+  };
+  const closeEditing = () => setEditingSection(null);
+
   return (
     <div className="space-y-4">
       <div>
         <h1 className="text-heading-lg font-bold text-primary">샵 관리</h1>
       </div>
       <VisibilityToggle shop={shop} />
-      <BasicInfoSection shop={shop} />
-      <BusinessHoursSection shop={shop} />
-      <ReservationInfoSection shop={shop} />
-      <SnsSection shop={shop} />
+      <BasicInfoSection
+        ref={basicRef}
+        shop={shop}
+        isEditing={editingSection === 'basic'}
+        onRequestEdit={() => void requestEdit('basic')}
+        onClosed={closeEditing}
+      />
+      <BusinessHoursSection
+        ref={hoursRef}
+        shop={shop}
+        isEditing={editingSection === 'hours'}
+        onRequestEdit={() => void requestEdit('hours')}
+        onClosed={closeEditing}
+      />
+      <ReservationInfoSection
+        ref={reservationRef}
+        shop={shop}
+        isEditing={editingSection === 'reservation'}
+        onRequestEdit={() => void requestEdit('reservation')}
+        onClosed={closeEditing}
+      />
+      <SnsSection
+        ref={snsRef}
+        shop={shop}
+        isEditing={editingSection === 'sns'}
+        onRequestEdit={() => void requestEdit('sns')}
+        onClosed={closeEditing}
+      />
     </div>
   );
 }
@@ -289,11 +348,20 @@ function VisibilityToggle({ shop }: { shop: Shop }) {
   );
 }
 
+interface SectionProps {
+  shop: Shop;
+  isEditing: boolean;
+  onRequestEdit: () => void;
+  onClosed: () => void;
+}
+
 /* ───────────── 기본 정보 (샵 사진 + 이름/전화번호/지역/주소/소개글) ───────────── */
 
-function BasicInfoSection({ shop }: { shop: Shop }) {
+const BasicInfoSection = forwardRef<SectionHandle, SectionProps>(function BasicInfoSection(
+  { shop, isEditing, onRequestEdit, onClosed },
+  ref,
+) {
   const qc = useQueryClient();
-  const [editing, setEditing] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [name, setName] = useState(shop.name);
   const [phoneNumber, setPhoneNumber] = useState(shop.phone_number ?? '');
@@ -301,20 +369,46 @@ function BasicInfoSection({ shop }: { shop: Shop }) {
   const [addressDetail, setAddressDetail] = useState(shop.address_detail ?? '');
   const [region, setRegion] = useState(shop.region ?? '');
   const [introduction, setIntroduction] = useState(shop.introduction ?? '');
+  const [snapshot, setSnapshot] = useState({
+    name: shop.name,
+    phoneNumber: shop.phone_number ?? '',
+    address: shop.address ?? '',
+    addressDetail: shop.address_detail ?? '',
+    region: shop.region ?? '',
+    introduction: shop.introduction ?? '',
+  });
   const regionsQuery = useRegions();
   const regions = regionsQuery.data ?? [];
   const isKnownRegion = regions.includes(region);
 
-  const startEdit = () => {
-    setName(shop.name);
-    setPhoneNumber(shop.phone_number ?? '');
-    setAddress(shop.address ?? '');
-    setAddressDetail(shop.address_detail ?? '');
-    setRegion(shop.region ?? '');
-    setIntroduction(shop.introduction ?? '');
+  useEffect(() => {
+    if (!isEditing) return;
+    const snap = {
+      name: shop.name,
+      phoneNumber: shop.phone_number ?? '',
+      address: shop.address ?? '',
+      addressDetail: shop.address_detail ?? '',
+      region: shop.region ?? '',
+      introduction: shop.introduction ?? '',
+    };
+    setName(snap.name);
+    setPhoneNumber(snap.phoneNumber);
+    setAddress(snap.address);
+    setAddressDetail(snap.addressDetail);
+    setRegion(snap.region);
+    setIntroduction(snap.introduction);
+    setSnapshot(snap);
     setErr(null);
-    setEditing(true);
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEditing]);
+
+  const dirty =
+    name !== snapshot.name ||
+    phoneNumber !== snapshot.phoneNumber ||
+    address !== snapshot.address ||
+    addressDetail !== snapshot.addressDetail ||
+    region !== snapshot.region ||
+    introduction !== snapshot.introduction;
 
   const save = useMutation({
     mutationFn: () =>
@@ -326,35 +420,64 @@ function BasicInfoSection({ shop }: { shop: Shop }) {
         region: region.trim() || null,
         introduction: introduction.trim() || null,
       }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: MY_SHOP_KEY });
-      setEditing(false);
-    },
-    onError: (e) => setErr(toUserMessage(e)),
+    onSuccess: () => qc.invalidateQueries({ queryKey: MY_SHOP_KEY }),
   });
 
-  const attemptSave = () => {
-    if (!name.trim()) return setErr('샵 이름을 입력해주세요.');
-    if (!phoneNumber.trim()) return setErr('전화번호를 입력해주세요.');
-    if (!region.trim()) return setErr('지역을 선택해주세요.');
-    if (!address.trim()) return setErr('주소를 입력해주세요.');
+  const attemptSave = async (): Promise<boolean> => {
+    if (!name.trim()) {
+      setErr('샵 이름을 입력해주세요.');
+      return false;
+    }
+    if (!phoneNumber.trim()) {
+      setErr('전화번호를 입력해주세요.');
+      return false;
+    }
+    if (!region.trim()) {
+      setErr('지역을 선택해주세요.');
+      return false;
+    }
+    if (!address.trim()) {
+      setErr('주소를 입력해주세요.');
+      return false;
+    }
     setErr(null);
-    save.mutate();
+    try {
+      await save.mutateAsync();
+      onClosed();
+      return true;
+    } catch (e) {
+      setErr(toUserMessage(e));
+      return false;
+    }
   };
+
+  useImperativeHandle(ref, () => ({
+    requestClose: async () => {
+      if (!dirty) {
+        onClosed();
+        return true;
+      }
+      if (!window.confirm(CONFIRM_SAVE_MESSAGE)) {
+        onClosed();
+        return true;
+      }
+      return attemptSave();
+    },
+  }));
 
   return (
     <SectionShell
       title="기본 정보"
-      editing={editing}
-      onEdit={startEdit}
+      editing={isEditing}
+      onEdit={onRequestEdit}
       onCancel={() => {
-        setEditing(false);
         setErr(null);
+        onClosed();
       }}
-      onSave={attemptSave}
+      onSave={() => void attemptSave()}
       saving={save.isPending}
     >
-      {editing ? (
+      {isEditing ? (
         <div className="space-y-3">
           <ShopPhotosField shop={shop} editable />
           <div className="border-t border-neutral-100 pt-3">
@@ -445,7 +568,7 @@ function BasicInfoSection({ shop }: { shop: Shop }) {
       )}
     </SectionShell>
   );
-}
+});
 
 function ShopPhotosField({ shop, editable }: { shop: Shop; editable: boolean }) {
   const qc = useQueryClient();
@@ -588,27 +711,57 @@ function ShopPhotosField({ shop, editable }: { shop: Shop; editable: boolean }) 
 
 /* ───────────── 영업 정보 ───────────── */
 
-function BusinessHoursSection({ shop }: { shop: Shop }) {
+const BusinessHoursSection = forwardRef<SectionHandle, SectionProps>(function BusinessHoursSection(
+  { shop, isEditing, onRequestEdit, onClosed },
+  ref,
+) {
   const qc = useQueryClient();
-  const [editing, setEditing] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [hours, setHours] = useState<BusinessHoursValue>(() => fromEntries(shop.business_hours ?? []));
+  const [snapshot, setSnapshot] = useState(hours);
 
-  const startEdit = () => {
+  useEffect(() => {
+    if (!isEditing) return;
     const entries = shop.business_hours ?? [];
-    setHours(entries.length > 0 ? fromEntries(entries) : defaultBusinessHours());
+    const next = entries.length > 0 ? fromEntries(entries) : defaultBusinessHours();
+    setHours(next);
+    setSnapshot(next);
     setErr(null);
-    setEditing(true);
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEditing]);
+
+  const dirty = JSON.stringify(hours) !== JSON.stringify(snapshot);
 
   const save = useMutation({
     mutationFn: () => shopApi.setBusinessHours({ entries: toEntries(hours) }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: MY_SHOP_KEY });
-      setEditing(false);
-    },
-    onError: (e) => setErr(toUserMessage(e)),
+    onSuccess: () => qc.invalidateQueries({ queryKey: MY_SHOP_KEY }),
   });
+
+  const attemptSave = async (): Promise<boolean> => {
+    setErr(null);
+    try {
+      await save.mutateAsync();
+      onClosed();
+      return true;
+    } catch (e) {
+      setErr(toUserMessage(e));
+      return false;
+    }
+  };
+
+  useImperativeHandle(ref, () => ({
+    requestClose: async () => {
+      if (!dirty) {
+        onClosed();
+        return true;
+      }
+      if (!window.confirm(CONFIRM_SAVE_MESSAGE)) {
+        onClosed();
+        return true;
+      }
+      return attemptSave();
+    },
+  }));
 
   const entriesByWeekday = useMemo(() => {
     const map = new Map((shop.business_hours ?? []).map((e) => [e.weekday, e]));
@@ -618,19 +771,16 @@ function BusinessHoursSection({ shop }: { shop: Shop }) {
   return (
     <SectionShell
       title="영업 정보"
-      editing={editing}
-      onEdit={startEdit}
+      editing={isEditing}
+      onEdit={onRequestEdit}
       onCancel={() => {
-        setEditing(false);
         setErr(null);
+        onClosed();
       }}
-      onSave={() => {
-        setErr(null);
-        save.mutate();
-      }}
+      onSave={() => void attemptSave()}
       saving={save.isPending}
     >
-      {editing ? (
+      {isEditing ? (
         <div>
           <BusinessHoursField value={hours} onChange={setHours} />
           {err && <p className="mt-2 rounded-md bg-danger-bg px-3 py-2 text-caption text-danger">{err}</p>}
@@ -652,25 +802,39 @@ function BusinessHoursSection({ shop }: { shop: Shop }) {
       )}
     </SectionShell>
   );
-}
+});
 
 /* ───────────── 예약 정보 (예약 안내 문구 + 환불 규정) ───────────── */
 
-function ReservationInfoSection({ shop }: { shop: Shop }) {
+const ReservationInfoSection = forwardRef<SectionHandle, SectionProps>(function ReservationInfoSection(
+  { shop, isEditing, onRequestEdit, onClosed },
+  ref,
+) {
   const qc = useQueryClient();
-  const [editing, setEditing] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [reservationPolicy, setReservationPolicy] = useState(shop.reservation_policy ?? '');
   const [refundTiers, setRefundTiers] = useState<RefundTierRow[]>(() =>
     (shop.refund_tiers ?? []).map((t) => ({ daysBefore: String(t.days_before), refundPercent: String(t.refund_percent) })),
   );
+  const [snapshot, setSnapshot] = useState({ reservationPolicy, refundTiers });
 
-  const startEdit = () => {
-    setReservationPolicy(shop.reservation_policy ?? '');
-    setRefundTiers((shop.refund_tiers ?? []).map((t) => ({ daysBefore: String(t.days_before), refundPercent: String(t.refund_percent) })));
+  useEffect(() => {
+    if (!isEditing) return;
+    const nextPolicy = shop.reservation_policy ?? '';
+    const nextTiers = (shop.refund_tiers ?? []).map((t) => ({
+      daysBefore: String(t.days_before),
+      refundPercent: String(t.refund_percent),
+    }));
+    setReservationPolicy(nextPolicy);
+    setRefundTiers(nextTiers);
+    setSnapshot({ reservationPolicy: nextPolicy, refundTiers: nextTiers });
     setErr(null);
-    setEditing(true);
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEditing]);
+
+  const dirty =
+    reservationPolicy !== snapshot.reservationPolicy ||
+    JSON.stringify(refundTiers) !== JSON.stringify(snapshot.refundTiers);
 
   const addRefundTier = () => setRefundTiers((prev) => [...prev, { daysBefore: '', refundPercent: '' }]);
   const removeRefundTier = (i: number) => setRefundTiers((prev) => prev.filter((_, idx) => idx !== i));
@@ -688,34 +852,52 @@ function ReservationInfoSection({ shop }: { shop: Shop }) {
             refund_percent: Math.min(100, Math.max(0, Math.round(Number(t.refundPercent)) || 0)),
           })),
       }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: MY_SHOP_KEY });
-      setEditing(false);
-    },
-    onError: (e) => setErr(toUserMessage(e)),
+    onSuccess: () => qc.invalidateQueries({ queryKey: MY_SHOP_KEY }),
   });
 
-  const attemptSave = () => {
+  const attemptSave = async (): Promise<boolean> => {
     if (refundTiers.some((t) => t.daysBefore.trim() && !t.refundPercent.trim())) {
-      return setErr('환불 규정의 환불 비율을 입력해주세요.');
+      setErr('환불 규정의 환불 비율을 입력해주세요.');
+      return false;
     }
     setErr(null);
-    save.mutate();
+    try {
+      await save.mutateAsync();
+      onClosed();
+      return true;
+    } catch (e) {
+      setErr(toUserMessage(e));
+      return false;
+    }
   };
+
+  useImperativeHandle(ref, () => ({
+    requestClose: async () => {
+      if (!dirty) {
+        onClosed();
+        return true;
+      }
+      if (!window.confirm(CONFIRM_SAVE_MESSAGE)) {
+        onClosed();
+        return true;
+      }
+      return attemptSave();
+    },
+  }));
 
   return (
     <SectionShell
       title="예약 정보"
-      editing={editing}
-      onEdit={startEdit}
+      editing={isEditing}
+      onEdit={onRequestEdit}
       onCancel={() => {
-        setEditing(false);
         setErr(null);
+        onClosed();
       }}
-      onSave={attemptSave}
+      onSave={() => void attemptSave()}
       saving={save.isPending}
     >
-      {editing ? (
+      {isEditing ? (
         <div className="space-y-4">
           <div>
             <label className={labelCls}>예약 안내 문구</label>
@@ -791,27 +973,44 @@ function ReservationInfoSection({ shop }: { shop: Shop }) {
       )}
     </SectionShell>
   );
-}
+});
 
 /* ───────────── SNS 채널 ───────────── */
 
-function SnsSection({ shop }: { shop: Shop }) {
+const SnsSection = forwardRef<SectionHandle, SectionProps>(function SnsSection(
+  { shop, isEditing, onRequestEdit, onClosed },
+  ref,
+) {
   const qc = useQueryClient();
-  const [editing, setEditing] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [instagramHandle, setInstagramHandle] = useState(shop.instagram_handle ?? '');
   const [naverPlaceUrl, setNaverPlaceUrl] = useState(shop.naver_place_url ?? '');
   const [naverBookingUrl, setNaverBookingUrl] = useState(shop.naver_booking_url ?? '');
   const [kakaoUrl, setKakaoUrl] = useState(shop.kakao_url ?? '');
+  const [snapshot, setSnapshot] = useState({ instagramHandle, naverPlaceUrl, naverBookingUrl, kakaoUrl });
 
-  const startEdit = () => {
-    setInstagramHandle(shop.instagram_handle ?? '');
-    setNaverPlaceUrl(shop.naver_place_url ?? '');
-    setNaverBookingUrl(shop.naver_booking_url ?? '');
-    setKakaoUrl(shop.kakao_url ?? '');
+  useEffect(() => {
+    if (!isEditing) return;
+    const snap = {
+      instagramHandle: shop.instagram_handle ?? '',
+      naverPlaceUrl: shop.naver_place_url ?? '',
+      naverBookingUrl: shop.naver_booking_url ?? '',
+      kakaoUrl: shop.kakao_url ?? '',
+    };
+    setInstagramHandle(snap.instagramHandle);
+    setNaverPlaceUrl(snap.naverPlaceUrl);
+    setNaverBookingUrl(snap.naverBookingUrl);
+    setKakaoUrl(snap.kakaoUrl);
+    setSnapshot(snap);
     setErr(null);
-    setEditing(true);
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEditing]);
+
+  const dirty =
+    instagramHandle !== snapshot.instagramHandle ||
+    naverPlaceUrl !== snapshot.naverPlaceUrl ||
+    naverBookingUrl !== snapshot.naverBookingUrl ||
+    kakaoUrl !== snapshot.kakaoUrl;
 
   const save = useMutation({
     mutationFn: () =>
@@ -821,29 +1020,48 @@ function SnsSection({ shop }: { shop: Shop }) {
         naver_booking_url: naverBookingUrl.trim() || null,
         kakao_url: kakaoUrl.trim() || null,
       }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: MY_SHOP_KEY });
-      setEditing(false);
-    },
-    onError: (e) => setErr(toUserMessage(e)),
+    onSuccess: () => qc.invalidateQueries({ queryKey: MY_SHOP_KEY }),
   });
+
+  const attemptSave = async (): Promise<boolean> => {
+    setErr(null);
+    try {
+      await save.mutateAsync();
+      onClosed();
+      return true;
+    } catch (e) {
+      setErr(toUserMessage(e));
+      return false;
+    }
+  };
+
+  useImperativeHandle(ref, () => ({
+    requestClose: async () => {
+      if (!dirty) {
+        onClosed();
+        return true;
+      }
+      if (!window.confirm(CONFIRM_SAVE_MESSAGE)) {
+        onClosed();
+        return true;
+      }
+      return attemptSave();
+    },
+  }));
 
   return (
     <SectionShell
       title="SNS 채널"
-      editing={editing}
-      onEdit={startEdit}
+      editing={isEditing}
+      onEdit={onRequestEdit}
       onCancel={() => {
-        setEditing(false);
         setErr(null);
+        onClosed();
       }}
-      onSave={() => {
-        setErr(null);
-        save.mutate();
-      }}
+      onSave={() => void attemptSave()}
       saving={save.isPending}
     >
-      {editing ? (
+      {isEditing ? (
         <div className="space-y-3">
           <div>
             <label className={labelCls}>인스타그램 아이디</label>
@@ -873,4 +1091,4 @@ function SnsSection({ shop }: { shop: Shop }) {
       )}
     </SectionShell>
   );
-}
+});
