@@ -354,11 +354,10 @@ function BasicInfoSection({ shop }: { shop: Shop }) {
       onSave={attemptSave}
       saving={save.isPending}
     >
-      <ShopPhotosField shop={shop} />
-
       {editing ? (
-        <div className="space-y-3 border-t border-neutral-100 pt-3">
-          <div>
+        <div className="space-y-3">
+          <ShopPhotosField shop={shop} />
+          <div className="border-t border-neutral-100 pt-3">
             <label className={labelCls}>샵 이름<RequiredMark /></label>
             <input className={inputCls} value={name} onChange={(e) => setName(e.target.value)} />
           </div>
@@ -616,12 +615,13 @@ function BusinessHoursSection({ shop }: { shop: Shop }) {
     >
       {editing ? (
         <div>
+          <label className={labelCls}>영업 시간<RequiredMark /></label>
           <BusinessHoursField value={hours} onChange={setHours} />
           {err && <p className="mt-2 rounded-md bg-danger-bg px-3 py-2 text-caption text-danger">{err}</p>}
         </div>
       ) : (
         <div>
-          <p className="mb-2 text-caption font-semibold text-primary-50">영업 시간<RequiredMark /></p>
+          <p className="mb-2 text-caption font-semibold text-primary-50">영업 시간</p>
           <div className="space-y-1.5">
             {entriesByWeekday.map(({ value, label, entry }) => (
               <div key={value} className="flex items-center gap-3">
