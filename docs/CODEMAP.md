@@ -23,6 +23,7 @@ Next.js App Router. `(auth)`·`(gate)`는 URL에 나타나지 않는 그룹이�
 | 로그인 | `app/(auth)/login/page.tsx` | `services/auth.ts`, `hooks/use-auth.ts` |
 | 회원가입 | `app/(auth)/register/page.tsx` | `services/auth.ts`, `services/owners.ts` |
 | 비밀번호 재설정 | `app/(auth)/password-reset/page.tsx` | `services/auth.ts` |
+| 임시 비밀번호 변경(강제) | `app/(auth)/password-change/page.tsx` | `services/auth.ts`, `lib/auth-routing.ts` — 운영자가 발급한 임시 비밀번호로 들어오면 여기로 보낸다. 베타 계정은 메일이 닿지 않아(합성 주소) 이 경로가 유일한 복구 수단이다 |
 | 인증 화면 공통 껍데기 | `app/(auth)/layout.tsx` | — |
 | 사업자 인증 제출·재제출 | `app/(gate)/business-verification/page.tsx` | `services/owners.ts`, `services/uploads.ts` |
 | 심사 대기 안내 | `app/(gate)/pending/page.tsx` | `hooks/use-auth.ts` |

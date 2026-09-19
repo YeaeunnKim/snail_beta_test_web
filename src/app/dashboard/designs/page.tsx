@@ -11,13 +11,13 @@
  *  - 디자이너 선택 시 디자이너별 소요시간을 +/-로 조정(미조정 시 기본 소요시간)
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import Link from 'next/link';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { designersApi, designsApi, shopApi, shopOptionCategoriesApi, uploadsApi } from '@/services';
 import type { Design, Designer, DesignFolder, ShopUpdate } from '@/services';
 import { collectAll } from '@/lib/api-client';
 import { ApiError } from '@/lib/api-error';
 import { toUserMessage } from '@/lib/error-messages';
+import { config } from '@/lib/config';
 import { MY_SHOP_KEY, useMyShop } from '@/hooks/use-my-shop';
 import { useLockBodyScroll } from '@/hooks/use-lock-body-scroll';
 // 설정 입력 관련 상수·타입·헬퍼·컴포넌트는 ./design-settings 로 추출해
@@ -146,7 +146,10 @@ export default function DesignsPage() {
     return () => window.removeEventListener('snail:designs-tab-reset', reset);
   }, []);
 
-  const designers = useQuery({ queryKey: ['designers'], queryFn: () => designersApi.listDesigners() });
+  const designers = useQuery({
+    queryKey: ['designers'],
+    queryFn: () => designersApi.listDesigners(),
+  });
   const foldersQuery = useQuery({
     queryKey: ['design-folders'],
     queryFn: () => designsApi.listFolders(),
@@ -218,11 +221,13 @@ export default function DesignsPage() {
           <div className="flex items-start justify-between">
             <div>
               <h1 className="text-heading-lg font-bold">디자인</h1>
-              <p className="mt-1 text-body-sm text-primary-50">폴더로 정리하고, 폴더를 열어 디자인을 관리합니다.</p>
+              <p className="text-body-sm text-primary-50 mt-1">
+                폴더로 정리하고, 폴더를 열어 디자인을 관리합니다.
+              </p>
             </div>
             <button
               onClick={() => setShowBulkOptions((v) => !v)}
-              className="shrink-0 rounded-md border border-neutral-300 px-4 py-2 text-center text-body-sm font-semibold text-primary hover:bg-neutral-50"
+              className="text-body-sm text-primary shrink-0 rounded-md border border-neutral-300 px-4 py-2 text-center font-semibold hover:bg-neutral-50"
             >
               {showBulkOptions ? '닫기' : '옵션 관리'}
             </button>
@@ -322,14 +327,17 @@ function FolderCounts({
   const q = useQuery({
     queryKey: ['designs', unfiled ? 'unfiled' : 'folder', folderId ?? 'none'],
     queryFn: () =>
-      collectAll<Design>((cursor) => designsApi.listDesigns({ folder_id: folderId, unfiled, limit: 50, cursor })),
+      collectAll<Design>((cursor) =>
+        designsApi.listDesigns({ folder_id: folderId, unfiled, limit: 50, cursor }),
+      ),
   });
   const list = q.data;
-  if (!list) return <span className="mt-0.5 text-caption text-primary-50">디자인 {fallbackCount}개</span>;
+  if (!list)
+    return <span className="text-caption text-primary-50 mt-0.5">디자인 {fallbackCount}개</span>;
   const activeCount = list.filter((d) => d.visibility === 'active').length;
   const hiddenCount = list.length - activeCount;
   return (
-    <span className="mt-0.5 text-caption text-primary-50">
+    <span className="text-caption text-primary-50 mt-0.5">
       디자인 {list.length}개 (공개 {activeCount}개 / 비공개 {hiddenCount}개)
     </span>
   );
@@ -351,11 +359,11 @@ function FolderCard({
   return (
     <button
       onClick={onClick}
-      className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-white p-4 text-left transition hover:border-secondary hover:shadow-sm"
+      className="hover:border-secondary flex items-center gap-3 rounded-xl border border-neutral-200 bg-white p-4 text-left transition hover:shadow-sm"
     >
       <span className="shrink-0 text-2xl">{muted ? '🗂️' : '📁'}</span>
       <span className="flex min-w-0 flex-col">
-        <span className="line-clamp-1 break-keep font-semibold">{name}</span>
+        <span className="line-clamp-1 font-semibold break-keep">{name}</span>
         <FolderCounts unfiled={unfiled} fallbackCount={count} />
       </span>
     </button>
@@ -417,7 +425,7 @@ function EditableFolderCard({
   };
 
   return (
-    <div className="flex flex-col gap-2 rounded-xl border border-neutral-200 bg-white p-4 transition hover:border-secondary hover:shadow-sm">
+    <div className="hover:border-secondary flex flex-col gap-2 rounded-xl border border-neutral-200 bg-white p-4 transition hover:shadow-sm">
       <div className="flex items-center gap-3">
         <input
           type="checkbox"
@@ -429,12 +437,12 @@ function EditableFolderCard({
         <button onClick={onOpen} className="flex flex-1 items-center gap-3 text-left">
           <span className="shrink-0 text-2xl">📁</span>
           <span className="flex min-w-0 flex-col">
-            <span className="line-clamp-1 break-keep font-semibold">{folder.name}</span>
+            <span className="line-clamp-1 font-semibold break-keep">{folder.name}</span>
             <FolderCounts folderId={folder.id} fallbackCount={folder.design_count} />
           </span>
         </button>
         {folder.featured_month && !editing && (
-          <span className="shrink-0 text-caption font-semibold text-secondary">
+          <span className="text-caption text-secondary shrink-0 font-semibold">
             🗓 이달의 아트 {folder.featured_month}
           </span>
         )}
@@ -443,18 +451,18 @@ function EditableFolderCard({
             onClick={() => setMenuOpen((v) => !v)}
             aria-label="폴더 설정"
             aria-expanded={menuOpen}
-            className="grid h-8 w-8 place-items-center rounded-md text-body-sm font-bold text-primary hover:bg-neutral-100"
+            className="text-body-sm text-primary grid h-8 w-8 place-items-center rounded-md font-bold hover:bg-neutral-100"
           >
             ⋮
           </button>
           {menuOpen && (
-            <div className="absolute right-0 top-7 z-10 min-w-[7.5rem] rounded-md border border-neutral-200 bg-white p-1.5 shadow-sm">
+            <div className="absolute top-7 right-0 z-10 min-w-[7.5rem] rounded-md border border-neutral-200 bg-white p-1.5 shadow-sm">
               <button
                 onClick={() => {
                   setEditing(true);
                   setMenuOpen(false);
                 }}
-                className="block w-full whitespace-nowrap rounded px-2 py-1 text-left text-caption text-primary-50 underline hover:text-secondary"
+                className="text-caption text-primary-50 hover:text-secondary block w-full rounded px-2 py-1 text-left whitespace-nowrap underline"
               >
                 {folder.featured_month ? '진행월 변경' : '이달의 아트 지정'}
               </button>
@@ -464,7 +472,7 @@ function EditableFolderCard({
                   onDelete();
                 }}
                 disabled={del.isPending}
-                className="block w-full whitespace-nowrap rounded px-2 py-1 text-left text-caption text-danger/80 hover:text-danger disabled:opacity-50"
+                className="text-caption text-danger/80 hover:text-danger block w-full rounded px-2 py-1 text-left whitespace-nowrap disabled:opacity-50"
               >
                 {del.isPending ? '삭제 중…' : '삭제'}
               </button>
@@ -478,13 +486,13 @@ function EditableFolderCard({
             type="month"
             value={month}
             onChange={(e) => setMonth(e.target.value)}
-            className="rounded-md border border-neutral-300 px-2 py-1 text-caption outline-none focus:border-secondary"
+            className="text-caption focus:border-secondary rounded-md border border-neutral-300 px-2 py-1 outline-none"
           />
           <div className="flex gap-1.5">
             <button
               onClick={() => update.mutate({ featured_month: month || null })}
               disabled={update.isPending}
-              className="flex-1 rounded-md bg-secondary py-1 text-caption font-semibold text-white disabled:opacity-50"
+              className="bg-secondary text-caption flex-1 rounded-md py-1 font-semibold text-white disabled:opacity-50"
             >
               저장
             </button>
@@ -494,7 +502,7 @@ function EditableFolderCard({
                 setMonth(folder.featured_month ?? '');
                 setError(null);
               }}
-              className="rounded-md border border-neutral-300 px-2 py-1 text-caption text-primary-50"
+              className="text-caption text-primary-50 rounded-md border border-neutral-300 px-2 py-1"
             >
               취소
             </button>
@@ -502,7 +510,7 @@ function EditableFolderCard({
           {error && <p className="text-caption text-danger">{error}</p>}
         </div>
       )}
-      {error && !editing && <p className="mt-1 text-caption text-danger">{error}</p>}
+      {error && !editing && <p className="text-caption text-danger mt-1">{error}</p>}
     </div>
   );
 }
@@ -531,7 +539,7 @@ function NewFolderCard() {
     return (
       <button
         onClick={() => setEditing(true)}
-        className="flex items-center justify-center gap-1.5 rounded-xl border border-dashed border-neutral-300 p-4 text-body-sm font-semibold text-primary-50 hover:border-secondary hover:text-secondary"
+        className="text-body-sm text-primary-50 hover:border-secondary hover:text-secondary flex items-center justify-center gap-1.5 rounded-xl border border-dashed border-neutral-300 p-4 font-semibold"
       >
         <span className="text-heading-md leading-none">+</span>
         <span>새 폴더</span>
@@ -539,7 +547,7 @@ function NewFolderCard() {
     );
   }
   return (
-    <div className="flex flex-col justify-center rounded-xl border border-secondary/40 bg-white p-3">
+    <div className="border-secondary/40 flex flex-col justify-center rounded-xl border bg-white p-3">
       <input
         autoFocus
         value={name}
@@ -551,22 +559,23 @@ function NewFolderCard() {
         }}
         placeholder="폴더 이름"
         maxLength={60}
-        className="w-full rounded-md border border-neutral-300 px-2.5 py-1.5 text-body-sm outline-none focus:border-secondary"
+        className="text-body-sm focus:border-secondary w-full rounded-md border border-neutral-300 px-2.5 py-1.5 outline-none"
       />
       <input
         type="month"
         value={featuredMonth}
         onChange={(e) => setFeaturedMonth(e.target.value)}
         title="이달의 아트 진행월 (비우면 일반 폴더)"
-        className="mt-1.5 w-full rounded-md border border-neutral-300 px-2 py-1 text-caption outline-none focus:border-secondary"
+        className="text-caption focus:border-secondary mt-1.5 w-full rounded-md border border-neutral-300 px-2 py-1 outline-none"
       />
       <div className="mt-2 flex gap-1.5">
         <button
           onClick={() =>
-            name.trim() && create.mutate({ name: name.trim(), featured_month: featuredMonth || null })
+            name.trim() &&
+            create.mutate({ name: name.trim(), featured_month: featuredMonth || null })
           }
           disabled={create.isPending || !name.trim()}
-          className="flex-1 rounded-md bg-secondary py-1.5 text-caption font-semibold text-white disabled:opacity-50"
+          className="bg-secondary text-caption flex-1 rounded-md py-1.5 font-semibold text-white disabled:opacity-50"
         >
           만들기
         </button>
@@ -577,12 +586,12 @@ function NewFolderCard() {
             setFeaturedMonth('');
             setError(null);
           }}
-          className="rounded-md border border-neutral-300 px-2 py-1.5 text-caption font-semibold text-primary-50"
+          className="text-caption text-primary-50 rounded-md border border-neutral-300 px-2 py-1.5 font-semibold"
         >
           취소
         </button>
       </div>
-      {error && <p className="mt-1 text-caption text-danger">{error}</p>}
+      {error && <p className="text-caption text-danger mt-1">{error}</p>}
     </div>
   );
 }
@@ -676,18 +685,18 @@ function FolderBulkActionBar({
     <div className="rounded-lg border border-neutral-200 bg-white p-3">
       <div className="flex items-center gap-2">
         {count === 0 ? (
-          <label className="flex items-center gap-2 text-body-sm text-primary">
+          <label className="text-body-sm text-primary flex items-center gap-2">
             <input type="checkbox" checked={false} onChange={onSelectAll} />
             전체 선택
           </label>
         ) : (
-          <div className="flex items-center gap-2 text-body-sm text-primary">
+          <div className="text-body-sm text-primary flex items-center gap-2">
             <input type="checkbox" checked readOnly onClick={onClear} />
             <span className="font-semibold">{count}개 선택</span>
             <button
               type="button"
               onClick={onClear}
-              className="text-caption text-primary-50 underline hover:text-secondary"
+              className="text-caption text-primary-50 hover:text-secondary underline"
             >
               선택 취소
             </button>
@@ -697,8 +706,10 @@ function FolderBulkActionBar({
           <button
             type="button"
             onClick={() => onSortModeChange('name')}
-            className={`px-3 py-1 text-caption font-semibold ${
-              sortMode === 'name' ? 'bg-secondary text-white' : 'text-primary-50 hover:bg-neutral-50'
+            className={`text-caption px-3 py-1 font-semibold ${
+              sortMode === 'name'
+                ? 'bg-secondary text-white'
+                : 'text-primary-50 hover:bg-neutral-50'
             }`}
           >
             이름순
@@ -706,8 +717,10 @@ function FolderBulkActionBar({
           <button
             type="button"
             onClick={() => onSortModeChange('created')}
-            className={`px-3 py-1 text-caption font-semibold ${
-              sortMode === 'created' ? 'bg-secondary text-white' : 'text-primary-50 hover:bg-neutral-50'
+            className={`text-caption px-3 py-1 font-semibold ${
+              sortMode === 'created'
+                ? 'bg-secondary text-white'
+                : 'text-primary-50 hover:bg-neutral-50'
             }`}
           >
             추가순
@@ -720,23 +733,23 @@ function FolderBulkActionBar({
             disabled={count === 0}
             aria-label="일괄 작업"
             aria-expanded={menuOpen}
-            className="grid h-8 w-8 place-items-center rounded-md text-body-sm font-bold text-primary hover:bg-neutral-100 disabled:opacity-30"
+            className="text-body-sm text-primary grid h-8 w-8 place-items-center rounded-md font-bold hover:bg-neutral-100 disabled:opacity-30"
           >
             ⋮
           </button>
           {menuOpen && count > 0 && (
-            <div className="absolute right-0 top-7 z-10 min-w-[8rem] rounded-md border border-neutral-200 bg-white p-1.5 shadow-sm">
+            <div className="absolute top-7 right-0 z-10 min-w-[8rem] rounded-md border border-neutral-200 bg-white p-1.5 shadow-sm">
               <button
                 type="button"
                 onClick={() => void runVisibility('hidden')}
-                className="block w-full whitespace-nowrap rounded px-2 py-1 text-left text-caption text-primary hover:bg-neutral-50"
+                className="text-caption text-primary block w-full rounded px-2 py-1 text-left whitespace-nowrap hover:bg-neutral-50"
               >
                 비공개로 전환
               </button>
               <button
                 type="button"
                 onClick={() => void runVisibility('active')}
-                className="block w-full whitespace-nowrap rounded px-2 py-1 text-left text-caption text-primary hover:bg-neutral-50"
+                className="text-caption text-primary block w-full rounded px-2 py-1 text-left whitespace-nowrap hover:bg-neutral-50"
               >
                 공개로 전환
               </button>
@@ -747,7 +760,7 @@ function FolderBulkActionBar({
                   closeAllPanels();
                   setConfirmDel(true);
                 }}
-                className="block w-full whitespace-nowrap rounded px-2 py-1 text-left text-caption text-danger/80 hover:text-danger"
+                className="text-caption text-danger/80 hover:text-danger block w-full rounded px-2 py-1 text-left whitespace-nowrap"
               >
                 삭제
               </button>
@@ -756,21 +769,21 @@ function FolderBulkActionBar({
         </div>
       </div>
 
-      {err && <p className="mt-2 text-caption text-danger">{err}</p>}
+      {err && <p className="text-caption text-danger mt-2">{err}</p>}
 
       {confirmDel && (
-        <div className="mt-3 inline-flex items-center gap-1.5 text-caption text-primary-50">
+        <div className="text-caption text-primary-50 mt-3 inline-flex items-center gap-1.5">
           선택한 {count}개 폴더를 삭제할까요? (디자인은 삭제되지 않고 미분류로 이동해요)
           <button
             onClick={() => void runDelete()}
             disabled={busy}
-            className="rounded-md bg-danger-bg px-2.5 py-1.5 text-caption font-semibold text-danger disabled:opacity-50"
+            className="bg-danger-bg text-caption text-danger rounded-md px-2.5 py-1.5 font-semibold disabled:opacity-50"
           >
             {busy ? '삭제 중…' : '삭제 확인'}
           </button>
           <button
             onClick={closeAllPanels}
-            className="rounded-md bg-neutral-100 px-2.5 py-1.5 text-caption font-semibold text-primary"
+            className="text-caption text-primary rounded-md bg-neutral-100 px-2.5 py-1.5 font-semibold"
           >
             취소
           </button>
@@ -808,7 +821,12 @@ function FolderDesigns({
     queryKey: ['designs', view.unfiled ? 'unfiled' : 'folder', view.folderId ?? 'none'],
     queryFn: () =>
       collectAll<Design>((cursor) =>
-        designsApi.listDesigns({ folder_id: view.folderId, unfiled: view.unfiled, limit: 50, cursor }),
+        designsApi.listDesigns({
+          folder_id: view.folderId,
+          unfiled: view.unfiled,
+          limit: 50,
+          cursor,
+        }),
       ),
   });
   const designs = useMemo(() => {
@@ -821,8 +839,14 @@ function FolderDesigns({
     return list;
   }, [q.data, sortMode]);
 
-  const designersQuery = useQuery({ queryKey: ['designers'], queryFn: () => designersApi.listDesigners() });
-  const foldersQuery = useQuery({ queryKey: ['design-folders'], queryFn: () => designsApi.listFolders() });
+  const designersQuery = useQuery({
+    queryKey: ['designers'],
+    queryFn: () => designersApi.listDesigners(),
+  });
+  const foldersQuery = useQuery({
+    queryKey: ['design-folders'],
+    queryFn: () => designsApi.listFolders(),
+  });
   const [bulkFiles, setBulkFiles] = useState<File[] | null>(null); // 비어있지 않으면 일괄 모달 오픈
 
   // 실제 폴더에서만 일괄 등록(미분류는 제목에 폴더명을 못 붙임)
@@ -845,33 +869,33 @@ function FolderDesigns({
               setSelectedDesign(null);
               onBack();
             }}
-            className="text-heading-md font-bold text-primary hover:text-secondary"
+            className="text-heading-md text-primary hover:text-secondary font-bold"
           >
             디자인
           </button>
-          <span className="text-heading-md font-bold text-primary-50">/</span>
+          <span className="text-heading-md text-primary-50 font-bold">/</span>
           {selectedDesign ? (
             <>
               <button
                 onClick={() => setSelectedDesign(null)}
-                className="text-heading-md font-bold text-primary hover:text-secondary"
+                className="text-heading-md text-primary hover:text-secondary font-bold"
               >
                 {view.label}
               </button>
-              <span className="text-heading-md font-bold text-primary-50">/</span>
+              <span className="text-heading-md text-primary-50 font-bold">/</span>
               <h2 className="text-heading-md font-bold">{selectedDesign.title}</h2>
             </>
           ) : (
             <>
               <h2 className="text-heading-md font-bold">{view.label}</h2>
-              <span className="ml-1 text-body-sm text-primary-50">{designs.length}개</span>
+              <span className="text-body-sm text-primary-50 ml-1">{designs.length}개</span>
             </>
           )}
         </div>
         {!selectedDesign && (
           <button
             onClick={() => setShowCreate(true)}
-            className="shrink-0 rounded-md bg-secondary px-4 py-2 text-body-sm font-semibold text-white"
+            className="bg-secondary text-body-sm shrink-0 rounded-md px-4 py-2 font-semibold text-white"
           >
             + 새 디자인
           </button>
@@ -879,10 +903,7 @@ function FolderDesigns({
       </div>
 
       {selectedDesign ? (
-        <DesignDetailForm
-          design={selectedDesign}
-          onClose={() => setSelectedDesign(null)}
-        />
+        <DesignDetailForm design={selectedDesign} onClose={() => setSelectedDesign(null)} />
       ) : (
         <>
           {showCreate && (
@@ -917,9 +938,11 @@ function FolderDesigns({
           {q.isLoading ? (
             <p className="text-body-sm text-primary-50">불러오는 중…</p>
           ) : q.isError ? (
-            <p className="rounded-md bg-danger-bg px-3 py-2 text-body-sm text-danger">{toUserMessage(q.error)}</p>
+            <p className="bg-danger-bg text-body-sm text-danger rounded-md px-3 py-2">
+              {toUserMessage(q.error)}
+            </p>
           ) : designs.length === 0 ? (
-            <p className="rounded-md border border-dashed border-neutral-300 p-8 text-center text-body-sm text-primary-50">
+            <p className="text-body-sm text-primary-50 rounded-md border border-dashed border-neutral-300 p-8 text-center">
               이 폴더에 디자인이 없습니다.
             </p>
           ) : (
@@ -941,7 +964,9 @@ function FolderDesigns({
                     design={d}
                     onOpen={() => setSelectedDesign(d)}
                     quickEdit={activeQuickEdit?.designId === d.id ? activeQuickEdit.kind : null}
-                    onQuickEditChange={(kind) => setActiveQuickEdit(kind ? { designId: d.id, kind } : null)}
+                    onQuickEditChange={(kind) =>
+                      setActiveQuickEdit(kind ? { designId: d.id, kind } : null)
+                    }
                     selected={selectedIds.has(d.id)}
                     onToggleSelect={() =>
                       setSelectedIds((prev) => {
@@ -1051,7 +1076,9 @@ function BulkActionBar({
   // (개별 카드 가격 수정과 동일한 규칙). 디자인마다 따라가는 상태가 다를 수 있어 디자인별로 판단한다.
   const priceUpdateBody = (d: Design, newPrice: number) => {
     const introFollows = d.intro_price == null || d.intro_price === d.base_price;
-    return introFollows ? { base_price: newPrice, intro_price: newPrice } : { base_price: newPrice };
+    return introFollows
+      ? { base_price: newPrice, intro_price: newPrice }
+      : { base_price: newPrice };
   };
 
   const submitPrice = () => {
@@ -1135,25 +1162,27 @@ function BulkActionBar({
 
   const modeBtnCls = (active: boolean) =>
     `rounded-full border px-3 py-1 text-caption font-semibold ${
-      active ? 'border-secondary bg-secondary/10 text-secondary' : 'border-neutral-300 text-primary-50'
+      active
+        ? 'border-secondary bg-secondary/10 text-secondary'
+        : 'border-neutral-300 text-primary-50'
     }`;
 
   return (
     <div className="rounded-lg border border-neutral-200 bg-white p-3">
       <div className="flex items-center gap-2">
         {count === 0 ? (
-          <label className="flex items-center gap-2 text-body-sm text-primary">
+          <label className="text-body-sm text-primary flex items-center gap-2">
             <input type="checkbox" checked={false} onChange={onSelectAll} />
             전체 선택
           </label>
         ) : (
-          <div className="flex items-center gap-2 text-body-sm text-primary">
+          <div className="text-body-sm text-primary flex items-center gap-2">
             <input type="checkbox" checked readOnly onClick={onClear} />
             <span className="font-semibold">{count}개 선택</span>
             <button
               type="button"
               onClick={onClear}
-              className="text-caption text-primary-50 underline hover:text-secondary"
+              className="text-caption text-primary-50 hover:text-secondary underline"
             >
               선택 취소
             </button>
@@ -1163,8 +1192,10 @@ function BulkActionBar({
           <button
             type="button"
             onClick={() => onSortModeChange('name')}
-            className={`px-3 py-1 text-caption font-semibold ${
-              sortMode === 'name' ? 'bg-secondary text-white' : 'text-primary-50 hover:bg-neutral-50'
+            className={`text-caption px-3 py-1 font-semibold ${
+              sortMode === 'name'
+                ? 'bg-secondary text-white'
+                : 'text-primary-50 hover:bg-neutral-50'
             }`}
           >
             이름순
@@ -1172,8 +1203,10 @@ function BulkActionBar({
           <button
             type="button"
             onClick={() => onSortModeChange('created')}
-            className={`px-3 py-1 text-caption font-semibold ${
-              sortMode === 'created' ? 'bg-secondary text-white' : 'text-primary-50 hover:bg-neutral-50'
+            className={`text-caption px-3 py-1 font-semibold ${
+              sortMode === 'created'
+                ? 'bg-secondary text-white'
+                : 'text-primary-50 hover:bg-neutral-50'
             }`}
           >
             추가순
@@ -1186,37 +1219,37 @@ function BulkActionBar({
             disabled={count === 0}
             aria-label="일괄 작업"
             aria-expanded={menuOpen}
-            className="grid h-8 w-8 place-items-center rounded-md text-body-sm font-bold text-primary hover:bg-neutral-100 disabled:opacity-30"
+            className="text-body-sm text-primary grid h-8 w-8 place-items-center rounded-md font-bold hover:bg-neutral-100 disabled:opacity-30"
           >
             ⋮
           </button>
           {menuOpen && count > 0 && (
-            <div className="absolute right-0 top-7 z-10 min-w-[8rem] rounded-md border border-neutral-200 bg-white p-1.5 shadow-sm">
+            <div className="absolute top-7 right-0 z-10 min-w-[8rem] rounded-md border border-neutral-200 bg-white p-1.5 shadow-sm">
               <button
                 type="button"
                 onClick={() => void runVisibility('hidden')}
-                className="block w-full whitespace-nowrap rounded px-2 py-1 text-left text-caption text-primary hover:bg-neutral-50"
+                className="text-caption text-primary block w-full rounded px-2 py-1 text-left whitespace-nowrap hover:bg-neutral-50"
               >
                 비공개로 전환
               </button>
               <button
                 type="button"
                 onClick={() => void runVisibility('active')}
-                className="block w-full whitespace-nowrap rounded px-2 py-1 text-left text-caption text-primary hover:bg-neutral-50"
+                className="text-caption text-primary block w-full rounded px-2 py-1 text-left whitespace-nowrap hover:bg-neutral-50"
               >
                 공개로 전환
               </button>
               <button
                 type="button"
                 onClick={() => openQuickEdit('price')}
-                className="block w-full whitespace-nowrap rounded px-2 py-1 text-left text-caption text-primary hover:bg-neutral-50"
+                className="text-caption text-primary block w-full rounded px-2 py-1 text-left whitespace-nowrap hover:bg-neutral-50"
               >
                 가격 수정
               </button>
               <button
                 type="button"
                 onClick={() => openQuickEdit('duration')}
-                className="block w-full whitespace-nowrap rounded px-2 py-1 text-left text-caption text-primary hover:bg-neutral-50"
+                className="text-caption text-primary block w-full rounded px-2 py-1 text-left whitespace-nowrap hover:bg-neutral-50"
               >
                 소요시간 수정
               </button>
@@ -1228,7 +1261,7 @@ function BulkActionBar({
                   setFolderDraft('');
                   setShowFolderMove(true);
                 }}
-                className="block w-full whitespace-nowrap rounded px-2 py-1 text-left text-caption text-primary hover:bg-neutral-50"
+                className="text-caption text-primary block w-full rounded px-2 py-1 text-left whitespace-nowrap hover:bg-neutral-50"
               >
                 폴더 이동
               </button>
@@ -1239,7 +1272,7 @@ function BulkActionBar({
                   closeAllPanels();
                   setConfirmDel(true);
                 }}
-                className="block w-full whitespace-nowrap rounded px-2 py-1 text-left text-caption text-danger/80 hover:text-danger"
+                className="text-caption text-danger/80 hover:text-danger block w-full rounded px-2 py-1 text-left whitespace-nowrap"
               >
                 삭제
               </button>
@@ -1256,7 +1289,7 @@ function BulkActionBar({
           }}
           className="mt-3 space-y-2"
         >
-          <label className="block text-caption font-semibold text-primary-50">
+          <label className="text-caption text-primary-50 block font-semibold">
             정상가(원) — 선택한 {count}개 디자인에 적용
           </label>
           <div className="flex gap-2">
@@ -1296,7 +1329,7 @@ function BulkActionBar({
           {confirmStep && (
             <p className="text-caption text-danger">
               {mode === 'set'
-                ? `선택한 ${count}개 디자인의 정상가가 전부 ${(Math.max(0, Math.round(Number(draft)) || 0)).toLocaleString('ko-KR')}원으로 덮어씌워져요. 되돌릴 수 없어요 — 계속하려면 저장을 한 번 더 눌러주세요.`
+                ? `선택한 ${count}개 디자인의 정상가가 전부 ${Math.max(0, Math.round(Number(draft)) || 0).toLocaleString('ko-KR')}원으로 덮어씌워져요. 되돌릴 수 없어요 — 계속하려면 저장을 한 번 더 눌러주세요.`
                 : `선택한 ${count}개 디자인의 정상가에 각각 ${(Math.round(Number(draft)) || 0).toLocaleString('ko-KR')}원이 적용돼요(0원 밑으로는 안 내려가요). 되돌릴 수 없어요 — 계속하려면 저장을 한 번 더 눌러주세요.`}
             </p>
           )}
@@ -1305,14 +1338,14 @@ function BulkActionBar({
             <button
               type="submit"
               disabled={busy || !draft.trim()}
-              className="rounded-md bg-secondary px-4 py-2 text-caption font-semibold text-white disabled:opacity-50"
+              className="bg-secondary text-caption rounded-md px-4 py-2 font-semibold text-white disabled:opacity-50"
             >
               {busy ? '저장 중…' : confirmStep ? '정말 저장' : '저장'}
             </button>
             <button
               type="button"
               onClick={closeAllPanels}
-              className="rounded-md border border-neutral-300 px-4 py-2 text-caption text-primary"
+              className="text-caption text-primary rounded-md border border-neutral-300 px-4 py-2"
             >
               취소
             </button>
@@ -1328,7 +1361,7 @@ function BulkActionBar({
           }}
           className="mt-3 space-y-2"
         >
-          <label className="block text-caption font-semibold text-primary-50">
+          <label className="text-caption text-primary-50 block font-semibold">
             소요시간(분) — 선택한 {count}개 디자인에 적용
           </label>
           <div className="flex gap-2">
@@ -1361,7 +1394,9 @@ function BulkActionBar({
               setDraft(e.target.value);
               setConfirmStep(false);
             }}
-            placeholder={mode === 'set' ? `예: 90 (${DURATION_MIN}~${DURATION_MAX})` : '예: 10 또는 -10'}
+            placeholder={
+              mode === 'set' ? `예: 90 (${DURATION_MIN}~${DURATION_MAX})` : '예: 10 또는 -10'
+            }
             autoFocus
             className={inputCls}
           />
@@ -1377,14 +1412,14 @@ function BulkActionBar({
             <button
               type="submit"
               disabled={busy || !draft.trim()}
-              className="rounded-md bg-secondary px-4 py-2 text-caption font-semibold text-white disabled:opacity-50"
+              className="bg-secondary text-caption rounded-md px-4 py-2 font-semibold text-white disabled:opacity-50"
             >
               {busy ? '저장 중…' : confirmStep ? '정말 저장' : '저장'}
             </button>
             <button
               type="button"
               onClick={closeAllPanels}
-              className="rounded-md border border-neutral-300 px-4 py-2 text-caption text-primary"
+              className="text-caption text-primary rounded-md border border-neutral-300 px-4 py-2"
             >
               취소
             </button>
@@ -1394,13 +1429,13 @@ function BulkActionBar({
 
       {showFolderMove && (
         <div className="mt-3 space-y-2">
-          <label className="block text-caption font-semibold text-primary-50">
+          <label className="text-caption text-primary-50 block font-semibold">
             폴더 — 선택한 {count}개 디자인을 이동
           </label>
           <select
             value={folderDraft}
             onChange={(e) => setFolderDraft(e.target.value)}
-            className="w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-body-sm outline-none focus:border-secondary"
+            className="text-body-sm focus:border-secondary w-full rounded-md border border-neutral-300 bg-white px-3 py-2 outline-none"
             aria-label="폴더 이동"
           >
             <option value="">미분류</option>
@@ -1416,14 +1451,14 @@ function BulkActionBar({
               type="button"
               onClick={() => void runFolderMove()}
               disabled={busy}
-              className="rounded-md bg-secondary px-4 py-2 text-caption font-semibold text-white disabled:opacity-50"
+              className="bg-secondary text-caption rounded-md px-4 py-2 font-semibold text-white disabled:opacity-50"
             >
               {busy ? '저장 중…' : '저장'}
             </button>
             <button
               type="button"
               onClick={closeAllPanels}
-              className="rounded-md border border-neutral-300 px-4 py-2 text-caption text-primary"
+              className="text-caption text-primary rounded-md border border-neutral-300 px-4 py-2"
             >
               취소
             </button>
@@ -1432,18 +1467,18 @@ function BulkActionBar({
       )}
 
       {confirmDel && (
-        <div className="mt-3 inline-flex items-center gap-1.5 text-caption text-primary-50">
+        <div className="text-caption text-primary-50 mt-3 inline-flex items-center gap-1.5">
           선택한 {count}개 디자인을 삭제할까요?
           <button
             onClick={() => void runDelete()}
             disabled={busy}
-            className="rounded-md bg-danger-bg px-2.5 py-1.5 text-caption font-semibold text-danger disabled:opacity-50"
+            className="bg-danger-bg text-caption text-danger rounded-md px-2.5 py-1.5 font-semibold disabled:opacity-50"
           >
             {busy ? '삭제 중…' : '삭제 확인'}
           </button>
           <button
             onClick={closeAllPanels}
-            className="rounded-md bg-neutral-100 px-2.5 py-1.5 text-caption font-semibold text-primary"
+            className="text-caption text-primary rounded-md bg-neutral-100 px-2.5 py-1.5 font-semibold"
           >
             취소
           </button>
@@ -1470,18 +1505,51 @@ const MAX_SHOP_OPTION_CATEGORIES = 10;
 
 /** 신규 샵이 제거/연장/케어를 처음 켤 때 보여줄 기본 옵션 구성 — 그대로 저장해도 되고
  * 수정/삭제해도 된다(강제 아님, 시작점일 뿐). */
-const DEFAULT_SECTION_TEMPLATE: Record<OptionKind, Omit<DraftRow, 'uid' | 'originalName' | 'deleted'>[]> = {
+const DEFAULT_SECTION_TEMPLATE: Record<
+  OptionKind,
+  Omit<DraftRow, 'uid' | 'originalName' | 'deleted'>[]
+> = {
   removal: [
-    { name: '자샵 제거', priceDelta: 10000, durationDelta: 0, selectionType: 'toggle', maxQuantity: null },
-    { name: '타샵 제거', priceDelta: 20000, durationDelta: 0, selectionType: 'toggle', maxQuantity: null },
+    {
+      name: '자샵 제거',
+      priceDelta: 10000,
+      durationDelta: 0,
+      selectionType: 'toggle',
+      maxQuantity: null,
+    },
+    {
+      name: '타샵 제거',
+      priceDelta: 20000,
+      durationDelta: 0,
+      selectionType: 'toggle',
+      maxQuantity: null,
+    },
   ],
   extend: [
-    { name: '개별 연장', priceDelta: 10000, durationDelta: 0, selectionType: 'quantity', maxQuantity: 10 },
-    { name: '전체 연장', priceDelta: 100000, durationDelta: 0, selectionType: 'toggle', maxQuantity: null },
+    {
+      name: '개별 연장',
+      priceDelta: 10000,
+      durationDelta: 0,
+      selectionType: 'quantity',
+      maxQuantity: 10,
+    },
+    {
+      name: '전체 연장',
+      priceDelta: 100000,
+      durationDelta: 0,
+      selectionType: 'toggle',
+      maxQuantity: null,
+    },
   ],
   care: [
     { name: '랩핑', priceDelta: 0, durationDelta: 0, selectionType: 'quantity', maxQuantity: 10 },
-    { name: '리페어', priceDelta: 10000, durationDelta: 0, selectionType: 'quantity', maxQuantity: 10 },
+    {
+      name: '리페어',
+      priceDelta: 10000,
+      durationDelta: 0,
+      selectionType: 'quantity',
+      maxQuantity: 10,
+    },
   ],
 };
 
@@ -1764,7 +1832,10 @@ function OptionManager({ onClose, onDone }: { onClose: () => void; onDone: () =>
       const passedDown = i > from && e.clientY > middle;
       const passedUp = i < from && e.clientY < middle;
       if (passedDown || passedUp) {
-        setDraftBySection((prev) => ({ ...prev, [sectionKey]: moveItem(prev[sectionKey], from, i) }));
+        setDraftBySection((prev) => ({
+          ...prev,
+          [sectionKey]: moveItem(prev[sectionKey], from, i),
+        }));
         return;
       }
     }
@@ -1831,7 +1902,9 @@ function OptionManager({ onClose, onDone }: { onClose: () => void; onDone: () =>
               .filter((o) => (o.kind ?? o.custom_category_id) === section.key)
               .map((o) => [o.name, o]),
           );
-          const keepNames = new Set(rows.filter((r) => !r.deleted).map((r) => r.originalName ?? r.name));
+          const keepNames = new Set(
+            rows.filter((r) => !r.deleted).map((r) => r.originalName ?? r.name),
+          );
 
           // 초안에서 삭제 표시된(또는 더 이상 안 남은) 기존 옵션은 이 디자인에서도 삭제.
           for (const [name, existing] of existingByName) {
@@ -1860,13 +1933,20 @@ function OptionManager({ onClose, onDone }: { onClose: () => void; onDone: () =>
                 existing.is_active !== isActive ||
                 (existing.selection_type ?? 'toggle') !== body.selection_type ||
                 (existing.max_quantity ?? null) !== body.max_quantity;
-              if (changed) await designsApi.updateOption(design.id, existing.id, { ...body, is_active: isActive });
+              if (changed)
+                await designsApi.updateOption(design.id, existing.id, {
+                  ...body,
+                  is_active: isActive,
+                });
             } else {
               const created = await designsApi.createOption(design.id, {
-                ...(section.kind ? { kind: section.kind } : { custom_category_id: section.categoryId! }),
+                ...(section.kind
+                  ? { kind: section.kind }
+                  : { custom_category_id: section.categoryId! }),
                 ...body,
               });
-              if (!isActive) await designsApi.updateOption(design.id, created.id, { is_active: false });
+              if (!isActive)
+                await designsApi.updateOption(design.id, created.id, { is_active: false });
             }
           }
         }
@@ -1937,297 +2017,313 @@ function OptionManager({ onClose, onDone }: { onClose: () => void; onDone: () =>
       >
         <div className="flex shrink-0 items-center justify-between border-b border-neutral-200 p-6 pb-4">
           <div>
-            <h2 className="text-heading-md font-bold text-primary">옵션 관리</h2>
-            <p className="mt-1 text-caption text-primary-50">
-              샵에 있는 모든 디자인에 동일하게 적용되는 공통 옵션이에요. 개별 디자인이나
-              폴더별로 다르게 설정할 수 없어요.
+            <h2 className="text-heading-md text-primary font-bold">옵션 관리</h2>
+            <p className="text-caption text-primary-50 mt-1">
+              샵에 있는 모든 디자인에 동일하게 적용되는 공통 옵션이에요. 개별 디자인이나 폴더별로
+              다르게 설정할 수 없어요.
             </p>
           </div>
           <button
             onClick={onClose}
-            className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-neutral-100 text-primary-50"
+            className="text-primary-50 grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-neutral-100"
             aria-label="닫기"
           >
             ✕
           </button>
         </div>
         <div className="space-y-6 overflow-y-auto p-6 pt-4">
-      {/* 섹션 온/오프 — 고정 3종과 커스텀 카테고리 모두 동일하게 토글 가능. 끄면 그
+          {/* 섹션 온/오프 — 고정 3종과 커스텀 카테고리 모두 동일하게 토글 가능. 끄면 그
           카테고리의 옵션 전체가 앱에서 비활성화(삭제 아님)된다. + 는 새 카테고리 추가. */}
-      <div className="flex flex-wrap items-center gap-1.5">
-        {SECTION_TABS.map((tab) => {
-          const on = sectionActive[tab.value];
-          return (
-            <button
-              key={tab.value}
-              type="button"
-              onClick={() => setSectionActive((prev) => ({ ...prev, [tab.value]: !prev[tab.value] }))}
-              className={`rounded-full border px-4 py-1.5 text-body-sm font-semibold ${
-                on
-                  ? 'border-secondary bg-secondary text-white'
-                  : 'border-neutral-300 text-primary-50 hover:border-secondary hover:text-secondary'
-              }`}
-            >
-              {tab.label}
-            </button>
-          );
-        })}
-        {categories.map((category) => {
-          const on = sectionActive[category.id];
-          return (
-            <button
-              key={category.id}
-              type="button"
-              onClick={() => setSectionActive((prev) => ({ ...prev, [category.id]: !prev[category.id] }))}
-              className={`rounded-full border px-4 py-1.5 text-body-sm font-semibold ${
-                on
-                  ? 'border-secondary bg-secondary text-white'
-                  : 'border-neutral-300 text-primary-50 hover:border-secondary hover:text-secondary'
-              }`}
-            >
-              {category.name}
-            </button>
-          );
-        })}
-        {creatingCategory ? (
-          <div className="flex flex-wrap items-center gap-1.5 rounded-full border border-secondary/40 bg-white px-2.5 py-1">
-            <input
-              autoFocus
-              value={newCategoryName}
-              onChange={(e) => setNewCategoryName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') void handleCreateCategory();
-                if (e.key === 'Escape') setCreatingCategory(false);
-              }}
-              placeholder="카테고리 이름"
-              maxLength={40}
-              className="w-24 rounded border border-neutral-300 px-1.5 py-0.5 text-caption outline-none focus:border-secondary"
-            />
-            <label className="flex items-center gap-1 text-caption text-primary-50">
-              <input
-                type="checkbox"
-                checked={newCategoryMulti}
-                onChange={(e) => setNewCategoryMulti(e.target.checked)}
-              />
-              중복선택
-            </label>
-            <button
-              type="button"
-              onClick={() => void handleCreateCategory()}
-              disabled={savingCategory || !newCategoryName.trim()}
-              className="text-caption font-semibold text-secondary disabled:text-primary-50"
-            >
-              {savingCategory ? '추가 중…' : '추가'}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setCreatingCategory(false);
-                setNewCategoryName('');
-              }}
-              className="text-caption text-primary-50"
-            >
-              취소
-            </button>
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setCreatingCategory(true)}
-            disabled={categories.length >= MAX_SHOP_OPTION_CATEGORIES}
-            title={
-              categories.length >= MAX_SHOP_OPTION_CATEGORIES
-                ? `카테고리는 최대 ${MAX_SHOP_OPTION_CATEGORIES}개까지 만들 수 있어요`
-                : '새 카테고리 추가'
-            }
-            className="rounded-full border border-dashed border-neutral-300 px-3 py-1.5 text-body-sm font-semibold text-primary-50 hover:border-secondary hover:text-secondary disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            +
-          </button>
-        )}
-      </div>
-
-      {categoryError && <p className="text-caption text-danger">{categoryError}</p>}
-      {saveError && <p className="text-caption text-danger">{saveError}</p>}
-
-      {/* 켜진 섹션만 순서대로 목록 표시 */}
-      {(() => {
-        const totalActiveRows = sections.reduce(
-          (sum, s) => sum + (draftBySection[s.key] ?? []).filter((r) => !r.deleted).length,
-          0,
-        );
-        const atCap = totalActiveRows >= MAX_DESIGN_OPTIONS;
-        return sections
-          .filter((section) => sectionActive[section.key])
-          .map((section) => {
-            const rows = (draftBySection[section.key] ?? []).filter((r) => !r.deleted);
-            return (
-          <div key={section.key} className="space-y-2 border-t border-neutral-200 pt-4">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <p className="text-body-sm font-semibold text-primary">{section.label}</p>
-                {section.categoryId && (
-                  <button
-                    type="button"
-                    onClick={() => void handleDeleteCategory(section.categoryId!, section.label)}
-                    className="text-caption text-danger/70 hover:text-danger"
-                    title="카테고리 삭제 (안의 옵션도 함께 삭제됨)"
-                  >
-                    카테고리 삭제
-                  </button>
-                )}
-              </div>
-              <label className="flex items-center gap-1.5 text-caption font-semibold text-primary">
-                <input
-                  type="checkbox"
-                  checked={selectionMode[section.key] === 'multi'}
-                  onChange={(e) =>
-                    setSelectionMode((prev) => ({
-                      ...prev,
-                      [section.key]: e.target.checked ? 'multi' : 'single',
-                    }))
+          <div className="flex flex-wrap items-center gap-1.5">
+            {SECTION_TABS.map((tab) => {
+              const on = sectionActive[tab.value];
+              return (
+                <button
+                  key={tab.value}
+                  type="button"
+                  onClick={() =>
+                    setSectionActive((prev) => ({ ...prev, [tab.value]: !prev[tab.value] }))
                   }
+                  className={`text-body-sm rounded-full border px-4 py-1.5 font-semibold ${
+                    on
+                      ? 'border-secondary bg-secondary text-white'
+                      : 'text-primary-50 hover:border-secondary hover:text-secondary border-neutral-300'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
+            {categories.map((category) => {
+              const on = sectionActive[category.id];
+              return (
+                <button
+                  key={category.id}
+                  type="button"
+                  onClick={() =>
+                    setSectionActive((prev) => ({ ...prev, [category.id]: !prev[category.id] }))
+                  }
+                  className={`text-body-sm rounded-full border px-4 py-1.5 font-semibold ${
+                    on
+                      ? 'border-secondary bg-secondary text-white'
+                      : 'text-primary-50 hover:border-secondary hover:text-secondary border-neutral-300'
+                  }`}
+                >
+                  {category.name}
+                </button>
+              );
+            })}
+            {creatingCategory ? (
+              <div className="border-secondary/40 flex flex-wrap items-center gap-1.5 rounded-full border bg-white px-2.5 py-1">
+                <input
+                  autoFocus
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') void handleCreateCategory();
+                    if (e.key === 'Escape') setCreatingCategory(false);
+                  }}
+                  placeholder="카테고리 이름"
+                  maxLength={40}
+                  className="text-caption focus:border-secondary w-24 rounded border border-neutral-300 px-1.5 py-0.5 outline-none"
                 />
-                중복 선택 허용
-              </label>
-            </div>
-            {rows.length === 0 ? (
-              <p className="text-caption text-primary-50">아직 등록된 옵션이 없어요.</p>
+                <label className="text-caption text-primary-50 flex items-center gap-1">
+                  <input
+                    type="checkbox"
+                    checked={newCategoryMulti}
+                    onChange={(e) => setNewCategoryMulti(e.target.checked)}
+                  />
+                  중복선택
+                </label>
+                <button
+                  type="button"
+                  onClick={() => void handleCreateCategory()}
+                  disabled={savingCategory || !newCategoryName.trim()}
+                  className="text-caption text-secondary disabled:text-primary-50 font-semibold"
+                >
+                  {savingCategory ? '추가 중…' : '추가'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCreatingCategory(false);
+                    setNewCategoryName('');
+                  }}
+                  className="text-caption text-primary-50"
+                >
+                  취소
+                </button>
+              </div>
             ) : (
-              <div className="space-y-2">
-                {rows.map((row) => (
-                  <div
-                    key={row.uid}
-                    ref={(el) => {
-                      if (el) rowRefs.current.set(row.uid, el);
-                      else rowRefs.current.delete(row.uid);
-                    }}
-                    className={`flex flex-wrap items-center gap-2 rounded-md border p-2 ${
-                      dragSection === section.key && dragUid === row.uid
-                        ? 'border-secondary bg-secondary/5'
-                        : 'border-neutral-200'
-                    }`}
-                  >
-                    <button
-                      type="button"
-                      onPointerDown={(e) => startDrag(e, section.key, row.uid)}
-                      onPointerMove={(e) => onDragMove(e, section.key, row.uid)}
-                      onPointerUp={endDrag}
-                      onPointerCancel={endDrag}
-                      className="grid h-8 w-5 shrink-0 cursor-grab touch-none select-none place-items-center rounded text-primary-50 hover:bg-neutral-100 active:cursor-grabbing"
-                      aria-label="옵션 순서 변경 — 잡고 위아래로 끌기"
-                      title="잡고 위아래로 끌어 순서를 바꿔요"
-                    >
-                      ⋮⋮
-                    </button>
-                    <input
-                      value={row.name}
-                      onChange={(e) => updateRow(section.key, row.uid, { name: e.target.value })}
-                      placeholder="옵션 이름 (예: 없음)"
-                      maxLength={80}
-                      className="min-w-[6rem] flex-1 rounded-md border border-neutral-300 px-2 py-1 text-caption"
-                    />
-                    <div className="flex items-center gap-1.5">
-                      <span className="shrink-0 text-caption text-primary-50">
-                        {row.selectionType === 'quantity' ? '1개당 +' : '+'}
-                      </span>
-                      <Stepper
-                        value={row.priceDelta}
-                        onChange={(v) => updateRow(section.key, row.uid, { priceDelta: Math.max(0, v) })}
-                        step={PRICE_STEP}
-                        suffix="원"
-                        ariaLabel="추가금액"
-                      />
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="shrink-0 text-caption text-primary-50">
-                        {row.selectionType === 'quantity' ? '1개당 +' : '+'}
-                      </span>
-                      <Stepper
-                        value={row.durationDelta}
-                        onChange={(v) =>
-                          updateRow(section.key, row.uid, { durationDelta: clampOptionDuration(v) })
-                        }
-                        step={OPTION_DURATION_STEP}
-                        suffix="분"
-                        ariaLabel="추가시간"
-                      />
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        updateRow(section.key, row.uid, {
-                          selectionType: row.selectionType === 'quantity' ? 'toggle' : 'quantity',
-                          maxQuantity: row.selectionType === 'quantity' ? null : (row.maxQuantity ?? 10),
-                        })
-                      }
-                      title="고객이 이 옵션을 켜고 끄기만 할지, 개수를 골라 여러 개 담을 수 있게 할지"
-                      className={`shrink-0 rounded-full border px-2.5 py-1 text-caption font-semibold ${
-                        row.selectionType === 'quantity'
-                          ? 'border-secondary bg-secondary/10 text-secondary'
-                          : 'border-neutral-300 text-primary-50'
-                      }`}
-                    >
-                      개수 선택
-                    </button>
-                    {row.selectionType === 'quantity' && (
-                      <div className="flex shrink-0 items-center gap-1">
-                        <span className="text-caption text-primary-50">최대</span>
+              <button
+                type="button"
+                onClick={() => setCreatingCategory(true)}
+                disabled={categories.length >= MAX_SHOP_OPTION_CATEGORIES}
+                title={
+                  categories.length >= MAX_SHOP_OPTION_CATEGORIES
+                    ? `카테고리는 최대 ${MAX_SHOP_OPTION_CATEGORIES}개까지 만들 수 있어요`
+                    : '새 카테고리 추가'
+                }
+                className="text-body-sm text-primary-50 hover:border-secondary hover:text-secondary rounded-full border border-dashed border-neutral-300 px-3 py-1.5 font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                +
+              </button>
+            )}
+          </div>
+
+          {categoryError && <p className="text-caption text-danger">{categoryError}</p>}
+          {saveError && <p className="text-caption text-danger">{saveError}</p>}
+
+          {/* 켜진 섹션만 순서대로 목록 표시 */}
+          {(() => {
+            const totalActiveRows = sections.reduce(
+              (sum, s) => sum + (draftBySection[s.key] ?? []).filter((r) => !r.deleted).length,
+              0,
+            );
+            const atCap = totalActiveRows >= MAX_DESIGN_OPTIONS;
+            return sections
+              .filter((section) => sectionActive[section.key])
+              .map((section) => {
+                const rows = (draftBySection[section.key] ?? []).filter((r) => !r.deleted);
+                return (
+                  <div key={section.key} className="space-y-2 border-t border-neutral-200 pt-4">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <p className="text-body-sm text-primary font-semibold">{section.label}</p>
+                        {section.categoryId && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              void handleDeleteCategory(section.categoryId!, section.label)
+                            }
+                            className="text-caption text-danger/70 hover:text-danger"
+                            title="카테고리 삭제 (안의 옵션도 함께 삭제됨)"
+                          >
+                            카테고리 삭제
+                          </button>
+                        )}
+                      </div>
+                      <label className="text-caption text-primary flex items-center gap-1.5 font-semibold">
                         <input
-                          type="number"
-                          min={1}
-                          max={MAX_OPTION_QUANTITY}
-                          value={row.maxQuantity ?? ''}
-                          onChange={(e) => {
-                            const n = Math.round(Number(e.target.value));
-                            updateRow(section.key, row.uid, {
-                              maxQuantity: Number.isFinite(n)
-                                ? Math.min(MAX_OPTION_QUANTITY, Math.max(1, n))
-                                : null,
-                            });
-                          }}
-                          className="w-14 rounded-md border border-neutral-300 px-1.5 py-1 text-caption"
+                          type="checkbox"
+                          checked={selectionMode[section.key] === 'multi'}
+                          onChange={(e) =>
+                            setSelectionMode((prev) => ({
+                              ...prev,
+                              [section.key]: e.target.checked ? 'multi' : 'single',
+                            }))
+                          }
                         />
-                        <span className="text-caption text-primary-50">개</span>
+                        중복 선택 허용
+                      </label>
+                    </div>
+                    {rows.length === 0 ? (
+                      <p className="text-caption text-primary-50">아직 등록된 옵션이 없어요.</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {rows.map((row) => (
+                          <div
+                            key={row.uid}
+                            ref={(el) => {
+                              if (el) rowRefs.current.set(row.uid, el);
+                              else rowRefs.current.delete(row.uid);
+                            }}
+                            className={`flex flex-wrap items-center gap-2 rounded-md border p-2 ${
+                              dragSection === section.key && dragUid === row.uid
+                                ? 'border-secondary bg-secondary/5'
+                                : 'border-neutral-200'
+                            }`}
+                          >
+                            <button
+                              type="button"
+                              onPointerDown={(e) => startDrag(e, section.key, row.uid)}
+                              onPointerMove={(e) => onDragMove(e, section.key, row.uid)}
+                              onPointerUp={endDrag}
+                              onPointerCancel={endDrag}
+                              className="text-primary-50 grid h-8 w-5 shrink-0 cursor-grab touch-none place-items-center rounded select-none hover:bg-neutral-100 active:cursor-grabbing"
+                              aria-label="옵션 순서 변경 — 잡고 위아래로 끌기"
+                              title="잡고 위아래로 끌어 순서를 바꿔요"
+                            >
+                              ⋮⋮
+                            </button>
+                            <input
+                              value={row.name}
+                              onChange={(e) =>
+                                updateRow(section.key, row.uid, { name: e.target.value })
+                              }
+                              placeholder="옵션 이름 (예: 없음)"
+                              maxLength={80}
+                              className="text-caption min-w-[6rem] flex-1 rounded-md border border-neutral-300 px-2 py-1"
+                            />
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-caption text-primary-50 shrink-0">
+                                {row.selectionType === 'quantity' ? '1개당 +' : '+'}
+                              </span>
+                              <Stepper
+                                value={row.priceDelta}
+                                onChange={(v) =>
+                                  updateRow(section.key, row.uid, { priceDelta: Math.max(0, v) })
+                                }
+                                step={PRICE_STEP}
+                                suffix="원"
+                                ariaLabel="추가금액"
+                              />
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-caption text-primary-50 shrink-0">
+                                {row.selectionType === 'quantity' ? '1개당 +' : '+'}
+                              </span>
+                              <Stepper
+                                value={row.durationDelta}
+                                onChange={(v) =>
+                                  updateRow(section.key, row.uid, {
+                                    durationDelta: clampOptionDuration(v),
+                                  })
+                                }
+                                step={OPTION_DURATION_STEP}
+                                suffix="분"
+                                ariaLabel="추가시간"
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                updateRow(section.key, row.uid, {
+                                  selectionType:
+                                    row.selectionType === 'quantity' ? 'toggle' : 'quantity',
+                                  maxQuantity:
+                                    row.selectionType === 'quantity'
+                                      ? null
+                                      : (row.maxQuantity ?? 10),
+                                })
+                              }
+                              title="고객이 이 옵션을 켜고 끄기만 할지, 개수를 골라 여러 개 담을 수 있게 할지"
+                              className={`text-caption shrink-0 rounded-full border px-2.5 py-1 font-semibold ${
+                                row.selectionType === 'quantity'
+                                  ? 'border-secondary bg-secondary/10 text-secondary'
+                                  : 'text-primary-50 border-neutral-300'
+                              }`}
+                            >
+                              개수 선택
+                            </button>
+                            {row.selectionType === 'quantity' && (
+                              <div className="flex shrink-0 items-center gap-1">
+                                <span className="text-caption text-primary-50">최대</span>
+                                <input
+                                  type="number"
+                                  min={1}
+                                  max={MAX_OPTION_QUANTITY}
+                                  value={row.maxQuantity ?? ''}
+                                  onChange={(e) => {
+                                    const n = Math.round(Number(e.target.value));
+                                    updateRow(section.key, row.uid, {
+                                      maxQuantity: Number.isFinite(n)
+                                        ? Math.min(MAX_OPTION_QUANTITY, Math.max(1, n))
+                                        : null,
+                                    });
+                                  }}
+                                  className="text-caption w-14 rounded-md border border-neutral-300 px-1.5 py-1"
+                                />
+                                <span className="text-caption text-primary-50">개</span>
+                              </div>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => removeRow(section.key, row.uid)}
+                              className="text-primary-50 grid h-8 w-8 shrink-0 place-items-center rounded-md border border-neutral-300 hover:bg-neutral-50"
+                              aria-label="옵션 삭제"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
                       </div>
                     )}
                     <button
                       type="button"
-                      onClick={() => removeRow(section.key, row.uid)}
-                      className="grid h-8 w-8 shrink-0 place-items-center rounded-md border border-neutral-300 text-primary-50 hover:bg-neutral-50"
-                      aria-label="옵션 삭제"
+                      onClick={() => addRow(section.key)}
+                      disabled={atCap}
+                      className="text-caption text-secondary disabled:text-primary-50 font-semibold hover:underline disabled:cursor-not-allowed disabled:no-underline"
                     >
-                      ×
+                      + 옵션 추가
                     </button>
+                    {atCap && (
+                      <p className="text-caption text-warning">
+                        디자인 1개당 옵션은 최대 {MAX_DESIGN_OPTIONS}개까지예요(모든 카테고리 합산).
+                        더 추가하려면 기존 옵션을 먼저 지워주세요.
+                      </p>
+                    )}
                   </div>
-                ))}
-              </div>
-            )}
-            <button
-              type="button"
-              onClick={() => addRow(section.key)}
-              disabled={atCap}
-              className="text-caption font-semibold text-secondary hover:underline disabled:cursor-not-allowed disabled:text-primary-50 disabled:no-underline"
-            >
-              + 옵션 추가
-            </button>
-            {atCap && (
-              <p className="text-caption text-warning">
-                디자인 1개당 옵션은 최대 {MAX_DESIGN_OPTIONS}개까지예요(모든 카테고리 합산). 더 추가하려면 기존 옵션을 먼저 지워주세요.
-              </p>
-            )}
-          </div>
-            );
-          });
-      })()}
-
+                );
+              });
+          })()}
         </div>
         <div className="flex shrink-0 gap-2 border-t border-neutral-200 p-6 pt-4">
           <button
             type="button"
             onClick={() => void handleSave()}
             disabled={saving || !initialized || !modeInitialized}
-            className="rounded-md bg-secondary px-4 py-2 text-body-sm font-semibold text-white disabled:opacity-50"
+            className="bg-secondary text-body-sm rounded-md px-4 py-2 font-semibold text-white disabled:opacity-50"
           >
             {saving ? '저장 중…' : '저장'}
           </button>
@@ -2235,7 +2331,7 @@ function OptionManager({ onClose, onDone }: { onClose: () => void; onDone: () =>
             type="button"
             onClick={onClose}
             disabled={saving}
-            className="rounded-md border border-neutral-300 px-4 py-2 text-body-sm text-primary disabled:opacity-50"
+            className="text-body-sm text-primary rounded-md border border-neutral-300 px-4 py-2 disabled:opacity-50"
           >
             취소
           </button>
@@ -2282,12 +2378,17 @@ function CreateForm({
   }, [defaultFolderId, designers]);
 
   // 제목 자동생성: 이 폴더의 기존 디자인에서 다음 순번을 구해 "폴더명_001" 형식으로 채운다.
-  const foldersQuery = useQuery({ queryKey: ['design-folders'], queryFn: () => designsApi.listFolders() });
+  const foldersQuery = useQuery({
+    queryKey: ['design-folders'],
+    queryFn: () => designsApi.listFolders(),
+  });
   const selectedFolder = (foldersQuery.data ?? []).find((f) => f.id === defaultFolderId);
   const folderDesignsQuery = useQuery({
     queryKey: ['designs', 'folder', defaultFolderId || 'none', 'for-title'],
     queryFn: () =>
-      collectAll<Design>((cursor) => designsApi.listDesigns({ folder_id: defaultFolderId, limit: 50, cursor })),
+      collectAll<Design>((cursor) =>
+        designsApi.listDesigns({ folder_id: defaultFolderId, limit: 50, cursor }),
+      ),
     enabled: !!defaultFolderId,
   });
   const autoTitle =
@@ -2306,7 +2407,10 @@ function CreateForm({
   const uploadFilesDirect = (files: File[]) => {
     for (const file of files) {
       const id = crypto.randomUUID();
-      setPhotos((prev) => [...prev, { id, name: file.name, previewUrl: URL.createObjectURL(file), status: 'uploading' }]);
+      setPhotos((prev) => [
+        ...prev,
+        { id, name: file.name, previewUrl: URL.createObjectURL(file), status: 'uploading' },
+      ]);
       uploadsApi
         .uploadFile(file, 'design')
         .then((r) => updatePhoto(id, { status: 'done', objectKey: r.object_key }))
@@ -2316,7 +2420,9 @@ function CreateForm({
 
   // 대표 사진을 아직 안 정한 상태(첫 업로드)에서만 크롭 흐름을 탄다 — 이미 대표가 있으면
   // "+ 사진 추가"는 그냥 상세 사진으로 바로 업로드된다(수정 페이지와 동일).
-  const [pickThumbFrom, setPickThumbFrom] = useState<{ file: File; previewUrl: string }[] | null>(null);
+  const [pickThumbFrom, setPickThumbFrom] = useState<{ file: File; previewUrl: string }[] | null>(
+    null,
+  );
   const [cropFile, setCropFile] = useState<File | null>(null);
   const [cropRestFiles, setCropRestFiles] = useState<File[]>([]);
 
@@ -2421,20 +2527,34 @@ function CreateForm({
         const designerPrices = designerIds
           .filter((id) => (settings.pickedPrice[id] ?? price) !== price)
           .map((id) => ({ designer_id: id, base_price: settings.pickedPrice[id] ?? price }));
-        designerFields = { designer_ids: designerIds, designer_durations: designerDurations, designer_prices: designerPrices };
+        designerFields = {
+          designer_ids: designerIds,
+          designer_durations: designerDurations,
+          designer_prices: designerPrices,
+        };
       } else {
         // 체크 해제 = 전체 디자이너가 동일한 정상가·소요시간으로 이 디자인을 함(오버라이드 없음).
-        designerFields = { designer_ids: designers.map((dz) => dz.id), designer_durations: [], designer_prices: [] };
+        designerFields = {
+          designer_ids: designers.map((dz) => dz.id),
+          designer_durations: [],
+          designer_prices: [],
+        };
       }
     } else {
       if (designers.length === 0) {
-        setFormError('먼저 디자이너 탭에서 디자이너를 등록해주세요.');
+        setFormError('등록된 디자이너가 없습니다. 운영팀에 디자이너 등록을 요청해주세요.');
         return;
       }
-      designerFields = { designer_ids: [designers[0].id], designer_durations: [], designer_prices: [] };
+      designerFields = {
+        designer_ids: [designers[0].id],
+        designer_durations: [],
+        designer_prices: [],
+      };
     }
 
-    const imageKeys = photos.filter((p) => p.status === 'done' && p.objectKey).map((p) => p.objectKey!);
+    const imageKeys = photos
+      .filter((p) => p.status === 'done' && p.objectKey)
+      .map((p) => p.objectKey!);
 
     setSubmitting(true);
     try {
@@ -2480,12 +2600,12 @@ function CreateForm({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between">
-          <h2 className="text-heading-md font-bold text-primary">새 디자인 등록</h2>
+          <h2 className="text-heading-md text-primary font-bold">새 디자인 등록</h2>
           <button
             type="button"
             onClick={onClose}
             disabled={submitting}
-            className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-neutral-100 text-primary-50 disabled:opacity-50"
+            className="text-primary-50 grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-neutral-100 disabled:opacity-50"
             aria-label="닫기"
           >
             ✕
@@ -2494,9 +2614,12 @@ function CreateForm({
 
         {pickThumbFrom ? (
           <div className="mt-4 space-y-3">
-            <p className="text-body-sm font-semibold text-primary">대표(썸네일) 사진을 골라주세요</p>
+            <p className="text-body-sm text-primary font-semibold">
+              대표(썸네일) 사진을 골라주세요
+            </p>
             <p className="text-caption text-primary-50">
-              고객에게 썸네일로 노출되는 사진이에요. 고르지 않은 나머지 사진은 상세 사진으로 등록돼요.
+              고객에게 썸네일로 노출되는 사진이에요. 고르지 않은 나머지 사진은 상세 사진으로
+              등록돼요.
             </p>
             <div className="flex flex-wrap gap-2">
               {pickThumbFrom.map(({ file, previewUrl }, i) => (
@@ -2504,7 +2627,7 @@ function CreateForm({
                   key={i}
                   type="button"
                   onClick={() => choosePendingThumbnail(file)}
-                  className="relative h-24 w-24 overflow-hidden rounded-md border border-neutral-200 hover:border-secondary"
+                  className="hover:border-secondary relative h-24 w-24 overflow-hidden rounded-md border border-neutral-200"
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={previewUrl} alt="" className="h-full w-full object-cover" />
@@ -2514,7 +2637,7 @@ function CreateForm({
             <button
               type="button"
               onClick={cancelPickThumbnail}
-              className="rounded-md border border-neutral-300 px-4 py-2 text-body-sm font-semibold text-primary"
+              className="text-body-sm text-primary rounded-md border border-neutral-300 px-4 py-2 font-semibold"
             >
               취소
             </button>
@@ -2532,153 +2655,174 @@ function CreateForm({
             />
           </div>
         ) : (
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            onSubmit();
-          }}
-          className="mt-4 space-y-5"
-          noValidate
-        >
-          {/* 사진 — 첫 번째가 대표사진(수정 페이지와 동일한 구조) */}
-          <div>
-            <label className="mb-1 block text-caption font-semibold text-primary-50">
-              사진 <span className="text-danger">*</span> 첫 번째가 대표사진
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {photos.map((p, idx) => (
-                <div key={p.id} className="relative h-24 w-24 overflow-hidden rounded-md border border-neutral-200">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={p.previewUrl} alt="" className="h-full w-full object-cover" />
-                  {idx === 0 && (
-                    <span className="absolute left-0 top-0 bg-secondary px-1.5 py-0.5 text-caption font-semibold text-white">
-                      대표
-                    </span>
-                  )}
-                  {p.status === 'uploading' && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/40 text-caption text-white">
-                      업로드 중…
-                    </div>
-                  )}
-                  {p.status === 'error' && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-red-600/70 px-1 text-center text-caption text-white">
-                      {p.error ?? '실패'}
-                    </div>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => removePhoto(p.id)}
-                    className="absolute right-0 top-0 bg-black/50 px-1 text-caption text-white"
-                    aria-label="삭제"
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              onSubmit();
+            }}
+            className="mt-4 space-y-5"
+            noValidate
+          >
+            {/* 사진 — 첫 번째가 대표사진(수정 페이지와 동일한 구조) */}
+            <div>
+              <label className="text-caption text-primary-50 mb-1 block font-semibold">
+                사진 <span className="text-danger">*</span> 첫 번째가 대표사진
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {photos.map((p, idx) => (
+                  <div
+                    key={p.id}
+                    className="relative h-24 w-24 overflow-hidden rounded-md border border-neutral-200"
                   >
-                    ×
-                  </button>
-                  {idx !== 0 && p.status === 'done' && (
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={p.previewUrl} alt="" className="h-full w-full object-cover" />
+                    {idx === 0 && (
+                      <span className="bg-secondary text-caption absolute top-0 left-0 px-1.5 py-0.5 font-semibold text-white">
+                        대표
+                      </span>
+                    )}
+                    {p.status === 'uploading' && (
+                      <div className="text-caption absolute inset-0 flex items-center justify-center bg-black/40 text-white">
+                        업로드 중…
+                      </div>
+                    )}
+                    {p.status === 'error' && (
+                      <div className="text-caption absolute inset-0 flex items-center justify-center bg-red-600/70 px-1 text-center text-white">
+                        {p.error ?? '실패'}
+                      </div>
+                    )}
                     <button
                       type="button"
-                      onClick={() => makeThumbnail(p.id)}
-                      className="absolute inset-x-0 bottom-0 bg-black/50 py-0.5 text-center text-caption text-white hover:bg-black/70"
+                      onClick={() => removePhoto(p.id)}
+                      className="text-caption absolute top-0 right-0 bg-black/50 px-1 text-white"
+                      aria-label="삭제"
                     >
-                      대표로
+                      ×
                     </button>
-                  )}
-                </div>
-              ))}
-              {photos.length < MAX_EDIT_PHOTOS && (
-                <label className="flex h-24 w-24 cursor-pointer flex-col items-center justify-center rounded-md border border-dashed border-neutral-300 text-primary-50 hover:border-secondary">
-                  <span className="text-2xl leading-none">+</span>
-                  <span className="mt-1 text-caption">사진 추가</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    className="hidden"
-                    onChange={(e) => {
-                      addPhotos(e.target.files);
-                      e.target.value = '';
-                    }}
-                  />
-                </label>
-              )}
+                    {idx !== 0 && p.status === 'done' && (
+                      <button
+                        type="button"
+                        onClick={() => makeThumbnail(p.id)}
+                        className="text-caption absolute inset-x-0 bottom-0 bg-black/50 py-0.5 text-center text-white hover:bg-black/70"
+                      >
+                        대표로
+                      </button>
+                    )}
+                  </div>
+                ))}
+                {photos.length < MAX_EDIT_PHOTOS && (
+                  <label className="text-primary-50 hover:border-secondary flex h-24 w-24 cursor-pointer flex-col items-center justify-center rounded-md border border-dashed border-neutral-300">
+                    <span className="text-2xl leading-none">+</span>
+                    <span className="text-caption mt-1">사진 추가</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="hidden"
+                      onChange={(e) => {
+                        addPhotos(e.target.files);
+                        e.target.value = '';
+                      }}
+                    />
+                  </label>
+                )}
+              </div>
             </div>
-          </div>
 
-          {/* 제목 (관리용) */}
-          <Field
-            label="제목 (관리용 · 고객 미노출)"
-            hint="폴더를 고르면 자동으로 지어집니다. 직접 고쳐도 되고, 비우면 자동 제목으로 등록돼요."
-          >
-            <input
-              className={inputCls}
-              value={title}
-              onChange={(e) => {
-                setTitleTouched(true);
-                setTitle(e.target.value);
-              }}
-              placeholder={autoTitle || '제목 입력'}
-            />
-          </Field>
-
-          {folderPreset && (
-            <div className="flex flex-wrap items-center gap-2 rounded-md bg-secondary/10 px-3 py-2 text-caption text-primary">
-              <span className="flex-1">이 폴더에 저장된 이전 설정(가격·디자이너·태그 등)이 있어요.</span>
-              <button
-                type="button"
-                onClick={() => {
-                  setSettings(folderPreset);
-                  setFolderPreset(null);
+            {/* 제목 (관리용) */}
+            <Field
+              label="제목 (관리용 · 고객 미노출)"
+              hint="폴더를 고르면 자동으로 지어집니다. 직접 고쳐도 되고, 비우면 자동 제목으로 등록돼요."
+            >
+              <input
+                className={inputCls}
+                value={title}
+                onChange={(e) => {
+                  setTitleTouched(true);
+                  setTitle(e.target.value);
                 }}
-                className="rounded-md bg-secondary px-3 py-1.5 font-semibold text-white"
+                placeholder={autoTitle || '제목 입력'}
+              />
+            </Field>
+
+            {folderPreset && (
+              <div className="bg-secondary/10 text-caption text-primary flex flex-wrap items-center gap-2 rounded-md px-3 py-2">
+                <span className="flex-1">
+                  이 폴더에 저장된 이전 설정(가격·디자이너·태그 등)이 있어요.
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSettings(folderPreset);
+                    setFolderPreset(null);
+                  }}
+                  className="bg-secondary rounded-md px-3 py-1.5 font-semibold text-white"
+                >
+                  이전 설정 불러오기
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFolderPreset(null)}
+                  className="text-primary-50 px-2 py-1 font-semibold"
+                >
+                  닫기
+                </button>
+              </div>
+            )}
+
+            {designers.length === 0 && (
+              /* 베타 웹에는 디자이너 탭이 없다 — 최초 등록은 온보딩에서 한 번 받고, 그 뒤의
+               추가·수정은 운영자가 어드민 샵 워크스페이스에서 대신 한다. 예전에는 여기가
+               `/dashboard/designers` 로 링크돼 있었는데 그 경로는 이 앱에 없어서 누르면
+               404 였다(정식 사장님 웹에서 포크할 때 함께 넘어온 링크다). */
+              <p className="text-caption text-primary-50">
+                등록된 디자이너가 없습니다. 디자이너 추가는 운영팀에 요청해 주세요
+                {config.ownerLinkSupportHref ? (
+                  <>
+                    {' ('}
+                    <a href={config.ownerLinkSupportHref} className="text-secondary underline">
+                      {config.ownerLinkSupportLabel}
+                    </a>
+                    {')'}
+                  </>
+                ) : (
+                  <>{` (${config.ownerLinkSupportLabel})`}</>
+                )}
+                .
+              </p>
+            )}
+
+            {/* 정상가·소요시간·(다인샵) 디자이너별 오버라이드·설명·태그 — 수정 페이지와 동일한 필드 */}
+            <DesignSettingsFields
+              designers={designers}
+              value={settings}
+              onChange={(p) => setSettings((prev) => ({ ...prev, ...p }))}
+            />
+
+            {formError && (
+              <p className="bg-danger-bg text-body-sm text-danger rounded-md px-3 py-2">
+                {formError}
+              </p>
+            )}
+
+            <div className="flex gap-2">
+              <button
+                type="submit"
+                disabled={submitting || uploading}
+                className="bg-secondary text-body-sm flex-1 rounded-md px-5 py-2.5 font-semibold text-white disabled:opacity-50"
               >
-                이전 설정 불러오기
+                {submitting ? '등록 중…' : uploading ? '사진 업로드 중…' : '디자인 등록'}
               </button>
               <button
                 type="button"
-                onClick={() => setFolderPreset(null)}
-                className="px-2 py-1 font-semibold text-primary-50"
+                onClick={onClose}
+                disabled={submitting}
+                className="text-body-sm text-primary rounded-md border border-neutral-300 px-4 py-2.5 font-semibold disabled:opacity-50"
               >
-                닫기
+                취소
               </button>
             </div>
-          )}
-
-          {designers.length === 0 && (
-            <p className="text-caption text-primary-50">
-              등록된 디자이너가 없습니다.{' '}
-              <Link href="/dashboard/designers" className="text-secondary underline">
-                디자이너
-              </Link>{' '}
-              탭에서 먼저 추가하세요.
-            </p>
-          )}
-
-          {/* 정상가·소요시간·(다인샵) 디자이너별 오버라이드·설명·태그 — 수정 페이지와 동일한 필드 */}
-          <DesignSettingsFields
-            designers={designers}
-            value={settings}
-            onChange={(p) => setSettings((prev) => ({ ...prev, ...p }))}
-          />
-
-          {formError && <p className="rounded-md bg-danger-bg px-3 py-2 text-body-sm text-danger">{formError}</p>}
-
-          <div className="flex gap-2">
-            <button
-              type="submit"
-              disabled={submitting || uploading}
-              className="flex-1 rounded-md bg-secondary px-5 py-2.5 text-body-sm font-semibold text-white disabled:opacity-50"
-            >
-              {submitting ? '등록 중…' : uploading ? '사진 업로드 중…' : '디자인 등록'}
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={submitting}
-              className="rounded-md border border-neutral-300 px-4 py-2.5 text-body-sm font-semibold text-primary disabled:opacity-50"
-            >
-              취소
-            </button>
-          </div>
-        </form>
+          </form>
         )}
       </div>
     </div>
@@ -2733,7 +2877,12 @@ function Lightbox({
       role="dialog"
       aria-modal="true"
     >
-      <button type="button" onClick={onClose} aria-label="닫기" className={`${btnCls} right-4 top-4`}>
+      <button
+        type="button"
+        onClick={onClose}
+        aria-label="닫기"
+        className={`${btnCls} top-4 right-4`}
+      >
         ×
       </button>
       {many && (
@@ -2770,7 +2919,7 @@ function Lightbox({
         </button>
       )}
       {many && (
-        <div className="absolute bottom-5 rounded-full bg-black/50 px-3 py-1 text-caption text-white">
+        <div className="text-caption absolute bottom-5 rounded-full bg-black/50 px-3 py-1 text-white">
           {index + 1} / {urls.length}
         </div>
       )}
@@ -2838,10 +2987,14 @@ function DesignCard({
   });
 
   // 폴더 이동용 — 폴더 목록(부모와 동일 캐시 재사용) + 이동 뮤테이션
-  const foldersQuery = useQuery({ queryKey: ['design-folders'], queryFn: () => designsApi.listFolders() });
+  const foldersQuery = useQuery({
+    queryKey: ['design-folders'],
+    queryFn: () => designsApi.listFolders(),
+  });
   const folders = foldersQuery.data ?? [];
   const move = useMutation({
-    mutationFn: (folderId: string) => designsApi.updateDesign(d.id, { folder_id: folderId || null }),
+    mutationFn: (folderId: string) =>
+      designsApi.updateDesign(d.id, { folder_id: folderId || null }),
     onSuccess: () => {
       setMoveErr(null);
       setShowFolderMove(false);
@@ -2854,7 +3007,8 @@ function DesignCard({
 
   // 디자인별 공개/비공개 전환. 공개 조건(백엔드 검증): 샵 공개 + 오너 승인.
   const publish = useMutation({
-    mutationFn: (visibility: 'active' | 'hidden') => designsApi.changeVisibility(d.id, { visibility }),
+    mutationFn: (visibility: 'active' | 'hidden') =>
+      designsApi.changeVisibility(d.id, { visibility }),
     onSuccess: () => {
       setActionError(null);
       qc.invalidateQueries({ queryKey: ['design', d.id] });
@@ -2885,7 +3039,9 @@ function DesignCard({
   // 디자인(따로 관리 중)은 건드리지 않는다.
   const priceUpdateBody = (newPrice: number) => {
     const introFollows = d.intro_price == null || d.intro_price === d.base_price;
-    return introFollows ? { base_price: newPrice, intro_price: newPrice } : { base_price: newPrice };
+    return introFollows
+      ? { base_price: newPrice, intro_price: newPrice }
+      : { base_price: newPrice };
   };
 
   const openQuickEdit = (kind: 'price' | 'duration' | 'tags') => {
@@ -2927,7 +3083,7 @@ function DesignCard({
             <span className="block h-full w-full bg-neutral-100" />
           )}
           {photoCount > 0 && (
-            <span className="absolute inset-x-0 bottom-0 bg-black/40 py-0.5 text-center text-caption font-semibold text-white">
+            <span className="text-caption absolute inset-x-0 bottom-0 bg-black/40 py-0.5 text-center font-semibold text-white">
               🔍 {photoCount}
             </span>
           )}
@@ -2935,13 +3091,16 @@ function DesignCard({
 
         <button type="button" onClick={onOpen} className="min-w-0 flex-1 text-left">
           <p className="truncate font-medium">{d.title}</p>
-          <p className="mt-0.5 text-body-sm text-primary-50">
+          <p className="text-body-sm text-primary-50 mt-0.5">
             {formatWon(d.base_price)} · 기본 {d.duration_minutes}분
           </p>
           {d.owner_tags.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-1">
               {d.owner_tags.map((t) => (
-                <span key={`o-${t}`} className="rounded bg-secondary/10 px-2 py-0.5 text-caption text-secondary">
+                <span
+                  key={`o-${t}`}
+                  className="bg-secondary/10 text-caption text-secondary rounded px-2 py-0.5"
+                >
                   #{t}
                 </span>
               ))}
@@ -2951,11 +3110,11 @@ function DesignCard({
 
         <div className="flex shrink-0 items-center gap-2">
           {d.visibility === 'active' ? (
-            <span className="rounded-full bg-success-bg px-2 py-0.5 text-caption font-semibold text-success">
+            <span className="bg-success-bg text-caption text-success rounded-full px-2 py-0.5 font-semibold">
               공개 중
             </span>
           ) : (
-            <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-caption font-semibold text-primary-50">
+            <span className="text-caption text-primary-50 rounded-full bg-neutral-100 px-2 py-0.5 font-semibold">
               비공개
             </span>
           )}
@@ -2965,12 +3124,12 @@ function DesignCard({
               onClick={() => setMenuOpen((v) => !v)}
               aria-label="디자인 설정"
               aria-expanded={menuOpen}
-              className="grid h-8 w-8 place-items-center rounded-md text-body-sm font-bold text-primary hover:bg-neutral-100"
+              className="text-body-sm text-primary grid h-8 w-8 place-items-center rounded-md font-bold hover:bg-neutral-100"
             >
               ⋮
             </button>
             {menuOpen && (
-              <div className="absolute right-0 top-7 z-10 min-w-[7.5rem] rounded-md border border-neutral-200 bg-white p-1.5 shadow-sm">
+              <div className="absolute top-7 right-0 z-10 min-w-[7.5rem] rounded-md border border-neutral-200 bg-white p-1.5 shadow-sm">
                 <button
                   type="button"
                   onClick={() => {
@@ -2978,28 +3137,28 @@ function DesignCard({
                     publish.mutate(d.visibility === 'active' ? 'hidden' : 'active');
                   }}
                   disabled={publish.isPending}
-                  className="block w-full whitespace-nowrap rounded px-2 py-1 text-left text-caption text-primary hover:bg-neutral-50 disabled:opacity-50"
+                  className="text-caption text-primary block w-full rounded px-2 py-1 text-left whitespace-nowrap hover:bg-neutral-50 disabled:opacity-50"
                 >
                   {d.visibility === 'active' ? '비공개로 전환' : '앱에 공개'}
                 </button>
                 <button
                   type="button"
                   onClick={() => openQuickEdit('price')}
-                  className="block w-full whitespace-nowrap rounded px-2 py-1 text-left text-caption text-primary hover:bg-neutral-50"
+                  className="text-caption text-primary block w-full rounded px-2 py-1 text-left whitespace-nowrap hover:bg-neutral-50"
                 >
                   가격 수정
                 </button>
                 <button
                   type="button"
                   onClick={() => openQuickEdit('duration')}
-                  className="block w-full whitespace-nowrap rounded px-2 py-1 text-left text-caption text-primary hover:bg-neutral-50"
+                  className="text-caption text-primary block w-full rounded px-2 py-1 text-left whitespace-nowrap hover:bg-neutral-50"
                 >
                   소요시간 수정
                 </button>
                 <button
                   type="button"
                   onClick={() => openQuickEdit('tags')}
-                  className="block w-full whitespace-nowrap rounded px-2 py-1 text-left text-caption text-primary hover:bg-neutral-50"
+                  className="text-caption text-primary block w-full rounded px-2 py-1 text-left whitespace-nowrap hover:bg-neutral-50"
                 >
                   태그 수정
                 </button>
@@ -3012,7 +3171,7 @@ function DesignCard({
                     setFolderDraft(d.folder_id ?? '');
                     setShowFolderMove(true);
                   }}
-                  className="block w-full whitespace-nowrap rounded px-2 py-1 text-left text-caption text-primary hover:bg-neutral-50"
+                  className="text-caption text-primary block w-full rounded px-2 py-1 text-left whitespace-nowrap hover:bg-neutral-50"
                 >
                   폴더 이동
                 </button>
@@ -3023,7 +3182,7 @@ function DesignCard({
                     onQuickEditChange(null);
                     setConfirmDel(true);
                   }}
-                  className="block w-full whitespace-nowrap rounded px-2 py-1 text-left text-caption text-danger/80 hover:text-danger"
+                  className="text-caption text-danger/80 hover:text-danger block w-full rounded px-2 py-1 text-left whitespace-nowrap"
                 >
                   삭제
                 </button>
@@ -3042,7 +3201,7 @@ function DesignCard({
           }}
           className="mt-3 space-y-2"
         >
-          <label className="block text-caption font-semibold text-primary-50">정상가(원)</label>
+          <label className="text-caption text-primary-50 block font-semibold">정상가(원)</label>
           <input
             type="number"
             min={0}
@@ -3050,21 +3209,21 @@ function DesignCard({
             value={priceDraft}
             onChange={(e) => setPriceDraft(e.target.value)}
             autoFocus
-            className="w-full rounded-md border border-neutral-300 px-3 py-2 text-body-sm outline-none focus:border-secondary"
+            className="text-body-sm focus:border-secondary w-full rounded-md border border-neutral-300 px-3 py-2 outline-none"
           />
           {quickErr && <p className="text-caption text-danger">{quickErr}</p>}
           <div className="flex gap-2">
             <button
               type="submit"
               disabled={updateField.isPending}
-              className="rounded-md bg-secondary px-4 py-2 text-caption font-semibold text-white disabled:opacity-50"
+              className="bg-secondary text-caption rounded-md px-4 py-2 font-semibold text-white disabled:opacity-50"
             >
               {updateField.isPending ? '저장 중…' : '저장'}
             </button>
             <button
               type="button"
               onClick={() => onQuickEditChange(null)}
-              className="rounded-md border border-neutral-300 px-4 py-2 text-caption text-primary"
+              className="text-caption text-primary rounded-md border border-neutral-300 px-4 py-2"
             >
               취소
             </button>
@@ -3080,7 +3239,9 @@ function DesignCard({
           }}
           className="mt-3 space-y-2"
         >
-          <label className="block text-caption font-semibold text-primary-50">기본 소요시간(분)</label>
+          <label className="text-caption text-primary-50 block font-semibold">
+            기본 소요시간(분)
+          </label>
           <input
             type="number"
             min={DURATION_MIN}
@@ -3090,21 +3251,21 @@ function DesignCard({
             onChange={(e) => setDurationDraft(Number(e.target.value))}
             onBlur={(e) => setDurationDraft(clampDuration(Number(e.target.value)))}
             autoFocus
-            className="w-full rounded-md border border-neutral-300 px-3 py-2 text-body-sm outline-none focus:border-secondary"
+            className="text-body-sm focus:border-secondary w-full rounded-md border border-neutral-300 px-3 py-2 outline-none"
           />
           {quickErr && <p className="text-caption text-danger">{quickErr}</p>}
           <div className="flex gap-2">
             <button
               type="submit"
               disabled={updateField.isPending}
-              className="rounded-md bg-secondary px-4 py-2 text-caption font-semibold text-white disabled:opacity-50"
+              className="bg-secondary text-caption rounded-md px-4 py-2 font-semibold text-white disabled:opacity-50"
             >
               {updateField.isPending ? '저장 중…' : '저장'}
             </button>
             <button
               type="button"
               onClick={() => onQuickEditChange(null)}
-              className="rounded-md border border-neutral-300 px-4 py-2 text-caption text-primary"
+              className="text-caption text-primary rounded-md border border-neutral-300 px-4 py-2"
             >
               취소
             </button>
@@ -3120,21 +3281,21 @@ function DesignCard({
           }}
           className="mt-3 space-y-2"
         >
-          <label className="block text-caption font-semibold text-primary-50">사장님 태그</label>
+          <label className="text-caption text-primary-50 block font-semibold">사장님 태그</label>
           <TagInput tags={tagsDraft} onChange={setTagsDraft} />
           {quickErr && <p className="text-caption text-danger">{quickErr}</p>}
           <div className="flex gap-2">
             <button
               type="submit"
               disabled={updateField.isPending}
-              className="rounded-md bg-secondary px-4 py-2 text-caption font-semibold text-white disabled:opacity-50"
+              className="bg-secondary text-caption rounded-md px-4 py-2 font-semibold text-white disabled:opacity-50"
             >
               {updateField.isPending ? '저장 중…' : '저장'}
             </button>
             <button
               type="button"
               onClick={() => onQuickEditChange(null)}
-              className="rounded-md border border-neutral-300 px-4 py-2 text-caption text-primary"
+              className="text-caption text-primary rounded-md border border-neutral-300 px-4 py-2"
             >
               취소
             </button>
@@ -3145,11 +3306,11 @@ function DesignCard({
       {/* 폴더 이동 — ⋮ 메뉴에서 연 경우에만 표시, 다른 미니 편집칸과 동일한 UI */}
       {showFolderMove && (
         <div className="mt-3 space-y-2">
-          <label className="block text-caption font-semibold text-primary-50">폴더</label>
+          <label className="text-caption text-primary-50 block font-semibold">폴더</label>
           <select
             value={folderDraft}
             onChange={(e) => setFolderDraft(e.target.value)}
-            className="w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-body-sm outline-none focus:border-secondary"
+            className="text-body-sm focus:border-secondary w-full rounded-md border border-neutral-300 bg-white px-3 py-2 outline-none"
             aria-label="폴더 이동"
           >
             <option value="">미분류</option>
@@ -3164,13 +3325,13 @@ function DesignCard({
             <button
               onClick={() => move.mutate(folderDraft)}
               disabled={move.isPending}
-              className="rounded-md bg-secondary px-4 py-2 text-caption font-semibold text-white disabled:opacity-50"
+              className="bg-secondary text-caption rounded-md px-4 py-2 font-semibold text-white disabled:opacity-50"
             >
               {move.isPending ? '저장 중…' : '저장'}
             </button>
             <button
               onClick={() => setShowFolderMove(false)}
-              className="rounded-md border border-neutral-300 px-4 py-2 text-caption text-primary"
+              className="text-caption text-primary rounded-md border border-neutral-300 px-4 py-2"
             >
               취소
             </button>
@@ -3180,32 +3341,36 @@ function DesignCard({
 
       {/* 삭제 — ⋮ 메뉴에서 연 경우에만 표시 */}
       {confirmDel && (
-        <div className="mt-3 inline-flex items-center gap-1.5 text-caption text-primary-50">
+        <div className="text-caption text-primary-50 mt-3 inline-flex items-center gap-1.5">
           삭제할까요?
           <button
             onClick={() => remove.mutate()}
             disabled={remove.isPending}
-            className="rounded-md bg-danger-bg px-2.5 py-1.5 text-caption font-semibold text-danger disabled:opacity-50"
+            className="bg-danger-bg text-caption text-danger rounded-md px-2.5 py-1.5 font-semibold disabled:opacity-50"
           >
             {remove.isPending ? '삭제 중…' : '삭제 확인'}
           </button>
           <button
             onClick={() => setConfirmDel(false)}
-            className="rounded-md bg-neutral-100 px-2.5 py-1.5 text-caption font-semibold text-primary"
+            className="text-caption text-primary rounded-md bg-neutral-100 px-2.5 py-1.5 font-semibold"
           >
             취소
           </button>
         </div>
       )}
 
-      {actionError && <p className="mt-2 text-caption text-danger">{actionError}</p>}
+      {actionError && <p className="text-caption text-danger mt-2">{actionError}</p>}
 
       {/* 사진 확대 뷰 */}
-      <Lightbox urls={zoomUrls} index={zoomIndex} onIndex={setZoomIndex} onClose={() => setZoomIndex(null)} />
+      <Lightbox
+        urls={zoomUrls}
+        index={zoomIndex}
+        onIndex={setZoomIndex}
+        onClose={() => setZoomIndex(null)}
+      />
     </li>
   );
 }
-
 
 /** 이미지 URL에서 업로드 object_key를 역추출(버킷명 무관). 기존 사진 보존용. */
 function urlToObjectKey(url: string): string {
@@ -3215,7 +3380,6 @@ function urlToObjectKey(url: string): string {
     return url;
   }
 }
-
 
 /* ───────────── 일괄 등록 (드롭존 + 공통설정 모달) ───────────── */
 
@@ -3240,13 +3404,14 @@ function BulkDropzone({ onFiles }: { onFiles: (files: File[]) => void }) {
         pick(e.dataTransfer.files);
       }}
       className={`flex cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed p-6 text-center transition ${
-        drag ? 'border-secondary bg-secondary/5' : 'border-neutral-300 hover:border-secondary'
+        drag ? 'border-secondary bg-secondary/5' : 'hover:border-secondary border-neutral-300'
       }`}
     >
       <span className="text-2xl">🖼️</span>
-      <span className="text-body-sm font-semibold text-primary">사진 여러 장 한번에 올리기</span>
+      <span className="text-body-sm text-primary font-semibold">사진 여러 장 한번에 올리기</span>
       <span className="text-caption text-primary-50">
-        컴퓨터에서 끌어다 놓거나, 눌러서 갤러리에서 여러 장 선택하세요. 각 사진이 대표사진인 디자인이 만들어져요.
+        컴퓨터에서 끌어다 놓거나, 눌러서 갤러리에서 여러 장 선택하세요. 각 사진이 대표사진인
+        디자인이 만들어져요.
       </span>
       <input
         type="file"
@@ -3328,7 +3493,9 @@ function BulkAddModal({
   const [step, setStep] = useState<'filename-confirm' | 'confirm' | 'form'>(
     recognizedCount > 0 ? 'filename-confirm' : hasSaved ? 'confirm' : 'form',
   );
-  const [settings, setSettings] = useState<DesignSettings>(() => savedRef.current ?? defaultBulkSettings());
+  const [settings, setSettings] = useState<DesignSettings>(
+    () => savedRef.current ?? defaultBulkSettings(),
+  );
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [failures, setFailures] = useState<string[]>([]);
   const [err, setErr] = useState<string | null>(null);
@@ -3365,7 +3532,7 @@ function BulkAddModal({
       }
     } else {
       if (designers.length === 0) {
-        setErr('먼저 디자이너 탭에서 디자이너를 등록해주세요.');
+        setErr('등록된 디자이너가 없습니다. 운영팀에 디자이너 등록을 요청해주세요.');
         setStep('form');
         return;
       }
@@ -3434,30 +3601,31 @@ function BulkAddModal({
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="text-heading-md font-bold">여러 디자인 한번에 등록</h2>
-        <p className="mt-1 text-body-sm text-primary-50">
-          사진 <strong className="text-primary">{files.length}장</strong> → 「{folderName}」 폴더에 디자인 {files.length}개
+        <p className="text-body-sm text-primary-50 mt-1">
+          사진 <strong className="text-primary">{files.length}장</strong> → 「{folderName}」 폴더에
+          디자인 {files.length}개
           <br />
-          제목: <span className="font-semibold text-primary">{titlePreview}</span> (자동)
+          제목: <span className="text-primary font-semibold">{titlePreview}</span> (자동)
         </p>
 
         {duplicateWarning.size > 0 && (
-          <p className="mt-2 rounded-md bg-warning-bg px-3 py-2 text-caption text-warning">
-            ⚠️ 이미 등록되어 있거나 이번 선택 안에서 이름이 겹치는 파일이 {duplicateWarning.size}개 있어요
-            (예: {Array.from(duplicateWarning).slice(0, 3).join(', ')}
-            {duplicateWarning.size > 3 ? ' 외' : ''}). 그대로 등록하면 같은 디자인이 중복으로 만들어질 수
-            있어요 — 실패했던 파일만 다시 올리는 게 아니라면 목록을 다시 확인해주세요.
+          <p className="bg-warning-bg text-caption text-warning mt-2 rounded-md px-3 py-2">
+            ⚠️ 이미 등록되어 있거나 이번 선택 안에서 이름이 겹치는 파일이 {duplicateWarning.size}개
+            있어요 (예: {Array.from(duplicateWarning).slice(0, 3).join(', ')}
+            {duplicateWarning.size > 3 ? ' 외' : ''}). 그대로 등록하면 같은 디자인이 중복으로
+            만들어질 수 있어요 — 실패했던 파일만 다시 올리는 게 아니라면 목록을 다시 확인해주세요.
           </p>
         )}
 
         {/* 등록 진행 중 */}
         {running ? (
           <div className="mt-5">
-            <p className="text-body-sm font-semibold text-primary">
+            <p className="text-body-sm text-primary font-semibold">
               등록 중… {progress!.done}/{progress!.total}
             </p>
             <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-neutral-200">
               <div
-                className="h-full bg-secondary transition-all"
+                className="bg-secondary h-full transition-all"
                 style={{ width: `${(progress!.done / progress!.total) * 100}%` }}
               />
             </div>
@@ -3465,17 +3633,17 @@ function BulkAddModal({
         ) : failures.length > 0 ? (
           /* 일부 실패 결과 */
           <div className="mt-5 space-y-3">
-            <p className="rounded-md bg-danger-bg px-3 py-2 text-body-sm text-danger">
+            <p className="bg-danger-bg text-body-sm text-danger rounded-md px-3 py-2">
               {files.length - failures.length}개 등록 완료, {failures.length}개 실패:
             </p>
-            <ul className="max-h-40 space-y-1 overflow-y-auto text-caption text-danger">
+            <ul className="text-caption text-danger max-h-40 space-y-1 overflow-y-auto">
               {failures.map((f, i) => (
                 <li key={i}>• {f}</li>
               ))}
             </ul>
             <button
               onClick={onClose}
-              className="w-full rounded-md bg-secondary py-2.5 text-body-sm font-semibold text-white"
+              className="bg-secondary text-body-sm w-full rounded-md py-2.5 font-semibold text-white"
             >
               닫기
             </button>
@@ -3483,14 +3651,14 @@ function BulkAddModal({
         ) : step === 'filename-confirm' ? (
           /* 파일명에서 가격 정보를 읽었을 때 그 값을 쓸지 먼저 확인 */
           <div className="mt-5 space-y-3">
-            <p className="rounded-md bg-secondary/10 px-3 py-2 text-body-sm text-primary">
-              사진 {files.length}장 중 {recognizedCount}장의 파일명에서 가격 정보를 읽었어요 (예: 01_75.jpg →
-              75,000원). 이 정보로 등록할까요?
+            <p className="bg-secondary/10 text-body-sm text-primary rounded-md px-3 py-2">
+              사진 {files.length}장 중 {recognizedCount}장의 파일명에서 가격 정보를 읽었어요 (예:
+              01_75.jpg → 75,000원). 이 정보로 등록할까요?
             </p>
             <div className="flex gap-2">
               <button
                 onClick={() => setStep('form')}
-                className="flex-1 rounded-md bg-secondary py-2.5 text-body-sm font-semibold text-white"
+                className="bg-secondary text-body-sm flex-1 rounded-md py-2.5 font-semibold text-white"
               >
                 예, 이 정보로 등록
               </button>
@@ -3499,25 +3667,25 @@ function BulkAddModal({
                   setUseFilenameInfo(false);
                   setStep(hasSaved ? 'confirm' : 'form');
                 }}
-                className="flex-1 rounded-md border border-neutral-300 py-2.5 text-body-sm font-semibold text-primary"
+                className="text-body-sm text-primary flex-1 rounded-md border border-neutral-300 py-2.5 font-semibold"
               >
                 아니요, 직접 입력할게요
               </button>
             </div>
-            <button onClick={onClose} className="w-full py-1 text-caption text-primary-50">
+            <button onClick={onClose} className="text-caption text-primary-50 w-full py-1">
               취소
             </button>
           </div>
         ) : step === 'confirm' ? (
           /* 이전 공통설정 유지? */
           <div className="mt-5 space-y-3">
-            <p className="rounded-md bg-secondary/10 px-3 py-2 text-body-sm text-primary">
+            <p className="bg-secondary/10 text-body-sm text-primary rounded-md px-3 py-2">
               이전에 저장한 공통설정(가격·디자이너·태그 등)을 그대로 쓸까요?
             </p>
             <div className="flex gap-2">
               <button
                 onClick={() => runCreate(savedRef.current!)}
-                className="flex-1 rounded-md bg-secondary py-2.5 text-body-sm font-semibold text-white"
+                className="bg-secondary text-body-sm flex-1 rounded-md py-2.5 font-semibold text-white"
               >
                 예, 바로 등록
               </button>
@@ -3527,20 +3695,21 @@ function BulkAddModal({
                   setSettings(defaultBulkSettings());
                   setStep('form');
                 }}
-                className="flex-1 rounded-md border border-neutral-300 py-2.5 text-body-sm font-semibold text-primary"
+                className="text-body-sm text-primary flex-1 rounded-md border border-neutral-300 py-2.5 font-semibold"
               >
                 아니요, 설정 바꾸기
               </button>
             </div>
-            <button onClick={onClose} className="w-full py-1 text-caption text-primary-50">
+            <button onClick={onClose} className="text-caption text-primary-50 w-full py-1">
               취소
             </button>
           </div>
         ) : (
           /* 공통설정 입력 폼 (개별 수정 팝업과 동일한 필드) */
           <div className="mt-5 space-y-3">
-            <p className="rounded-md bg-secondary/10 px-3 py-2 text-caption text-primary">
-              여기서 정한 값은 이번에 올리는 모든 디자인에 공통 적용돼요. 등록 후 디자인을 하나씩 눌러 개별로 수정할 수 있어요.
+            <p className="bg-secondary/10 text-caption text-primary rounded-md px-3 py-2">
+              여기서 정한 값은 이번에 올리는 모든 디자인에 공통 적용돼요. 등록 후 디자인을 하나씩
+              눌러 개별로 수정할 수 있어요.
             </p>
             <DesignSettingsFields
               designers={designers}
@@ -3560,13 +3729,13 @@ function BulkAddModal({
             <div className="flex gap-2 pt-1">
               <button
                 onClick={() => runCreate(settings)}
-                className="flex-1 rounded-md bg-secondary py-2.5 text-body-sm font-semibold text-white"
+                className="bg-secondary text-body-sm flex-1 rounded-md py-2.5 font-semibold text-white"
               >
                 {files.length}개 등록
               </button>
               <button
                 onClick={onClose}
-                className="rounded-md border border-neutral-300 px-4 py-2.5 text-body-sm font-semibold text-primary"
+                className="text-body-sm text-primary rounded-md border border-neutral-300 px-4 py-2.5 font-semibold"
               >
                 취소
               </button>
@@ -3598,13 +3767,18 @@ function DesignDetailForm({ design: d, onClose }: { design: Design; onClose: () 
   const [tags, setTags] = useState<string[]>(d.owner_tags ?? []);
   const [err, setErr] = useState<string | null>(null);
 
-  const designersQuery = useQuery({ queryKey: ['designers'], queryFn: () => designersApi.listDesigners() });
+  const designersQuery = useQuery({
+    queryKey: ['designers'],
+    queryFn: () => designersApi.listDesigners(),
+  });
   const designers = designersQuery.data ?? [];
   const multiDesigner = designers.length >= 2;
 
   // designerId → 소요시간(분). 현재 이 디자인을 담당하는 디자이너로 초기화한다(다인샵 전용).
   const [picked, setPicked] = useState<Record<string, number>>(() =>
-    Object.fromEntries((d.designers ?? []).map((dz) => [dz.id, clampDuration(dz.duration_minutes)])),
+    Object.fromEntries(
+      (d.designers ?? []).map((dz) => [dz.id, clampDuration(dz.duration_minutes)]),
+    ),
   );
   // designerId → 가격(원). 현재 담당 디자이너의 가격으로 초기화한다(다인샵 전용).
   const [pickedPrice, setPickedPrice] = useState<Record<string, number>>(() =>
@@ -3645,7 +3819,9 @@ function DesignDetailForm({ design: d, onClose }: { design: Design; onClose: () 
 
   // 사진 편집: 기존 사진(URL→key 역추출) + 새 업로드를 통합 관리. index 0 = 대표사진.
   const [photos, setPhotos] = useState<EditPhoto[]>(() => {
-    const imgs = [...(d.images ?? [])].sort((a, b) => Number(b.is_thumbnail) - Number(a.is_thumbnail));
+    const imgs = [...(d.images ?? [])].sort(
+      (a, b) => Number(b.is_thumbnail) - Number(a.is_thumbnail),
+    );
     if (imgs.length > 0) {
       return imgs.map((i) => ({
         uid: i.id,
@@ -3655,7 +3831,14 @@ function DesignDetailForm({ design: d, onClose }: { design: Design; onClose: () 
       }));
     }
     return d.thumbnail_url
-      ? [{ uid: 'thumb', key: urlToObjectKey(d.thumbnail_url), previewUrl: d.thumbnail_url, status: 'done' as const }]
+      ? [
+          {
+            uid: 'thumb',
+            key: urlToObjectKey(d.thumbnail_url),
+            previewUrl: d.thumbnail_url,
+            status: 'done' as const,
+          },
+        ]
       : [];
   });
   const [photosDirty, setPhotosDirty] = useState(false);
@@ -3669,16 +3852,23 @@ function DesignDetailForm({ design: d, onClose }: { design: Design; onClose: () 
       .slice(0, room);
     for (const file of files) {
       const uid = crypto.randomUUID();
-      setPhotos((prev) => [...prev, { uid, key: '', previewUrl: URL.createObjectURL(file), status: 'uploading' }]);
+      setPhotos((prev) => [
+        ...prev,
+        { uid, key: '', previewUrl: URL.createObjectURL(file), status: 'uploading' },
+      ]);
       setPhotosDirty(true);
       uploadsApi
         .uploadFile(file, 'design')
         .then((r) =>
-          setPhotos((prev) => prev.map((p) => (p.uid === uid ? { ...p, key: r.object_key, status: 'done' } : p))),
+          setPhotos((prev) =>
+            prev.map((p) => (p.uid === uid ? { ...p, key: r.object_key, status: 'done' } : p)),
+          ),
         )
         .catch((e) =>
           setPhotos((prev) =>
-            prev.map((p) => (p.uid === uid ? { ...p, status: 'error', error: toUserMessage(e) } : p)),
+            prev.map((p) =>
+              p.uid === uid ? { ...p, status: 'error', error: toUserMessage(e) } : p,
+            ),
           ),
         );
     }
@@ -3714,10 +3904,18 @@ function DesignDetailForm({ design: d, onClose }: { design: Design; onClose: () 
           const designerPrices = designerIds
             .filter((id) => (pickedPrice[id] ?? basePriceNum) !== basePriceNum)
             .map((id) => ({ designer_id: id, base_price: pickedPrice[id] ?? basePriceNum }));
-          designerFields = { designer_ids: designerIds, designer_durations: designerDurations, designer_prices: designerPrices };
+          designerFields = {
+            designer_ids: designerIds,
+            designer_durations: designerDurations,
+            designer_prices: designerPrices,
+          };
         } else {
           // 체크 해제 = 전체 디자이너가 동일한 정상가·소요시간으로 이 디자인을 함(오버라이드 없음).
-          designerFields = { designer_ids: designers.map((dz) => dz.id), designer_durations: [], designer_prices: [] };
+          designerFields = {
+            designer_ids: designers.map((dz) => dz.id),
+            designer_durations: [],
+            designer_prices: [],
+          };
         }
       }
 
@@ -3765,7 +3963,8 @@ function DesignDetailForm({ design: d, onClose }: { design: Design; onClose: () 
   };
 
   const labelCls = 'mb-1 block text-caption font-semibold text-primary-50';
-  const disabledFieldCls = 'disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-primary-50';
+  const disabledFieldCls =
+    'disabled:cursor-not-allowed disabled:bg-neutral-100 disabled:text-primary-50';
 
   return (
     <div className="space-y-5 rounded-lg border border-neutral-200 bg-white p-5">
@@ -3774,28 +3973,31 @@ function DesignDetailForm({ design: d, onClose }: { design: Design; onClose: () 
         <label className={labelCls}>사진 첫 번째가 대표사진</label>
         <div className="flex flex-wrap gap-2">
           {photos.map((p, idx) => (
-            <div key={p.uid} className="relative h-24 w-24 overflow-hidden rounded-md border border-neutral-200">
+            <div
+              key={p.uid}
+              className="relative h-24 w-24 overflow-hidden rounded-md border border-neutral-200"
+            >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={p.previewUrl} alt="" className="h-full w-full object-cover" />
               {idx === 0 && (
-                <span className="absolute left-0 top-0 bg-secondary px-1.5 py-0.5 text-caption font-semibold text-white">
+                <span className="bg-secondary text-caption absolute top-0 left-0 px-1.5 py-0.5 font-semibold text-white">
                   대표
                 </span>
               )}
               {p.status === 'uploading' && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black/40 text-caption text-white">
+                <div className="text-caption absolute inset-0 flex items-center justify-center bg-black/40 text-white">
                   업로드 중…
                 </div>
               )}
               {p.status === 'error' && (
-                <div className="absolute inset-0 flex items-center justify-center bg-red-600/70 px-1 text-center text-caption text-white">
+                <div className="text-caption absolute inset-0 flex items-center justify-center bg-red-600/70 px-1 text-center text-white">
                   {p.error ?? '실패'}
                 </div>
               )}
               <button
                 type="button"
                 onClick={() => removePhoto(p.uid)}
-                className="absolute right-0 top-0 bg-black/50 px-1 text-caption text-white"
+                className="text-caption absolute top-0 right-0 bg-black/50 px-1 text-white"
                 aria-label="사진 삭제"
               >
                 ×
@@ -3804,7 +4006,7 @@ function DesignDetailForm({ design: d, onClose }: { design: Design; onClose: () 
                 <button
                   type="button"
                   onClick={() => makeThumbnail(p.uid)}
-                  className="absolute inset-x-0 bottom-0 bg-black/50 py-0.5 text-center text-caption text-white hover:bg-black/70"
+                  className="text-caption absolute inset-x-0 bottom-0 bg-black/50 py-0.5 text-center text-white hover:bg-black/70"
                 >
                   대표로
                 </button>
@@ -3812,9 +4014,9 @@ function DesignDetailForm({ design: d, onClose }: { design: Design; onClose: () 
             </div>
           ))}
           {photos.length < MAX_EDIT_PHOTOS && (
-            <label className="flex h-24 w-24 cursor-pointer flex-col items-center justify-center rounded-md border border-dashed border-neutral-300 text-primary-50 hover:border-secondary">
+            <label className="text-primary-50 hover:border-secondary flex h-24 w-24 cursor-pointer flex-col items-center justify-center rounded-md border border-dashed border-neutral-300">
               <span className="text-2xl leading-none">+</span>
-              <span className="mt-1 text-caption">사진 추가</span>
+              <span className="text-caption mt-1">사진 추가</span>
               <input
                 type="file"
                 accept="image/*"
@@ -3865,15 +4067,20 @@ function DesignDetailForm({ design: d, onClose }: { design: Design; onClose: () 
 
       {multiDesigner && (
         <div>
-          <label className="flex items-center gap-2 text-body-sm text-primary">
-            <input type="checkbox" checked={perDesigner} onChange={(e) => setPerDesigner(e.target.checked)} />
+          <label className="text-body-sm text-primary flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={perDesigner}
+              onChange={(e) => setPerDesigner(e.target.checked)}
+            />
             디자이너별로 다르게 적용
           </label>
           {perDesigner && (
             <div className="mt-2 space-y-2">
               <p className="text-caption text-primary-50">
-                체크한 디자이너만 이 디자인을 할 수 있어요. 소요시간·가격을 디자이너별로 다르게 조정할 수 있어요.
-                미조정 시 기본값(소요시간 {duration}분 · 가격 {(Number(price) || 0).toLocaleString('ko-KR')}원).
+                체크한 디자이너만 이 디자인을 할 수 있어요. 소요시간·가격을 디자이너별로 다르게
+                조정할 수 있어요. 미조정 시 기본값(소요시간 {duration}분 · 가격{' '}
+                {(Number(price) || 0).toLocaleString('ko-KR')}원).
               </p>
               <div className="space-y-2">
                 {designers.map((dz) => {
@@ -3885,8 +4092,12 @@ function DesignDetailForm({ design: d, onClose }: { design: Design; onClose: () 
                         checked ? 'border-secondary/40 bg-secondary/5' : 'border-neutral-200'
                       }`}
                     >
-                      <label className="flex items-center gap-2 text-caption font-semibold">
-                        <input type="checkbox" checked={checked} onChange={() => toggleDesigner(dz.id)} />
+                      <label className="text-caption flex items-center gap-2 font-semibold">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleDesigner(dz.id)}
+                        />
                         {dz.name}
                       </label>
                       {checked && (
@@ -3895,7 +4106,9 @@ function DesignDetailForm({ design: d, onClose }: { design: Design; onClose: () 
                             <span className="text-caption text-primary-50">시간</span>
                             <Stepper
                               value={picked[dz.id]}
-                              onChange={(v) => setPicked((prev) => ({ ...prev, [dz.id]: clampDuration(v) }))}
+                              onChange={(v) =>
+                                setPicked((prev) => ({ ...prev, [dz.id]: clampDuration(v) }))
+                              }
                               suffix="분"
                               ariaLabel="소요시간 직접 입력"
                             />
@@ -3904,7 +4117,9 @@ function DesignDetailForm({ design: d, onClose }: { design: Design; onClose: () 
                             <span className="text-caption text-primary-50">가격</span>
                             <Stepper
                               value={pickedPrice[dz.id] ?? (Number(price) || 0)}
-                              onChange={(v) => setPickedPrice((prev) => ({ ...prev, [dz.id]: Math.max(0, v) }))}
+                              onChange={(v) =>
+                                setPickedPrice((prev) => ({ ...prev, [dz.id]: Math.max(0, v) }))
+                              }
                               step={PRICE_STEP}
                               suffix="원"
                               ariaLabel="가격 직접 입력"
@@ -3947,13 +4162,13 @@ function DesignDetailForm({ design: d, onClose }: { design: Design; onClose: () 
             (multiDesigner && perDesigner && Object.keys(picked).length === 0)
           }
           onClick={attemptSave}
-          className="rounded-md bg-secondary px-4 py-2 text-body-sm font-semibold text-white disabled:opacity-50"
+          className="bg-secondary text-body-sm rounded-md px-4 py-2 font-semibold text-white disabled:opacity-50"
         >
           {save.isPending ? '저장 중…' : '저장'}
         </button>
         <button
           onClick={onClose}
-          className="rounded-md border border-neutral-300 px-4 py-2 text-body-sm text-primary"
+          className="text-body-sm text-primary rounded-md border border-neutral-300 px-4 py-2"
         >
           취소
         </button>
@@ -3980,13 +4195,13 @@ function Field({
 }) {
   return (
     <div>
-      <label className="mb-1 block text-caption font-semibold text-primary-50">
+      <label className="text-caption text-primary-50 mb-1 block font-semibold">
         {label}
-        {required && <span className="ml-0.5 text-danger">*</span>}
+        {required && <span className="text-danger ml-0.5">*</span>}
       </label>
       {children}
-      {hint && !error && <p className="mt-1 text-caption text-primary-50">{hint}</p>}
-      {error && <p className="mt-1 text-caption text-danger">{error}</p>}
+      {hint && !error && <p className="text-caption text-primary-50 mt-1">{hint}</p>}
+      {error && <p className="text-caption text-danger mt-1">{error}</p>}
     </div>
   );
 }
