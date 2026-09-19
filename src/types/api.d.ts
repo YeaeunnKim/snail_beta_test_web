@@ -550,6 +550,35 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/owners/{owner_id}/reset-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 사장님 임시 비밀번호 발급
+         * @description 사장님이 로그인하지 못할 때의 복구 경로.
+         *
+         *     메일 링크 방식은 베타에서 쓸 수 없다 — 사장님 이메일이 인스타 핸들로 만든 더미
+         *     주소(`handle@beta.snail.app`)라 받는 사람이 없다. 그래서 운영자가 임시 비밀번호를
+         *     발급하고 전화로 불러 준다. 근거는 `owner_account_service` 도크 참고.
+         *
+         *     `run_idempotent` 로 감싸지 않는다. 재요청을 같은 응답으로 돌려주면 이전 발급값이
+         *     다시 나오는데, 여기서 옳은 동작은 "다시 누르면 새 비밀번호" 다 — 운영자가 값을
+         *     놓쳐 다시 누르는 것이 이 버튼의 주된 재시도 이유이기 때문이다. 헤더는 계약
+         *     일관성을 위해 그대로 요구한다.
+         */
+        post: operations["admin_reset_owner_password"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/shops/{shop_id}/visibility": {
         parameters: {
             query?: never;
@@ -1547,6 +1576,29 @@ export interface paths {
         head?: never;
         /** 내 사장님 정보 수정 */
         patch: operations["owners_update_me"];
+        trace?: never;
+    };
+    "/api/v1/owners/me/password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * 내 비밀번호 변경
+         * @description 임시 비밀번호로 잠긴 계정이 스스로 빠져나오는 유일한 경로.
+         *
+         *     `require_owner_password_changed` 가 이 경로만 열어 둔다 — 여기서 성공해야 나머지
+         *     API 가 다시 열린다.
+         */
+        patch: operations["owners_update_my_password"];
         trace?: never;
     };
     "/api/v1/owners/me/dashboard/summary": {
@@ -3913,6 +3965,13 @@ export interface components {
             shop_id?: string | null;
             /** Shop Name */
             shop_name?: string | null;
+            /**
+             * Must Change Password
+             * @default false
+             */
+            must_change_password?: boolean;
+            /** Password Changed At */
+            password_changed_at?: string | null;
             business_verification?: components["schemas"]["AdminBusinessVerification"] | null;
             shop?: components["schemas"]["AdminShopSummary"] | null;
         };
@@ -3953,6 +4012,13 @@ export interface components {
             shop_id?: string | null;
             /** Shop Name */
             shop_name?: string | null;
+            /**
+             * Must Change Password
+             * @default false
+             */
+            must_change_password?: boolean;
+            /** Password Changed At */
+            password_changed_at?: string | null;
         };
         /** AdminPasswordResetResponse */
         AdminPasswordResetResponse: {
@@ -6269,6 +6335,13 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /**
+             * Must Change Password
+             * @default false
+             */
+            must_change_password?: boolean;
+            /** Password Changed At */
+            password_changed_at?: string | null;
         };
         /** OwnerNotificationListResponse */
         OwnerNotificationListResponse: {
@@ -6308,6 +6381,19 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+        };
+        /** OwnerPasswordResetResponse */
+        OwnerPasswordResetResponse: {
+            owner: components["schemas"]["AdminOwnerDetail"];
+            /** Temporary Password */
+            temporary_password: string;
+        };
+        /** OwnerPasswordUpdate */
+        OwnerPasswordUpdate: {
+            /** Current Password */
+            current_password: string;
+            /** New Password */
+            new_password: string;
         };
         /** OwnerRejectRequest */
         OwnerRejectRequest: {
@@ -11046,6 +11132,89 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdminOwnerDetail"];
+                };
+            };
+            /** @description UNAUTHORIZED */
+            401: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description NOT_FOUND */
+            404: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description CONFLICT */
+            409: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description VALIDATION_ERROR */
+            422: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    admin_reset_owner_password: {
+        parameters: {
+            query?: never;
+            header: {
+                authorization?: string | null;
+                /** @description Required for mutating requests. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                owner_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnerPasswordResetResponse"];
                 };
             };
             /** @description UNAUTHORIZED */
@@ -16057,6 +16226,91 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["OwnerUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnerMe"];
+                };
+            };
+            /** @description UNAUTHORIZED */
+            401: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description NOT_FOUND */
+            404: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description CONFLICT */
+            409: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description VALIDATION_ERROR */
+            422: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    owners_update_my_password: {
+        parameters: {
+            query?: never;
+            header: {
+                authorization?: string | null;
+                /** @description Required for mutating requests. */
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OwnerPasswordUpdate"];
             };
         };
         responses: {
