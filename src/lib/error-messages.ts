@@ -15,6 +15,13 @@ export const VERIFICATION_REQUIRED_CODE = 'VERIFICATION_REQUIRED';
 
 /** 에러 코드별 사용자 메시지 (상태 코드보다 우선). */
 const CODE_MESSAGES: Record<string, string> = {
+  // 계정·비밀번호. 임시 비밀번호로 잠긴 상태의 403 은 화면이 문구보다 먼저
+  // /password-change 로 보내지만, 이동 전에 잠깐 보일 수 있어 문구도 맞춰 둔다.
+  INVALID_CREDENTIALS: '이메일 또는 비밀번호가 올바르지 않습니다.',
+  PASSWORD_CHANGE_REQUIRED: '임시 비밀번호입니다. 비밀번호를 변경한 뒤 이용해주세요.',
+  PASSWORD_UNCHANGED: '지금 쓰는 비밀번호와 다른 값을 입력해주세요.',
+  INVALID_PASSWORD_POLICY: '비밀번호는 8자 이상이며 영문 대소문자와 숫자를 포함해야 합니다.',
+  INVALID_RESET_TOKEN: '비밀번호 재설정 링크가 올바르지 않거나 만료됐습니다.',
   [VERIFICATION_REQUIRED_CODE]: '사업자 인증이 완료되어야 이용할 수 있습니다.',
   OWNER_NOT_APPROVED: '사업자 인증 승인 후 이용할 수 있습니다.',
   NO_SHOW_TOO_EARLY: '예약 시간 30분 경과 후에 노쇼 처리할 수 있어요.',

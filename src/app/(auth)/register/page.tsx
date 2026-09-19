@@ -20,7 +20,11 @@ import { useAuth } from '@/hooks/use-auth';
 import { toUserMessage } from '@/lib/error-messages';
 import { resolveAuthedHome } from '@/lib/auth-routing';
 import { PRIVACY_URL, PRIVACY_VERSION, TERMS_URL, TERMS_VERSION } from '@/lib/legal';
-import { instagramToEmail, isValidInstagramHandle, normalizeInstagramHandle } from '@/lib/beta-account';
+import {
+  instagramToEmail,
+  isValidInstagramHandle,
+  normalizeInstagramHandle,
+} from '@/lib/beta-account';
 
 const registerSchema = z
   .object({
@@ -87,31 +91,35 @@ export default function RegisterPage() {
       noValidate
     >
       <div className="text-center">
-        <h1 className="text-heading-lg font-bold text-primary">베타 회원가입</h1>
-        <p className="mt-1 text-caption text-primary-50">인스타 아이디로 간편하게 시작하세요.</p>
+        <h1 className="text-heading-lg text-primary font-bold">베타 회원가입</h1>
+        <p className="text-caption text-primary-50 mt-1">인스타 아이디로 간편하게 시작하세요.</p>
       </div>
 
       <div>
-        <label className="mb-1 block text-body-sm font-medium">인스타그램 아이디</label>
-        <div className="flex items-center rounded-lg border border-neutral-300 px-3 focus-within:border-secondary">
+        <label className="text-body-sm mb-1 block font-medium">인스타그램 아이디</label>
+        <div className="focus-within:border-secondary flex items-center rounded-lg border border-neutral-300 px-3">
           <span className="text-body-sm text-primary-50">@</span>
           <input
             autoCapitalize="none"
             autoCorrect="off"
             spellCheck={false}
             placeholder="sujin_nail"
-            className="w-full bg-transparent px-1.5 py-2.5 text-body-sm outline-none"
+            className="text-body-sm w-full bg-transparent px-1.5 py-2.5 outline-none"
             {...register('instagram')}
           />
         </div>
         {handle && !errors.instagram && (
-          <p className="mt-1 text-caption text-primary-50">로그인 아이디로 @{handle} 를 사용합니다.</p>
+          <p className="text-caption text-primary-50 mt-1">
+            로그인 아이디로 @{handle} 를 사용합니다.
+          </p>
         )}
-        {errors.instagram && <p className="mt-1 text-caption text-danger">{errors.instagram.message}</p>}
+        {errors.instagram && (
+          <p className="text-caption text-danger mt-1">{errors.instagram.message}</p>
+        )}
       </div>
 
       <div>
-        <label className="mb-1 block text-body-sm font-medium">비밀번호</label>
+        <label className="text-body-sm mb-1 block font-medium">비밀번호</label>
         <input
           type="password"
           autoComplete="new-password"
@@ -119,18 +127,25 @@ export default function RegisterPage() {
           className={inputCls}
           {...register('password')}
         />
-        {errors.password && <p className="mt-1 text-caption text-danger">{errors.password.message}</p>}
-      </div>
-
-      <div>
-        <label className="mb-1 block text-body-sm font-medium">비밀번호 확인</label>
-        <input type="password" autoComplete="new-password" className={inputCls} {...register('passwordConfirm')} />
-        {errors.passwordConfirm && (
-          <p className="mt-1 text-caption text-danger">{errors.passwordConfirm.message}</p>
+        {errors.password && (
+          <p className="text-caption text-danger mt-1">{errors.password.message}</p>
         )}
       </div>
 
-      <label className="flex items-start gap-2 text-body-sm">
+      <div>
+        <label className="text-body-sm mb-1 block font-medium">비밀번호 확인</label>
+        <input
+          type="password"
+          autoComplete="new-password"
+          className={inputCls}
+          {...register('passwordConfirm')}
+        />
+        {errors.passwordConfirm && (
+          <p className="text-caption text-danger mt-1">{errors.passwordConfirm.message}</p>
+        )}
+      </div>
+
+      <label className="text-body-sm flex items-start gap-2">
         <input type="checkbox" className="mt-0.5" {...register('agree')} />
         <span>
           [필수]{' '}
@@ -158,28 +173,28 @@ export default function RegisterPage() {
           </span>
         </span>
       </label>
-      {errors.agree && <p className="-mt-2 text-caption text-danger">{errors.agree.message}</p>}
+      {errors.agree && <p className="text-caption text-danger -mt-2">{errors.agree.message}</p>}
 
       {formError && (
-        <p className="rounded-md bg-danger-bg px-3 py-2 text-caption text-danger">{formError}</p>
+        <p className="bg-danger-bg text-caption text-danger rounded-lg px-3 py-2.5">{formError}</p>
       )}
 
       <button
         type="submit"
         disabled={isSubmitting}
-        className="w-full rounded-lg bg-secondary py-2.5 text-body-sm font-semibold text-white disabled:opacity-50"
+        className="bg-secondary text-body-sm w-full rounded-lg py-2.5 font-semibold text-white disabled:opacity-50"
       >
         {isSubmitting ? '가입 중…' : '회원가입'}
       </button>
 
-      <p className="text-center text-caption text-primary-50">
+      <p className="text-caption text-primary-50 text-center">
         이미 계정이 있으신가요?{' '}
-        <a href="/login" className="font-semibold text-secondary underline">
+        <a href="/login" className="text-secondary font-semibold underline">
           로그인
         </a>
       </p>
-      <p className="text-center text-caption text-primary-50">
-        <a href="/password-reset" className="font-semibold text-secondary underline">
+      <p className="text-caption text-primary-50 text-center">
+        <a href="/password-reset" className="text-secondary font-semibold underline">
           비밀번호를 잊으셨나요?
         </a>
       </p>

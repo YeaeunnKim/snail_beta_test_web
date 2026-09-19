@@ -5,6 +5,7 @@
  *
  * 가드 순서:
  *  - 미인증          → /login
+ *  - 임시 비밀번호    → /password-change (이 셸의 화면들이 부르는 API 가 전부 403)
  *  - 인증 + 미승인    → /pending (운영자 승인 대기)
  *  - 인증 + 승인 + 샵 없음 → /onboarding (샵/디자이너 최초 설정)
  *  - 그 외           → 탭 화면 렌더
@@ -27,32 +28,40 @@ const TABS = [
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { status, isApproved, logout } = useAuth();
+  const { status, isApproved, owner, logout } = useAuth();
   const shopQuery = useMyShop();
+  // 임시 비밀번호면 서버가 `/owners/me` 외 모든 경로를 403 으로 막는다. 여기서 미리
+  // 보내는 것은 그 403 을 빈 화면으로 만나지 않게 하는 안내다 — 차단은 서버가 한다.
+  const mustChangePassword = owner?.must_change_password === true;
 
-  // 가드 1: 인증/승인
+  // 가드 1: 인증/비밀번호 잠금/승인
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.replace('/login');
+    } else if (status === 'authenticated' && mustChangePassword) {
+      router.replace('/password-change');
     } else if (status === 'authenticated' && !isApproved) {
       router.replace('/pending');
     }
-  }, [status, isApproved, router]);
+  }, [status, isApproved, mustChangePassword, router]);
 
   // 가드 2: 승인됐지만 샵이 없으면 온보딩
   useEffect(() => {
     if (
       status === 'authenticated' &&
+      !mustChangePassword &&
       isApproved &&
       shopQuery.isSuccess &&
       shopQuery.data === null
     ) {
       router.replace('/onboarding');
     }
-  }, [status, isApproved, shopQuery.isSuccess, shopQuery.data, router]);
+  }, [status, mustChangePassword, isApproved, shopQuery.isSuccess, shopQuery.data, router]);
 
   const booting = status === 'idle' || status === 'loading';
-  const waitingShop = status === 'authenticated' && isApproved && shopQuery.isLoading;
+  // 잠긴 계정에서는 기다리지 않는다 — 샵 조회가 403 으로 끝날 때까지 로딩 화면이 남는다.
+  const waitingShop =
+    status === 'authenticated' && !mustChangePassword && isApproved && shopQuery.isLoading;
 
   if (booting || waitingShop) {
     return (
@@ -63,7 +72,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   // 리다이렉트 대상은 화면을 그리지 않는다.
-  if (status !== 'authenticated' || !isApproved) return null;
+  if (status !== 'authenticated' || mustChangePassword || !isApproved) return null;
   if (shopQuery.data == null) return null; // 온보딩으로 이동 중
 
   return (

@@ -38,7 +38,7 @@ function safeRedirectPath(raw: string | null): string | null {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<p className="text-center text-body-sm text-primary-50">불러오는 중…</p>}>
+    <Suspense fallback={<p className="text-body-sm text-primary-50 text-center">불러오는 중…</p>}>
       <LoginForm />
     </Suspense>
   );
@@ -79,15 +79,15 @@ function LoginForm() {
       noValidate
     >
       <div className="text-center">
-        <h1 className="text-heading-lg font-bold text-primary">로그인</h1>
-        <p className="mt-1 text-caption text-primary-50">가입한 인스타 아이디로 로그인하세요.</p>
+        <h1 className="text-heading-lg text-primary font-bold">로그인</h1>
+        <p className="text-caption text-primary-50 mt-1">가입한 인스타 아이디로 로그인하세요.</p>
       </div>
 
       <div>
-        <label className="mb-1 block text-body-sm font-medium" htmlFor="instagram">
+        <label className="text-body-sm mb-1 block font-medium" htmlFor="instagram">
           인스타그램 아이디
         </label>
-        <div className="flex items-center rounded-lg border border-neutral-300 px-3 focus-within:border-secondary">
+        <div className="focus-within:border-secondary flex items-center rounded-lg border border-neutral-300 px-3">
           <span className="text-body-sm text-primary-50">@</span>
           <input
             id="instagram"
@@ -95,47 +95,51 @@ function LoginForm() {
             autoCorrect="off"
             spellCheck={false}
             placeholder="sujin_nail"
-            className="w-full bg-transparent px-1.5 py-2.5 text-body-sm outline-none"
+            className="text-body-sm w-full bg-transparent px-1.5 py-2.5 outline-none"
             {...register('instagram')}
           />
         </div>
-        {errors.instagram && <p className="mt-1 text-caption text-danger">{errors.instagram.message}</p>}
+        {errors.instagram && (
+          <p className="text-caption text-danger mt-1">{errors.instagram.message}</p>
+        )}
       </div>
 
       <div>
-        <label className="mb-1 block text-body-sm font-medium" htmlFor="password">
+        <label className="text-body-sm mb-1 block font-medium" htmlFor="password">
           비밀번호
         </label>
         <input
           id="password"
           type="password"
           autoComplete="current-password"
-          className="w-full rounded-lg border border-neutral-300 px-3 py-2.5 text-body-sm outline-none focus:border-secondary"
+          className="text-body-sm focus:border-secondary w-full rounded-lg border border-neutral-300 px-3 py-2.5 outline-none"
           {...register('password')}
         />
-        {errors.password && <p className="mt-1 text-caption text-danger">{errors.password.message}</p>}
+        {errors.password && (
+          <p className="text-caption text-danger mt-1">{errors.password.message}</p>
+        )}
       </div>
 
       {formError && (
-        <p className="rounded-md bg-danger-bg px-3 py-2 text-caption text-danger">{formError}</p>
+        <p className="bg-danger-bg text-caption text-danger rounded-lg px-3 py-2.5">{formError}</p>
       )}
 
       <button
         type="submit"
         disabled={isSubmitting}
-        className="w-full rounded-lg bg-secondary py-2.5 text-body-sm font-semibold text-white disabled:opacity-50"
+        className="bg-secondary text-body-sm w-full rounded-lg py-2.5 font-semibold text-white disabled:opacity-50"
       >
         {isSubmitting ? '로그인 중…' : '로그인'}
       </button>
 
-      <p className="text-center text-caption text-primary-50">
+      <p className="text-caption text-primary-50 text-center">
         아직 계정이 없으신가요?{' '}
-        <a href="/register" className="font-semibold text-secondary underline">
+        <a href="/register" className="text-secondary font-semibold underline">
           회원가입
         </a>
       </p>
-      <p className="text-center text-caption text-primary-50">
-        <a href="/password-reset" className="font-semibold text-secondary underline">
+      <p className="text-caption text-primary-50 text-center">
+        <a href="/password-reset" className="text-secondary font-semibold underline">
           비밀번호를 잊으셨나요?
         </a>
       </p>
