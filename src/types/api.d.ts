@@ -1473,6 +1473,68 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 운영자 결제 목록
+         * @description 결제 목록. 커서 페이지네이션을 두지 않은 것은 의도다 — 이 화면은 훑는 곳이 아니라
+         *     **찾는 곳**이고, 찾는 방법(주문번호·샵·상태)이 필터로 있다.
+         */
+        get: operations["admin_list_payments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/payments/{payment_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 운영자 결제 상세 */
+        get: operations["admin_get_payment"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/payments/{payment_id}/refund": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 운영자 수동 환불
+         * @description 규정 밖의 예외 환불. **예약 상태는 바꾸지 않는다** — 돈만 움직인다.
+         *
+         *     멱등성을 따로 걸지 않은 이유: 이미 취소된 결제에 다시 눌러도 `cancel_payment` 가 그대로
+         *     돌려주고(우리 상태), 토스도 `ALREADY_CANCELED_PAYMENT` 를 성공으로 받는다. 이중 환불이
+         *     일어날 자리가 없다.
+         */
+        post: operations["admin_refund_payment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me": {
         parameters: {
             query?: never;
@@ -3522,6 +3584,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/webhooks/toss": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 토스 결제 웹훅 수신
+         * @description 주문번호만 꺼내 토스에 실제 상태를 되묻고, 그 결과로만 우리 행을 옮긴다.
+         */
+        post: operations["webhooks_receive_toss_webhook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -3608,6 +3690,7 @@ export interface components {
             relay: components["schemas"]["DashboardRelay"];
             today: components["schemas"]["DashboardToday"];
             backlog: components["schemas"]["DashboardBacklog"];
+            money: components["schemas"]["DashboardMoney"];
         };
         /** AdminDeclineRequest */
         AdminDeclineRequest: {
@@ -4032,6 +4115,83 @@ export interface components {
             current_password: string;
             /** New Password */
             new_password: string;
+        };
+        /** AdminPaymentListResponse */
+        AdminPaymentListResponse: {
+            /** Data */
+            data: components["schemas"]["AdminPaymentRow"][];
+            page?: components["schemas"]["PageMeta"];
+            /** Request Id */
+            request_id: string;
+        };
+        /**
+         * AdminPaymentRefundRequest
+         * @description 수동 환불 요청.
+         *
+         *     사유가 필수인 이유: 이 경로는 규정이 정한 자동 환불이 아니라 **사람이 내린 예외 판단**이다.
+         *     근거가 남지 않으면 나중에 "이 돈은 왜 나갔나" 에 답할 수 없고, 그 답이 필요한 자리가
+         *     정산 대조다.
+         */
+        AdminPaymentRefundRequest: {
+            /** Reason */
+            reason: string;
+            /** Amount */
+            amount?: number | null;
+        };
+        /**
+         * AdminPaymentRow
+         * @description 운영자 화면의 결제 한 줄. CS 응대에 필요한 것만 담는다.
+         *
+         *     `raw_response`(PG 원문)는 싣지 않는다 — 카드 정보가 들어 있고, 운영자가 판단하는 데
+         *     필요하지 않다. 원문이 필요한 상황은 PG 와 대조할 때뿐이고 그건 로그·DB 를 여는 일이다.
+         */
+        AdminPaymentRow: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Order Id */
+            order_id: string;
+            /** Order Name */
+            order_name: string;
+            /** Amount */
+            amount: number;
+            /** Net Amount */
+            net_amount: number;
+            status: components["schemas"]["PaymentStatus"];
+            /** Is Test */
+            is_test: boolean;
+            /** Is Orphan */
+            is_orphan: boolean;
+            /** Refund Settled */
+            refund_settled: boolean;
+            /** Method */
+            method: string | null;
+            /**
+             * Shop Id
+             * Format: uuid
+             */
+            shop_id: string;
+            /** Shop Name */
+            shop_name: string | null;
+            /** Reservation Request Id */
+            reservation_request_id: string | null;
+            /** Approved At */
+            approved_at: string | null;
+            /** Cancelled At */
+            cancelled_at: string | null;
+            /** Cancelled Amount */
+            cancelled_amount: number | null;
+            /** Cancel Reason */
+            cancel_reason: string | null;
+            /** Failure Code */
+            failure_code: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
         };
         /**
          * AdminRelayContactedRequest
@@ -5009,6 +5169,25 @@ export interface components {
             reports_pending: number;
             /** Designs Analysis Failed */
             designs_analysis_failed: number;
+        };
+        /**
+         * DashboardMoney
+         * @description 돈이 잘못된 자리에 있는가. **0 이 아니면 사람이 봐야 한다.**
+         *
+         *     나머지 묶음과 성격이 다르다 — 밀려도 되는 일이 아니라 이용자 돈이 묶여 있거나 매장에
+         *     잘못 나갈 돈이 있다는 신호다. 목록은 각 화면이 같은 이름의 필터로 갖고 있다.
+         */
+        DashboardMoney: {
+            /** Refunds Failing */
+            refunds_failing: number;
+            /** Orphan Payments */
+            orphan_payments: number;
+            /** Overpaid Settlements */
+            overpaid_settlements: number;
+            /** Stale Settlement Items */
+            stale_settlement_items: number;
+            /** Pending Payout Amount */
+            pending_payout_amount: number;
         };
         /**
          * DashboardQueueItem
@@ -7255,6 +7434,8 @@ export interface components {
              * Format: uuid
              */
             shop_id: string;
+            /** Shop Name */
+            shop_name?: string | null;
             /**
              * Period Start
              * Format: date
@@ -7383,6 +7564,8 @@ export interface components {
              * Format: uuid
              */
             shop_id: string;
+            /** Shop Name */
+            shop_name?: string | null;
             /**
              * Period Start
              * Format: date
@@ -8138,6 +8321,32 @@ export interface components {
              */
             refresh_expires_at: string;
         };
+        /**
+         * TossWebhook
+         * @description 토스가 보내는 웹훅 본문 중 **우리가 쓰는 것만**.
+         *
+         *     본문의 나머지(결제 금액·상태·카드 정보)는 일부러 읽지 않는다. 이 요청은 인증되지 않은
+         *     공개 엔드포인트로 들어오므로, 본문을 그대로 믿으면 아무나 «이 주문은 취소됐다» 고
+         *     우리 장부를 고칠 수 있다. 여기서 꺼내는 것은 **어느 주문을 다시 조회할지**뿐이고,
+         *     상태 판단은 토스 API 재조회가 한다(`payment_service.lookup_order`).
+         *
+         *     그래서 `extra="allow"` 다 — 토스가 필드를 늘리거나 이벤트 종류를 추가해도 422 로
+         *     거절하면 안 된다. 거절하면 토스는 재시도하고, 재시도해도 같은 422 라 웹훅이 계속
+         *     실패로 쌓인다.
+         *
+         *     주문번호의 위치는 이벤트 종류마다 다르다(`data.orderId` 또는 최상위 `orderId`).
+         *     둘 다 본다.
+         */
+        TossWebhook: {
+            /** Eventtype */
+            eventType?: string | null;
+            /** Data */
+            data?: Record<string, never> | null;
+            /** Orderid */
+            orderId?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
         /** UnmatchedTerm */
         UnmatchedTerm: {
             /** Term */
@@ -8348,6 +8557,17 @@ export interface components {
         /** VisibilityUpdateRequest */
         VisibilityUpdateRequest: {
             visibility: components["schemas"]["Visibility"];
+        };
+        /**
+         * WebhookAck
+         * @description 수신 확인. 토스는 2xx 가 아니면 재시도하므로 **본문이 아니라 상태코드가 계약**이다.
+         *
+         *     `handled=false` 는 "받긴 했고 우리가 할 일은 없었다" 는 뜻이다(모르는 주문·상태 변화
+         *     없음). 실패가 아니므로 재시도를 유발하지 않아야 한다.
+         */
+        WebhookAck: {
+            /** Handled */
+            handled: boolean;
         };
         /** ErrorBody */
         ErrorBody: {
@@ -15502,6 +15722,261 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SettlementItemRow"];
+                };
+            };
+            /** @description UNAUTHORIZED */
+            401: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description NOT_FOUND */
+            404: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description CONFLICT */
+            409: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description VALIDATION_ERROR */
+            422: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    admin_list_payments: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["PaymentStatus"] | null;
+                shop_id?: string | null;
+                order_id?: string | null;
+                orphan_only?: boolean;
+                unsettled_refund_only?: boolean;
+                include_test?: boolean;
+                limit?: number;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminPaymentListResponse"];
+                };
+            };
+            /** @description UNAUTHORIZED */
+            401: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description NOT_FOUND */
+            404: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description CONFLICT */
+            409: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description VALIDATION_ERROR */
+            422: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    admin_get_payment: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                payment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminPaymentRow"];
+                };
+            };
+            /** @description UNAUTHORIZED */
+            401: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description NOT_FOUND */
+            404: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description CONFLICT */
+            409: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description VALIDATION_ERROR */
+            422: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    admin_refund_payment: {
+        parameters: {
+            query?: never;
+            header: {
+                authorization?: string | null;
+                /** @description Required for mutating requests. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                payment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminPaymentRefundRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminPaymentRow"];
                 };
             };
             /** @description UNAUTHORIZED */
@@ -27260,6 +27735,90 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description UNAUTHORIZED */
+            401: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description NOT_FOUND */
+            404: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description CONFLICT */
+            409: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description VALIDATION_ERROR */
+            422: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    webhooks_receive_toss_webhook: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required for mutating requests. */
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TossWebhook"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookAck"];
+                };
             };
             /** @description UNAUTHORIZED */
             401: {
