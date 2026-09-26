@@ -35,6 +35,15 @@ export const config = {
   apiOrigin: API_ORIGIN,
   appName: process.env.NEXT_PUBLIC_APP_NAME ?? '스네일 사장님',
   apiDocsUrl: process.env.NEXT_PUBLIC_API_DOCS_URL ?? '',
+  /**
+   * 운영팀 문의처. 비밀번호를 잊은 사장님이 갈 곳이다 — 베타 계정은 메일이 닿지 않아
+   * (인스타 아이디로 만든 합성 주소) 운영자가 임시 비밀번호를 발급하는 것이 유일한
+   * 복구 경로이고, 그 시작점이 이 연락처다.
+   *
+   * href 는 tel:/mailto:/https: 모두 쓸 수 있다. 비워 두면 라벨만 표시한다.
+   */
+  ownerLinkSupportLabel: process.env.NEXT_PUBLIC_OWNER_LINK_SUPPORT_LABEL ?? '카카오톡 채널 스네일',
+  ownerLinkSupportHref: process.env.NEXT_PUBLIC_OWNER_LINK_SUPPORT_HREF ?? '',
   analytics: {
     // 키와 명시적 스위치가 모두 있어야 전송한다. 로컬/PR 빌드는 기본 no-op이다.
     enabled: process.env.NEXT_PUBLIC_ANALYTICS_ENABLED === '1' && POSTHOG_KEY.length > 0,

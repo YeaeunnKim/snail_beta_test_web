@@ -13,7 +13,15 @@ import type { NextRequest } from 'next/server';
 const AUTHED_COOKIE = 'snail_owner_authed';
 const AUTH_PAGES = ['/login', '/register', '/password-reset'];
 // 로그인이 필요한(미인증 시 /login 으로) 경로들. 승인 여부 분기는 클라이언트(useAuth)가 담당.
-const PROTECTED_PREFIXES = ['/dashboard', '/business-verification', '/pending', '/onboarding'];
+const PROTECTED_PREFIXES = [
+  '/dashboard',
+  '/business-verification',
+  '/pending',
+  '/onboarding',
+  // 로그인한 사장님만 쓴다(현재 비밀번호를 확인하므로). AUTH_PAGES 에는 넣지 않는다 —
+  // 넣으면 임시 비밀번호로 들어온 사람이 이 화면을 열자마자 대시보드로 튕긴다.
+  '/password-change',
+];
 
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;

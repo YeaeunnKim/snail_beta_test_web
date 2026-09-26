@@ -1,13 +1,24 @@
 'use client';
 
 /**
- * 베타 비밀번호 재설정 — 2단계 플로우.
+ * 베타 비밀번호 재설정 — 운영자가 임시 비밀번호를 발급한다.
  *
- * 1) 인스타그램 아이디(또는 이메일)로 재설정 요청 → 백엔드가 이메일로 토큰을 발송한다.
- *    (인스타 핸들만 입력한 계정은 회원가입과 동일한 규칙으로 handle@beta.snail.app 로 매핑한다.)
- * 2) 이메일로 받은 토큰 + 새 비밀번호를 입력해 확정한다.
+ * **메일로 코드를 보내지 않는다.** 예전에는 이 화면이 인스타 아이디를 받아
+ * `POST /auth/password-reset` 을 부르고 "재설정 코드를 보냈다" 고 안내했는데, 그 코드는
+ * 어디에도 도착하지 않았다. 이유가 둘이다.
  *
- * 재설정 안내 링크에 ?token=... 이 붙어 있으면 1단계를 건너뛰고 바로 2단계로 진입한다.
+ * 1. 백엔드에 메일 발송 연동이 없다 — 토큰은 개발 로그로만 나간다.
+ * 2. 연동돼도 닿지 않는다 — 베타 계정의 이메일은 인스타 핸들로 만든 합성 주소
+ *    (`handle@beta.snail.app`, `lib/beta-account.ts`)라 받는 사람이 없다.
+ *
+ * 즉 "코드를 보냈으니 확인하세요" 는 처음부터 성립하지 않는 안내였다. 사장님은 오지 않는
+ * 메일을 기다리다 스팸함까지 뒤진 뒤에야 전화하게 되고, 화면이 거짓말을 한 만큼 복구가
+ * 늦어진다. 그래서 실제로 동작하는 경로 하나만 안내한다: 운영자가 어드민 콘솔에서 임시
+ * 비밀번호를 발급해 전화로 불러 준다. 받은 뒤에는 `/password-change` 에서 새 비밀번호를
+ * 정한다(그 전까지 서버가 다른 API 를 403 으로 막는다).
+ *
+ * 링크에 `?token=` 이 붙어 있으면 확정 폼을 그대로 연다 — 발송이 연결되는 날, 그리고
+ * 운영자가 개발 로그에서 토큰을 꺼내 전달한 예외 상황에 필요하다.
  */
 import { Suspense, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
@@ -16,12 +27,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { authApi } from '@/services';
 import { toUserMessage } from '@/lib/error-messages';
-import { instagramToEmail } from '@/lib/beta-account';
-
-const requestSchema = z.object({
-  instagram: z.string().min(1, '인스타그램 아이디를 입력해주세요.'),
-});
-type RequestForm = z.infer<typeof requestSchema>;
+import { config } from '@/lib/config';
 
 const confirmSchema = z
   .object({
@@ -40,11 +46,11 @@ const confirmSchema = z
   });
 type ConfirmForm = z.infer<typeof confirmSchema>;
 
-type Step = 'request' | 'confirm' | 'done';
+type Step = 'guide' | 'confirm' | 'done';
 
 export default function PasswordResetPage() {
   return (
-    <Suspense fallback={<p className="text-center text-body-sm text-primary-50">불러오는 중…</p>}>
+    <Suspense fallback={<p className="text-body-sm text-primary-50 text-center">불러오는 중…</p>}>
       <PasswordResetFlow />
     </Suspense>
   );
@@ -53,15 +59,14 @@ export default function PasswordResetPage() {
 function PasswordResetFlow() {
   const searchParams = useSearchParams();
   const tokenFromLink = searchParams.get('token');
-  const [step, setStep] = useState<Step>(tokenFromLink ? 'confirm' : 'request');
-  const [requestedHandle, setRequestedHandle] = useState('');
+  const [step, setStep] = useState<Step>(tokenFromLink ? 'confirm' : 'guide');
 
   if (step === 'done') {
     return (
       <div className="space-y-4 rounded-2xl border border-neutral-200 bg-white p-6 text-center shadow-sm">
-        <h1 className="text-heading-lg font-bold text-primary">비밀번호가 변경되었습니다</h1>
+        <h1 className="text-heading-lg text-primary font-bold">비밀번호가 변경되었습니다</h1>
         <p className="text-body-sm text-primary-50">새 비밀번호로 다시 로그인해주세요.</p>
-        <a href="/login" className="inline-block font-semibold text-secondary underline">
+        <a href="/login" className="text-secondary inline-block font-semibold underline">
           로그인하러 가기
         </a>
       </div>
@@ -69,108 +74,61 @@ function PasswordResetFlow() {
   }
 
   if (step === 'confirm') {
-    return (
-      <ConfirmStep
-        defaultToken={tokenFromLink ?? ''}
-        requestedHandle={requestedHandle}
-        onDone={() => setStep('done')}
-        onBack={tokenFromLink ? undefined : () => setStep('request')}
-      />
-    );
+    return <ConfirmStep defaultToken={tokenFromLink ?? ''} onDone={() => setStep('done')} />;
   }
 
-  return (
-    <RequestStep
-      onRequested={(handle) => {
-        setRequestedHandle(handle);
-        setStep('confirm');
-      }}
-    />
-  );
+  return <ContactGuide />;
 }
 
-function RequestStep({ onRequested }: { onRequested: (handle: string) => void }) {
-  const [formError, setFormError] = useState<string | null>(null);
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm<RequestForm>({ resolver: zodResolver(requestSchema) });
-
-  const onSubmit = async (values: RequestForm) => {
-    setFormError(null);
-    try {
-      await authApi.requestPasswordReset(instagramToEmail(values.instagram));
-      onRequested(values.instagram);
-    } catch (e) {
-      setFormError(toUserMessage(e));
-    }
-  };
-
+/** 토큰이 없을 때 — 유일하게 동작하는 복구 경로를 안내한다. */
+function ContactGuide() {
   return (
-    <form
-      onSubmit={handleSubmit(onSubmit)}
-      className="space-y-5 rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm"
-      noValidate
-    >
+    <section className="space-y-5 rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm">
       <div className="text-center">
-        <h1 className="text-heading-lg font-bold text-primary">비밀번호 재설정</h1>
-        <p className="mt-1 text-caption text-primary-50">
-          가입한 인스타 아이디를 입력하면 재설정 안내를 보내드립니다.
+        <h1 className="text-heading-lg text-primary font-bold">비밀번호를 잊으셨나요?</h1>
+        <p className="text-caption text-primary-50 mt-1">
+          운영팀에 연락 주시면 임시 비밀번호를 바로 발급해 드립니다.
         </p>
       </div>
 
-      <div>
-        <label className="mb-1 block text-body-sm font-medium" htmlFor="instagram">
-          인스타그램 아이디
-        </label>
-        <div className="flex items-center rounded-lg border border-neutral-300 px-3 focus-within:border-secondary">
-          <span className="text-body-sm text-primary-50">@</span>
-          <input
-            id="instagram"
-            autoCapitalize="none"
-            autoCorrect="off"
-            spellCheck={false}
-            placeholder="sujin_nail"
-            className="w-full bg-transparent px-1.5 py-2.5 text-body-sm outline-none"
-            {...register('instagram')}
-          />
-        </div>
-        {errors.instagram && <p className="mt-1 text-caption text-danger">{errors.instagram.message}</p>}
+      <ol className="text-body-sm text-primary space-y-2">
+        <li>
+          <b>1.</b> 아래 연락처로 가입하신 인스타 아이디를 알려 주세요.
+        </li>
+        <li>
+          <b>2.</b> 운영자가 임시 비밀번호를 전화로 불러 드립니다.
+        </li>
+        <li>
+          <b>3.</b> 그 비밀번호로 로그인하면 새 비밀번호를 정하는 화면이 바로 열립니다.
+        </li>
+      </ol>
+
+      <div className="bg-surface rounded-lg px-4 py-3">
+        <p className="text-caption text-primary-50">운영팀 문의</p>
+        {config.ownerLinkSupportHref ? (
+          <a
+            href={config.ownerLinkSupportHref}
+            className="text-body-sm text-secondary mt-0.5 block font-semibold underline"
+          >
+            {config.ownerLinkSupportLabel}
+          </a>
+        ) : (
+          <p className="text-body-sm text-primary mt-0.5 font-semibold">
+            {config.ownerLinkSupportLabel}
+          </p>
+        )}
       </div>
 
-      {formError && (
-        <p className="rounded-md bg-danger-bg px-3 py-2 text-caption text-danger">{formError}</p>
-      )}
-
-      <button
-        type="submit"
-        disabled={isSubmitting}
-        className="w-full rounded-lg bg-secondary py-2.5 text-body-sm font-semibold text-white disabled:opacity-50"
-      >
-        {isSubmitting ? '요청 중…' : '재설정 코드 받기'}
-      </button>
-
-      <p className="text-center text-caption text-primary-50">
-        <a href="/login" className="font-semibold text-secondary underline">
+      <p className="text-caption text-primary-50 text-center">
+        <a href="/login" className="text-secondary font-semibold underline">
           로그인으로 돌아가기
         </a>
       </p>
-    </form>
+    </section>
   );
 }
 
-function ConfirmStep({
-  defaultToken,
-  requestedHandle,
-  onDone,
-  onBack,
-}: {
-  defaultToken: string;
-  requestedHandle: string;
-  onDone: () => void;
-  onBack?: () => void;
-}) {
+function ConfirmStep({ defaultToken, onDone }: { defaultToken: string; onDone: () => void }) {
   const [formError, setFormError] = useState<string | null>(null);
   const {
     register,
@@ -198,26 +156,26 @@ function ConfirmStep({
       noValidate
     >
       <div className="text-center">
-        <h1 className="text-heading-lg font-bold text-primary">새 비밀번호 설정</h1>
-        <p className="mt-1 text-caption text-primary-50">
-          {requestedHandle ? `@${requestedHandle} 로 발송된 ` : ''}재설정 코드와 새 비밀번호를 입력해주세요.
+        <h1 className="text-heading-lg text-primary font-bold">새 비밀번호 설정</h1>
+        <p className="text-caption text-primary-50 mt-1">
+          받으신 재설정 코드와 새 비밀번호를 입력해주세요.
         </p>
       </div>
 
       <div>
-        <label className="mb-1 block text-body-sm font-medium" htmlFor="token">
+        <label className="text-body-sm mb-1 block font-medium" htmlFor="token">
           재설정 코드
         </label>
         <input
           id="token"
-          className="w-full rounded-lg border border-neutral-300 px-3 py-2.5 text-body-sm outline-none focus:border-secondary"
+          className="text-body-sm focus:border-secondary w-full rounded-lg border border-neutral-300 px-3 py-2.5 outline-none"
           {...register('token')}
         />
-        {errors.token && <p className="mt-1 text-caption text-danger">{errors.token.message}</p>}
+        {errors.token && <p className="text-caption text-danger mt-1">{errors.token.message}</p>}
       </div>
 
       <div>
-        <label className="mb-1 block text-body-sm font-medium" htmlFor="newPassword">
+        <label className="text-body-sm mb-1 block font-medium" htmlFor="newPassword">
           새 비밀번호
         </label>
         <input
@@ -225,50 +183,46 @@ function ConfirmStep({
           type="password"
           autoComplete="new-password"
           placeholder="8자 이상, 대·소문자와 숫자 포함"
-          className="w-full rounded-lg border border-neutral-300 px-3 py-2.5 text-body-sm outline-none focus:border-secondary"
+          className="text-body-sm focus:border-secondary w-full rounded-lg border border-neutral-300 px-3 py-2.5 outline-none"
           {...register('newPassword')}
         />
-        {errors.newPassword && <p className="mt-1 text-caption text-danger">{errors.newPassword.message}</p>}
+        {errors.newPassword && (
+          <p className="text-caption text-danger mt-1">{errors.newPassword.message}</p>
+        )}
       </div>
 
       <div>
-        <label className="mb-1 block text-body-sm font-medium" htmlFor="newPasswordConfirm">
+        <label className="text-body-sm mb-1 block font-medium" htmlFor="newPasswordConfirm">
           새 비밀번호 확인
         </label>
         <input
           id="newPasswordConfirm"
           type="password"
           autoComplete="new-password"
-          className="w-full rounded-lg border border-neutral-300 px-3 py-2.5 text-body-sm outline-none focus:border-secondary"
+          className="text-body-sm focus:border-secondary w-full rounded-lg border border-neutral-300 px-3 py-2.5 outline-none"
           {...register('newPasswordConfirm')}
         />
         {errors.newPasswordConfirm && (
-          <p className="mt-1 text-caption text-danger">{errors.newPasswordConfirm.message}</p>
+          <p className="text-caption text-danger mt-1">{errors.newPasswordConfirm.message}</p>
         )}
       </div>
 
       {formError && (
-        <p className="rounded-md bg-danger-bg px-3 py-2 text-caption text-danger">{formError}</p>
+        <p className="bg-danger-bg text-caption text-danger rounded-lg px-3 py-2.5">{formError}</p>
       )}
 
       <button
         type="submit"
         disabled={isSubmitting}
-        className="w-full rounded-lg bg-secondary py-2.5 text-body-sm font-semibold text-white disabled:opacity-50"
+        className="bg-secondary text-body-sm w-full rounded-lg py-2.5 font-semibold text-white disabled:opacity-50"
       >
         {isSubmitting ? '변경 중…' : '비밀번호 변경'}
       </button>
 
-      <p className="text-center text-caption text-primary-50">
-        {onBack ? (
-          <button type="button" onClick={onBack} className="font-semibold text-secondary underline">
-            다시 요청하기
-          </button>
-        ) : (
-          <a href="/login" className="font-semibold text-secondary underline">
-            로그인으로 돌아가기
-          </a>
-        )}
+      <p className="text-caption text-primary-50 text-center">
+        <a href="/login" className="text-secondary font-semibold underline">
+          로그인으로 돌아가기
+        </a>
       </p>
     </form>
   );

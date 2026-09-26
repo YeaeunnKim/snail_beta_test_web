@@ -44,11 +44,20 @@ const onboardingSchema = z
   .superRefine((v, ctx) => {
     const names = v.designers.map((d) => d.name.trim()).filter(Boolean);
     if (names.length < 1) {
-      ctx.addIssue({ code: 'custom', path: ['designers'], message: '디자이너를 1명 이상 입력해주세요.' });
+      ctx.addIssue({
+        code: 'custom',
+        path: ['designers'],
+        message: '디자이너를 1명 이상 입력해주세요.',
+      });
     }
     if (v.isMulti) {
       v.designers.forEach((d, i) => {
-        if (d.name.trim() === '') ctx.addIssue({ code: 'custom', path: ['designers', i, 'name'], message: '이름을 입력해주세요.' });
+        if (d.name.trim() === '')
+          ctx.addIssue({
+            code: 'custom',
+            path: ['designers', i, 'name'],
+            message: '이름을 입력해주세요.',
+          });
       });
     }
     // 모든 샵이 예약금(Toss PG 선결제)을 받는다 — 결제 방식 선택 없이 항상 필수.
@@ -70,7 +79,8 @@ export default function OnboardingPage() {
   // 뒤로가기: 샵 설정을 중단하고 로그인 화면으로. (샵 미등록 상태라 그냥 이동하면
   // 가드가 다시 온보딩으로 돌려보내므로 로그아웃 후 이동한다.)
   const handleBack = () => {
-    if (!window.confirm('입력한 내용이 저장되지 않고 로그인 화면으로 돌아갑니다. 계속할까요?')) return;
+    if (!window.confirm('입력한 내용이 저장되지 않고 로그인 화면으로 돌아갑니다. 계속할까요?'))
+      return;
     logout();
     router.replace('/login');
   };
@@ -114,6 +124,12 @@ export default function OnboardingPage() {
     if (status === 'idle' || status === 'loading') return;
     if (status === 'unauthenticated') {
       router.replace('/login');
+      return;
+    }
+    // 임시 비밀번호면 승인 여부와 무관하게 먼저 잠금을 풀어야 한다 — 아래 샵 조회부터
+    // 403(`PASSWORD_CHANGE_REQUIRED`)이라 온보딩이 시작조차 되지 않는다.
+    if (owner?.must_change_password) {
+      router.replace('/password-change');
       return;
     }
     if (!isApproved) {
@@ -209,22 +225,26 @@ export default function OnboardingPage() {
 
   if (gate === 'checking') {
     return (
-      <main className="flex min-h-screen items-center justify-center text-body-sm text-primary-50">불러오는 중…</main>
+      <main className="text-body-sm text-primary-50 flex min-h-screen items-center justify-center">
+        불러오는 중…
+      </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-surface px-4 py-10">
+    <main className="bg-surface min-h-screen px-4 py-10">
       <div className="mx-auto w-full max-w-sm">
         <button
           type="button"
           onClick={handleBack}
-          className="mb-2 flex items-center gap-1 text-body-sm font-semibold text-primary-50 hover:text-primary"
+          className="text-body-sm text-primary-50 hover:text-primary mb-2 flex items-center gap-1 font-semibold"
         >
           <span className="text-lg leading-none">←</span> 뒤로
         </button>
-        <h1 className="text-center text-heading-lg font-bold text-secondary">샵 설정</h1>
-        <p className="mt-1 text-center text-caption text-primary-50">시작하려면 아래 정보를 입력해주세요.</p>
+        <h1 className="text-heading-lg text-secondary text-center font-bold">샵 설정</h1>
+        <p className="text-caption text-primary-50 mt-1 text-center">
+          시작하려면 아래 정보를 입력해주세요.
+        </p>
 
         <form
           onSubmit={handleSubmit(onSubmit)}
@@ -233,14 +253,16 @@ export default function OnboardingPage() {
         >
           {/* 샵 이름 */}
           <div>
-            <label className="mb-1 block text-body-sm font-medium">샵 이름</label>
+            <label className="text-body-sm mb-1 block font-medium">샵 이름</label>
             <input className={inputCls} placeholder="예: 스네일 네일" {...register('shopName')} />
-            {errors.shopName && <p className="mt-1 text-caption text-danger">{errors.shopName.message}</p>}
+            {errors.shopName && (
+              <p className="text-caption text-danger mt-1">{errors.shopName.message}</p>
+            )}
           </div>
 
           {/* 운영 형태 */}
           <div>
-            <label className="mb-1 block text-body-sm font-medium">운영 형태</label>
+            <label className="text-body-sm mb-1 block font-medium">운영 형태</label>
             <div className="flex gap-2">
               <ModeToggle active={!isMulti} onClick={() => setMode(false)}>
                 1인샵
@@ -250,21 +272,29 @@ export default function OnboardingPage() {
               </ModeToggle>
             </div>
             <div className="mt-3">
-              <label className="mb-1 block text-caption font-semibold text-primary-50">
+              <label className="text-caption text-primary-50 mb-1 block font-semibold">
                 디자이너 이름 (앱에 노출){isMulti && ` · ${designerArray.fields.length}명`}
               </label>
               {!isMulti ? (
-                <input className={inputCls} placeholder="예: 수진" {...register('designers.0.name')} />
+                <input
+                  className={inputCls}
+                  placeholder="예: 수진"
+                  {...register('designers.0.name')}
+                />
               ) : (
                 <div className="space-y-2">
                   {designerArray.fields.map((f, i) => (
                     <div key={f.id} className="flex gap-2">
-                      <input className={inputCls} placeholder={`디자이너 ${i + 1}`} {...register(`designers.${i}.name` as const)} />
+                      <input
+                        className={inputCls}
+                        placeholder={`디자이너 ${i + 1}`}
+                        {...register(`designers.${i}.name` as const)}
+                      />
                       {designerArray.fields.length > 1 && (
                         <button
                           type="button"
                           onClick={() => designerArray.remove(i)}
-                          className="shrink-0 rounded-lg border border-neutral-300 px-3 text-caption font-semibold text-primary-50"
+                          className="text-caption text-primary-50 shrink-0 rounded-lg border border-neutral-300 px-3 font-semibold"
                         >
                           삭제
                         </button>
@@ -274,14 +304,14 @@ export default function OnboardingPage() {
                   <button
                     type="button"
                     onClick={() => designerArray.append({ name: '' })}
-                    className="text-caption font-semibold text-secondary"
+                    className="text-caption text-secondary font-semibold"
                   >
                     + 디자이너 추가
                   </button>
                 </div>
               )}
               {errors.designers && (
-                <p className="mt-1 text-caption text-danger">
+                <p className="text-caption text-danger mt-1">
                   {(errors.designers.message as string) ?? '디자이너 이름을 확인해주세요.'}
                 </p>
               )}
@@ -290,7 +320,7 @@ export default function OnboardingPage() {
 
           {/* 영업시간 */}
           <div>
-            <label className="mb-1 block text-body-sm font-medium">영업시간</label>
+            <label className="text-body-sm mb-1 block font-medium">영업시간</label>
             <BusinessHoursField value={hours} onChange={setHours} />
           </div>
 
@@ -347,7 +377,7 @@ export default function OnboardingPage() {
 
           {/* 지역 — 자유입력 불가, 아래 목록에서만 선택 */}
           <div>
-            <label className="mb-1 block text-body-sm font-medium">
+            <label className="text-body-sm mb-1 block font-medium">
               지역 <span className="text-primary-50">(선택)</span>
             </label>
             <select className={`${inputCls} bg-white`} {...register('region')}>
@@ -367,13 +397,15 @@ export default function OnboardingPage() {
           </div>
 
           {submitError && (
-            <p className="rounded-md bg-danger-bg px-3 py-2 text-caption text-danger">{submitError}</p>
+            <p className="bg-danger-bg text-caption text-danger rounded-md px-3 py-2">
+              {submitError}
+            </p>
           )}
 
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full rounded-lg bg-secondary py-2.5 text-body-sm font-semibold text-white disabled:opacity-50"
+            className="bg-secondary text-body-sm w-full rounded-lg py-2.5 font-semibold text-white disabled:opacity-50"
           >
             {isSubmitting ? '설정 중…' : '시작하기'}
           </button>
@@ -386,13 +418,21 @@ export default function OnboardingPage() {
 const inputCls =
   'w-full rounded-lg border border-neutral-300 px-3 py-2.5 text-body-sm outline-none focus:border-secondary';
 
-function ModeToggle({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+function ModeToggle({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`flex-1 rounded-lg border px-4 py-2 text-body-sm font-semibold ${
-        active ? 'border-secondary bg-secondary text-white' : 'border-neutral-300 text-primary'
+      className={`text-body-sm flex-1 rounded-lg border px-4 py-2 font-semibold ${
+        active ? 'border-secondary bg-secondary text-white' : 'text-primary border-neutral-300'
       }`}
     >
       {children}
