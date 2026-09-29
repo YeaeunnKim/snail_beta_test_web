@@ -59,7 +59,9 @@ jobs:
 
       - name: Install Vercel CLI
         if: steps.guard.outputs.skip != 'true'
-        run: npm install -g vercel@latest
+        # 버전을 고정한다. @latest 면 배포 토큰이 든 잡이 매번 검증 안 된 최신 CLI 를 받는다
+        # (2026-09-29 에 61.0.0 메이저가 당일 공개됐다). 올릴 때는 공개 3일 지난 버전으로.
+        run: npm install -g vercel@60.1.3
 
       - name: Pull Vercel project settings & prod env
         if: steps.guard.outputs.skip != 'true'
