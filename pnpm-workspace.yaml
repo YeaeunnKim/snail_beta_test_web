@@ -3,3 +3,8 @@ allowBuilds:
   core-js: false
   sharp: true
   unrs-resolver: false
+
+# 공개된 지 3일(4320분)이 안 된 버전은 해석하지 않는다. pnpm 11 기본값은 1일(1440)인데, npm 탈취
+# 사고는 대부분 공개 며칠 안에 적발·회수되므로 앱(snail_ios .npmrc min-release-age=3)과 맞춘다.
+# 긴급 보안 패치는 minimumReleaseAgeExclude 에 패키지 이름을 넣어 이 유예만 건너뛴다.
+minimumReleaseAge: 4320
