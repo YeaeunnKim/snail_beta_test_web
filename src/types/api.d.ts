@@ -3756,7 +3756,7 @@ export interface components {
              * Hours
              * @default 2
              */
-            hours: number;
+            hours?: number;
             /** Note */
             note?: string | null;
         };
@@ -3861,7 +3861,7 @@ export interface components {
              * @default before
              * @enum {string}
              */
-            image_set: "before" | "after";
+            image_set?: "before" | "after";
         };
         /** AdminImportManifestUrlResponse */
         AdminImportManifestUrlResponse: {
@@ -3945,12 +3945,12 @@ export interface components {
              * Dry Run
              * @default true
              */
-            dry_run: boolean;
+            dry_run?: boolean;
             /**
              * Source Namespace
              * @default instagram_import
              */
-            source_namespace: string;
+            source_namespace?: string;
             overrides?: components["schemas"]["AdminImportOverrides"] | null;
         };
         /**
@@ -4081,7 +4081,7 @@ export interface components {
              * Shop Entry Status
              * @default missing
              */
-            shop_entry_status: string;
+            shop_entry_status?: string;
             /** Shop Id */
             shop_id?: string | null;
             /** Shop Name */
@@ -4090,7 +4090,7 @@ export interface components {
              * Must Change Password
              * @default false
              */
-            must_change_password: boolean;
+            must_change_password?: boolean;
             /** Password Changed At */
             password_changed_at?: string | null;
             business_verification?: components["schemas"]["AdminBusinessVerification"] | null;
@@ -4128,7 +4128,7 @@ export interface components {
              * Shop Entry Status
              * @default missing
              */
-            shop_entry_status: string;
+            shop_entry_status?: string;
             /** Shop Id */
             shop_id?: string | null;
             /** Shop Name */
@@ -4137,7 +4137,7 @@ export interface components {
              * Must Change Password
              * @default false
              */
-            must_change_password: boolean;
+            must_change_password?: boolean;
             /** Password Changed At */
             password_changed_at?: string | null;
         };
@@ -4240,7 +4240,7 @@ export interface components {
              * Contacted
              * @default true
              */
-            contacted: boolean;
+            contacted?: boolean;
         };
         /** AdminReportDetail */
         AdminReportDetail: {
@@ -4495,7 +4495,7 @@ export interface components {
              * Quantity
              * @default 1
              */
-            quantity: number;
+            quantity?: number;
         };
         /** AdminReservationRequestDetail */
         AdminReservationRequestDetail: {
@@ -4559,7 +4559,7 @@ export interface components {
              * Option Names
              * @default []
              */
-            option_names: string[];
+            option_names?: string[];
             /** Decline Reason */
             decline_reason?: string | null;
             /** Decided At */
@@ -4585,12 +4585,12 @@ export interface components {
              * Selectable Starts
              * @default []
              */
-            selectable_starts: string[];
+            selectable_starts?: string[];
             /**
              * Duration Minutes
              * @default 0
              */
-            duration_minutes: number;
+            duration_minutes?: number;
             /** Quote Text */
             quote_text?: string | null;
         };
@@ -4800,7 +4800,7 @@ export interface components {
              * @default fill_empty
              * @enum {string}
              */
-            mode: "fill_empty" | "replace_ai";
+            mode?: "fill_empty" | "replace_ai";
             /** Ai Model Version */
             ai_model_version?: string | null;
         };
@@ -5011,7 +5011,7 @@ export interface components {
              * Is Closed
              * @default false
              */
-            is_closed: boolean;
+            is_closed?: boolean;
         };
         /** BusinessHoursSet */
         BusinessHoursSet: {
@@ -5137,7 +5137,7 @@ export interface components {
              * Unread Count
              * @default 0
              */
-            unread_count: number;
+            unread_count?: number;
             /**
              * Created At
              * Format: date-time
@@ -5440,7 +5440,7 @@ export interface components {
              * Sort Order
              * @default 0
              */
-            sort_order: number;
+            sort_order?: number;
             /** Featured Month */
             featured_month?: string | null;
             /** Detail Image Upload Key */
@@ -5643,14 +5643,14 @@ export interface components {
              * Price Delta
              * @default 0
              */
-            price_delta: number;
+            price_delta?: number;
             /** Duration Delta Min */
             duration_delta_min?: number | null;
             /**
              * Sort Order
              * @default 0
              */
-            sort_order: number;
+            sort_order?: number;
             /**
              * Template Key
              * @description 이 옵션이 파생된 shop.option_presets 프리셋 옵션의 키. 손으로 만든 옵션은 비운다.
@@ -5660,7 +5660,7 @@ export interface components {
              * @description toggle(켜고 끄기, 기본값) 또는 quantity(개수 선택).
              * @default toggle
              */
-            selection_type: components["schemas"]["DesignOptionSelectionType"];
+            selection_type?: components["schemas"]["DesignOptionSelectionType"];
             /**
              * Max Quantity
              * @description selection_type=quantity일 때만 사용하는 최대 선택 개수.
@@ -6009,7 +6009,7 @@ export interface components {
              * @default ios
              * @enum {string}
              */
-            platform: "ios" | "android";
+            platform?: "ios" | "android";
         };
         /**
          * EventBatchIn
@@ -6162,7 +6162,7 @@ export interface components {
              * Token Type
              * @default bearer
              */
-            token_type: string;
+            token_type?: string;
             /**
              * Expires At
              * Format: date-time
@@ -6494,7 +6494,7 @@ export interface components {
              * Can Disable
              * @default true
              */
-            can_disable: boolean;
+            can_disable?: boolean;
             /** Always On Reason */
             always_on_reason?: string | null;
             /** Allowed Variables */
@@ -6514,7 +6514,7 @@ export interface components {
              * Is Enabled
              * @default true
              */
-            is_enabled: boolean;
+            is_enabled?: boolean;
         };
         /** OptionPreset */
         "OptionPreset-Input": {
@@ -6549,17 +6549,17 @@ export interface components {
              * Price Delta
              * @default 0
              */
-            price_delta: number;
+            price_delta?: number;
             /**
              * Duration Delta Min
              * @default 0
              */
-            duration_delta_min: number;
+            duration_delta_min?: number;
             /**
              * Sort Order
              * @default 0
              */
-            sort_order: number;
+            sort_order?: number;
         };
         /**
          * OptionSelectionMode
@@ -6638,7 +6638,7 @@ export interface components {
              * Must Change Password
              * @default false
              */
-            must_change_password: boolean;
+            must_change_password?: boolean;
             /** Password Changed At */
             password_changed_at?: string | null;
         };
@@ -6732,7 +6732,7 @@ export interface components {
              * Has Next
              * @default false
              */
-            has_next: boolean;
+            has_next?: boolean;
         };
         /** PasswordChange */
         PasswordChange: {
@@ -7052,7 +7052,7 @@ export interface components {
              * Can Review
              * @default false
              */
-            can_review: boolean;
+            can_review?: boolean;
             shop?: components["schemas"]["ReservationShopSummary"] | null;
             designer?: components["schemas"]["ReservationDesignerSummary"] | null;
             design?: components["schemas"]["ReservationDesignSummary"] | null;
@@ -7148,7 +7148,7 @@ export interface components {
              * Can Review
              * @default false
              */
-            can_review: boolean;
+            can_review?: boolean;
             shop?: components["schemas"]["ReservationShopSummary"] | null;
             designer?: components["schemas"]["ReservationDesignerSummary"] | null;
             design?: components["schemas"]["ReservationDesignSummary"] | null;
@@ -7285,7 +7285,7 @@ export interface components {
              * Customer Push Reachable
              * @default false
              */
-            customer_push_reachable: boolean;
+            customer_push_reachable?: boolean;
             /** Design Title */
             design_title: string;
             /** Option Names */
@@ -7322,7 +7322,7 @@ export interface components {
              * Deposit Prepaid
              * @default false
              */
-            deposit_prepaid: boolean;
+            deposit_prepaid?: boolean;
             /** Decline Reason */
             decline_reason?: string | null;
         };
@@ -7522,7 +7522,7 @@ export interface components {
              * Is Day Off
              * @default false
              */
-            is_day_off: boolean;
+            is_day_off?: boolean;
         };
         /** ScreenRow */
         ScreenRow: {
@@ -7760,7 +7760,7 @@ export interface components {
             /** Kakao Url */
             kakao_url?: string | null;
             /** @default on_site */
-            payment_method: components["schemas"]["PaymentMethod"];
+            payment_method?: components["schemas"]["PaymentMethod"];
             /** Deposit Amount */
             deposit_amount?: number | null;
             /** Bank Name */
@@ -7773,7 +7773,7 @@ export interface components {
              * Auto Accept
              * @default false
              */
-            auto_accept: boolean;
+            auto_accept?: boolean;
             /** Reservation Policy */
             reservation_policy?: string | null;
             /** Refund Tiers */
@@ -7797,12 +7797,12 @@ export interface components {
              * Sort Order
              * @default 0
              */
-            sort_order: number;
+            sort_order?: number;
             /**
              * Is Thumbnail
              * @default false
              */
-            is_thumbnail: boolean;
+            is_thumbnail?: boolean;
         };
         /** ShopImagePublic */
         ShopImagePublic: {
@@ -7828,7 +7828,7 @@ export interface components {
              * Is Public
              * @default true
              */
-            is_public: boolean;
+            is_public?: boolean;
         };
         /** ShopInquiryListResponse */
         ShopInquiryListResponse: {
@@ -7972,12 +7972,12 @@ export interface components {
             /** Name */
             name: string;
             /** @default multi */
-            selection_mode: components["schemas"]["OptionSelectionMode"];
+            selection_mode?: components["schemas"]["OptionSelectionMode"];
             /**
              * Sort Order
              * @default 0
              */
-            sort_order: number;
+            sort_order?: number;
         };
         /** ShopOptionCategoryPublic */
         ShopOptionCategoryPublic: {
@@ -8071,7 +8071,7 @@ export interface components {
              * Total Review Count
              * @default 0
              */
-            total_review_count: number;
+            total_review_count?: number;
             /** Display Rating */
             display_rating?: string | null;
             /** Favorite Count */
@@ -8080,7 +8080,7 @@ export interface components {
              * Favorited By Me
              * @default false
              */
-            favorited_by_me: boolean;
+            favorited_by_me?: boolean;
             /** Images */
             images?: components["schemas"]["ShopImagePublic"][];
             /** Business Hours */
@@ -8285,7 +8285,7 @@ export interface components {
              * Enabled
              * @default true
              */
-            enabled: boolean;
+            enabled?: boolean;
             /** Aliases */
             aliases?: string[];
         };
@@ -8305,7 +8305,7 @@ export interface components {
              * Clear Region
              * @default false
              */
-            clear_region: boolean;
+            clear_region?: boolean;
         };
         /** TaxonomyChipDeleteResult */
         TaxonomyChipDeleteResult: {
@@ -8456,7 +8456,7 @@ export interface components {
              * @constant
              * @enum {string}
              */
-            token_type: "Bearer";
+            token_type?: "Bearer";
             /**
              * Access Expires At
              * Format: date-time
@@ -8580,12 +8580,12 @@ export interface components {
              * Has Password
              * @default false
              */
-            has_password: boolean;
+            has_password?: boolean;
             /**
              * Ad Consent
              * @default false
              */
-            ad_consent: boolean;
+            ad_consent?: boolean;
             /** Ad Consent Prompted At */
             ad_consent_prompted_at?: string | null;
             /**
@@ -8690,7 +8690,7 @@ export interface components {
              * Ad Consent
              * @default false
              */
-            ad_consent: boolean;
+            ad_consent?: boolean;
         };
         /** UserUpdate */
         UserUpdate: {
@@ -8748,7 +8748,7 @@ export interface components {
              * Field Errors
              * @default null
              */
-            field_errors: {
+            field_errors?: {
                 [key: string]: string;
             } | null;
         };
