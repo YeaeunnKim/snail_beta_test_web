@@ -210,7 +210,7 @@ export default function OnboardingPage() {
       if (!progressRef.current.foldersDone) {
         for (const name of ['7월의 아트', '8월의 아트']) {
           try {
-            await designsApi.createFolder({ name });
+            await designsApi.createFolder({ name, sort_order: 0 });
           } catch {
             /* 중복 등은 무시 */
           }

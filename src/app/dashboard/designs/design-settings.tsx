@@ -81,6 +81,7 @@ export function toOptionBody(r: OptionRow, sortOrder: number) {
     price_delta: Math.max(0, Math.round(r.priceDelta) || 0),
     duration_delta_min: clampOptionDuration(r.durationDelta),
     sort_order: sortOrder,
+    selection_type: 'toggle' as const,
   };
 }
 

@@ -3907,6 +3907,163 @@
         }
       }
     },
+    "/api/v1/admin/designs/ai-tags": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "로컬 AI 태깅 결과를 기존 디자인에 주입",
+        "description": "기본(`fill_empty`)은 빈 칸만 채운다. `replace_ai` 는 AI 네 칸을 교체하고 교체 전 값을\n행별로 돌려준다. 어느 모드든 `owner_tags` 는 건드리지 않는다.",
+        "operationId": "admin_inject_design_ai_tags",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Required for mutating requests."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AiTagInjectRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiTagInjectResult"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "description": "Request correlation id.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "VALIDATION_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "description": "Request correlation id.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHORIZED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "description": "Request correlation id.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "FORBIDDEN",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "description": "Request correlation id.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NOT_FOUND",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "description": "Request correlation id.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "CONFLICT",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "description": "Request correlation id.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/admin/reports": {
       "get": {
         "tags": [
@@ -14585,6 +14742,155 @@
                 }
               }
             },
+            "headers": {
+              "X-Request-Id": {
+                "description": "Request correlation id.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "VALIDATION_ERROR",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "description": "Request correlation id.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UNAUTHORIZED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "description": "Request correlation id.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "FORBIDDEN",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "description": "Request correlation id.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NOT_FOUND",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "description": "Request correlation id.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "CONFLICT",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "headers": {
+              "X-Request-Id": {
+                "description": "Request correlation id.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/password": {
+      "post": {
+        "tags": [
+          "users"
+        ],
+        "summary": "비밀번호 변경(이메일 가입자)",
+        "operationId": "users_change_my_password",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Required for mutating requests."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordChange"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response",
             "headers": {
               "X-Request-Id": {
                 "description": "Request correlation id.",
@@ -40810,6 +41116,230 @@
         ],
         "title": "AiAnalysisStatus"
       },
+      "AiTagInjectRequest": {
+        "properties": {
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/AiTagRow"
+            },
+            "type": "array",
+            "maxItems": 200,
+            "minItems": 1,
+            "title": "Rows"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "fill_empty",
+              "replace_ai"
+            ],
+            "title": "Mode",
+            "default": "fill_empty"
+          },
+          "ai_model_version": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Model Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rows"
+        ],
+        "title": "AiTagInjectRequest"
+      },
+      "AiTagInjectResult": {
+        "properties": {
+          "applied": {
+            "type": "integer",
+            "title": "Applied"
+          },
+          "skipped": {
+            "type": "integer",
+            "title": "Skipped"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/AiTagRowResult"
+            },
+            "type": "array",
+            "title": "Rows"
+          }
+        },
+        "type": "object",
+        "required": [
+          "applied",
+          "skipped",
+          "rows"
+        ],
+        "title": "AiTagInjectResult"
+      },
+      "AiTagRow": {
+        "properties": {
+          "design_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Design Id"
+          },
+          "base_price": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Base Price"
+          },
+          "ai_tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Ai Tags"
+          },
+          "color_palette": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Color Palette"
+          },
+          "style_category": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Style Category"
+          },
+          "nail_shape": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nail Shape"
+          }
+        },
+        "type": "object",
+        "required": [
+          "design_id",
+          "base_price"
+        ],
+        "title": "AiTagRow"
+      },
+      "AiTagRowResult": {
+        "properties": {
+          "design_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Design Id"
+          },
+          "result": {
+            "type": "string",
+            "enum": [
+              "applied",
+              "skipped_already_tagged",
+              "skipped_price_mismatch"
+            ],
+            "title": "Result"
+          },
+          "dropped_terms": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Dropped Terms"
+          },
+          "expected_base_price": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Base Price"
+          },
+          "previous": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AiTagValues"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "design_id",
+          "result"
+        ],
+        "title": "AiTagRowResult"
+      },
+      "AiTagValues": {
+        "properties": {
+          "ai_tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Ai Tags"
+          },
+          "color_palette": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Color Palette"
+          },
+          "style_category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Style Category"
+          },
+          "nail_shape": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nail Shape"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ai_tags",
+          "color_palette",
+          "style_category",
+          "nail_shape"
+        ],
+        "title": "AiTagValues",
+        "description": "AI 네 칸의 한 시점 값. replace_ai 응답이 교체 전 값을 이 모양으로 돌려준다.\n\n되돌리기 = 이 값을 그대로 rows 로 만들어 replace_ai 로 다시 보내는 것."
+      },
       "AnalyticsRange": {
         "properties": {
           "start": {
@@ -42176,6 +42706,17 @@
               }
             ],
             "title": "Featured Month"
+          },
+          "detail_image_upload_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail Image Upload Key"
           }
         },
         "type": "object",
@@ -42209,6 +42750,17 @@
               }
             ],
             "title": "Featured Month"
+          },
+          "detail_image_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail Image Url"
           },
           "design_count": {
             "type": "integer",
@@ -42274,6 +42826,17 @@
               }
             ],
             "title": "Featured Month"
+          },
+          "detail_image_upload_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail Image Upload Key"
           }
         },
         "type": "object",
@@ -43126,6 +43689,13 @@
             },
             "type": "array",
             "title": "Owner Tags"
+          },
+          "ai_tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Ai Tags"
           },
           "color_palette": {
             "items": {
@@ -45827,6 +46397,28 @@
         "type": "object",
         "title": "PageMeta"
       },
+      "PasswordChange": {
+        "properties": {
+          "current_password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Current Password"
+          },
+          "new_password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 8,
+            "title": "New Password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "current_password",
+          "new_password"
+        ],
+        "title": "PasswordChange"
+      },
       "PasswordResetConfirmRequest": {
         "properties": {
           "token": {
@@ -46062,7 +46654,7 @@
           "refund_percent"
         ],
         "title": "RefundTierIn",
-        "description": "\"시술일까지 N일 이상 남았으면 X% 환불\" 한 칸.\n\n매장이 직접 정하며 회사는 하한을 두지 않는다(2026-09-03 확정). 계단의 순서·중복·\n단조성 검증은 `reservation_policy.validate_refund_tiers` 한 곳에서만 한다 — 여기서\n다시 검사하면 규칙이 두 곳으로 갈린다."
+        "description": "\"시술일까지 N일 이상 남았으면 X% 환불\" 한 칸.\n\n매장이 직접 정한다. 회사 하한은 저장값이 아니라 고지 시점에 씌운다\n(`reservation_policy._with_refund_floor`, `REFUND_FLOOR_ENABLED`). 계단의 순서·중복·\n단조성 검증은 `reservation_policy.validate_refund_tiers` 한 곳에서만 한다 — 여기서\n다시 검사하면 규칙이 두 곳으로 갈린다."
       },
       "ReportAction": {
         "type": "string",
@@ -46581,6 +47173,11 @@
             ],
             "title": "No Show At"
           },
+          "can_review": {
+            "type": "boolean",
+            "title": "Can Review",
+            "default": false
+          },
           "shop": {
             "anyOf": [
               {
@@ -46865,6 +47462,11 @@
               }
             ],
             "title": "No Show At"
+          },
+          "can_review": {
+            "type": "boolean",
+            "title": "Can Review",
+            "default": false
           },
           "shop": {
             "anyOf": [
@@ -49551,6 +50153,33 @@
             "type": "integer",
             "title": "Review Count"
           },
+          "naver_review_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Naver Review Count"
+          },
+          "total_review_count": {
+            "type": "integer",
+            "title": "Total Review Count",
+            "default": 0
+          },
+          "display_rating": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Rating"
+          },
           "favorite_count": {
             "type": "integer",
             "title": "Favorite Count"
@@ -51050,6 +51679,28 @@
               "wear"
             ]
           },
+          "has_password": {
+            "type": "boolean",
+            "title": "Has Password",
+            "default": false
+          },
+          "ad_consent": {
+            "type": "boolean",
+            "title": "Ad Consent",
+            "default": false
+          },
+          "ad_consent_prompted_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ad Consent Prompted At"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -51332,6 +51983,11 @@
             "maxLength": 20,
             "minLength": 1,
             "title": "Accepted Privacy Version"
+          },
+          "ad_consent": {
+            "type": "boolean",
+            "title": "Ad Consent",
+            "default": false
           }
         },
         "type": "object",
@@ -51409,6 +52065,18 @@
             "examples": [
               "wear"
             ]
+          },
+          "ad_consent": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ad Consent",
+            "description": "광고 성과 측정 선택 동의. true=동의, false=철회, 생략=변경 없음."
           }
         },
         "type": "object",
