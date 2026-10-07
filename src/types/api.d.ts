@@ -430,6 +430,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/designs/ai-tags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 로컬 AI 태깅 결과를 기존 디자인에 주입
+         * @description 기본(`fill_empty`)은 빈 칸만 채운다. `replace_ai` 는 AI 네 칸을 교체하고 교체 전 값을
+         *     행별로 돌려준다. 어느 모드든 `owner_tags` 는 건드리지 않는다.
+         */
+        post: operations["admin_inject_design_ai_tags"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/reports": {
         parameters: {
             query?: never;
@@ -1552,6 +1573,23 @@ export interface paths {
         head?: never;
         /** 내 사용자 정보 수정 */
         patch: operations["users_update_me"];
+        trace?: never;
+    };
+    "/api/v1/me/password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 비밀번호 변경(이메일 가입자) */
+        post: operations["users_change_my_password"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/users/{user_id}": {
@@ -3718,7 +3756,7 @@ export interface components {
              * Hours
              * @default 2
              */
-            hours?: number;
+            hours: number;
             /** Note */
             note?: string | null;
         };
@@ -3823,7 +3861,7 @@ export interface components {
              * @default before
              * @enum {string}
              */
-            image_set?: "before" | "after";
+            image_set: "before" | "after";
         };
         /** AdminImportManifestUrlResponse */
         AdminImportManifestUrlResponse: {
@@ -3907,12 +3945,12 @@ export interface components {
              * Dry Run
              * @default true
              */
-            dry_run?: boolean;
+            dry_run: boolean;
             /**
              * Source Namespace
              * @default instagram_import
              */
-            source_namespace?: string;
+            source_namespace: string;
             overrides?: components["schemas"]["AdminImportOverrides"] | null;
         };
         /**
@@ -4043,7 +4081,7 @@ export interface components {
              * Shop Entry Status
              * @default missing
              */
-            shop_entry_status?: string;
+            shop_entry_status: string;
             /** Shop Id */
             shop_id?: string | null;
             /** Shop Name */
@@ -4052,7 +4090,7 @@ export interface components {
              * Must Change Password
              * @default false
              */
-            must_change_password?: boolean;
+            must_change_password: boolean;
             /** Password Changed At */
             password_changed_at?: string | null;
             business_verification?: components["schemas"]["AdminBusinessVerification"] | null;
@@ -4090,7 +4128,7 @@ export interface components {
              * Shop Entry Status
              * @default missing
              */
-            shop_entry_status?: string;
+            shop_entry_status: string;
             /** Shop Id */
             shop_id?: string | null;
             /** Shop Name */
@@ -4099,7 +4137,7 @@ export interface components {
              * Must Change Password
              * @default false
              */
-            must_change_password?: boolean;
+            must_change_password: boolean;
             /** Password Changed At */
             password_changed_at?: string | null;
         };
@@ -4202,7 +4240,7 @@ export interface components {
              * Contacted
              * @default true
              */
-            contacted?: boolean;
+            contacted: boolean;
         };
         /** AdminReportDetail */
         AdminReportDetail: {
@@ -4457,7 +4495,7 @@ export interface components {
              * Quantity
              * @default 1
              */
-            quantity?: number;
+            quantity: number;
         };
         /** AdminReservationRequestDetail */
         AdminReservationRequestDetail: {
@@ -4521,7 +4559,7 @@ export interface components {
              * Option Names
              * @default []
              */
-            option_names?: string[];
+            option_names: string[];
             /** Decline Reason */
             decline_reason?: string | null;
             /** Decided At */
@@ -4547,12 +4585,12 @@ export interface components {
              * Selectable Starts
              * @default []
              */
-            selectable_starts?: string[];
+            selectable_starts: string[];
             /**
              * Duration Minutes
              * @default 0
              */
-            duration_minutes?: number;
+            duration_minutes: number;
             /** Quote Text */
             quote_text?: string | null;
         };
@@ -4753,6 +4791,80 @@ export interface components {
          * @enum {string}
          */
         AiAnalysisStatus: "pending" | "in_progress" | "done" | "failed";
+        /** AiTagInjectRequest */
+        AiTagInjectRequest: {
+            /** Rows */
+            rows: components["schemas"]["AiTagRow"][];
+            /**
+             * Mode
+             * @default fill_empty
+             * @enum {string}
+             */
+            mode: "fill_empty" | "replace_ai";
+            /** Ai Model Version */
+            ai_model_version?: string | null;
+        };
+        /** AiTagInjectResult */
+        AiTagInjectResult: {
+            /** Applied */
+            applied: number;
+            /** Skipped */
+            skipped: number;
+            /** Rows */
+            rows: components["schemas"]["AiTagRowResult"][];
+        };
+        /** AiTagRow */
+        AiTagRow: {
+            /**
+             * Design Id
+             * Format: uuid
+             */
+            design_id: string;
+            /** Base Price */
+            base_price: number;
+            /** Ai Tags */
+            ai_tags?: string[];
+            /** Color Palette */
+            color_palette?: string[];
+            /** Style Category */
+            style_category?: string | null;
+            /** Nail Shape */
+            nail_shape?: string | null;
+        };
+        /** AiTagRowResult */
+        AiTagRowResult: {
+            /**
+             * Design Id
+             * Format: uuid
+             */
+            design_id: string;
+            /**
+             * Result
+             * @enum {string}
+             */
+            result: "applied" | "skipped_already_tagged" | "skipped_price_mismatch";
+            /** Dropped Terms */
+            dropped_terms?: string[];
+            /** Expected Base Price */
+            expected_base_price?: number | null;
+            previous?: components["schemas"]["AiTagValues"] | null;
+        };
+        /**
+         * AiTagValues
+         * @description AI 네 칸의 한 시점 값. replace_ai 응답이 교체 전 값을 이 모양으로 돌려준다.
+         *
+         *     되돌리기 = 이 값을 그대로 rows 로 만들어 replace_ai 로 다시 보내는 것.
+         */
+        AiTagValues: {
+            /** Ai Tags */
+            ai_tags: string[];
+            /** Color Palette */
+            color_palette: string[];
+            /** Style Category */
+            style_category: string | null;
+            /** Nail Shape */
+            nail_shape: string | null;
+        };
         /** AnalyticsRange */
         AnalyticsRange: {
             /**
@@ -4899,7 +5011,7 @@ export interface components {
              * Is Closed
              * @default false
              */
-            is_closed?: boolean;
+            is_closed: boolean;
         };
         /** BusinessHoursSet */
         BusinessHoursSet: {
@@ -5025,7 +5137,7 @@ export interface components {
              * Unread Count
              * @default 0
              */
-            unread_count?: number;
+            unread_count: number;
             /**
              * Created At
              * Format: date-time
@@ -5328,9 +5440,11 @@ export interface components {
              * Sort Order
              * @default 0
              */
-            sort_order?: number;
+            sort_order: number;
             /** Featured Month */
             featured_month?: string | null;
+            /** Detail Image Upload Key */
+            detail_image_upload_key?: string | null;
         };
         /** DesignFolderPublic */
         DesignFolderPublic: {
@@ -5345,6 +5459,8 @@ export interface components {
             sort_order: number;
             /** Featured Month */
             featured_month?: string | null;
+            /** Detail Image Url */
+            detail_image_url?: string | null;
             /** Design Count */
             design_count: number;
             /**
@@ -5366,6 +5482,8 @@ export interface components {
             sort_order?: number | null;
             /** Featured Month */
             featured_month?: string | null;
+            /** Detail Image Upload Key */
+            detail_image_upload_key?: string | null;
         };
         /** DesignImageProcessingQueued */
         DesignImageProcessingQueued: {
@@ -5525,14 +5643,14 @@ export interface components {
              * Price Delta
              * @default 0
              */
-            price_delta?: number;
+            price_delta: number;
             /** Duration Delta Min */
             duration_delta_min?: number | null;
             /**
              * Sort Order
              * @default 0
              */
-            sort_order?: number;
+            sort_order: number;
             /**
              * Template Key
              * @description 이 옵션이 파생된 shop.option_presets 프리셋 옵션의 키. 손으로 만든 옵션은 비운다.
@@ -5542,7 +5660,7 @@ export interface components {
              * @description toggle(켜고 끄기, 기본값) 또는 quantity(개수 선택).
              * @default toggle
              */
-            selection_type?: components["schemas"]["DesignOptionSelectionType"];
+            selection_type: components["schemas"]["DesignOptionSelectionType"];
             /**
              * Max Quantity
              * @description selection_type=quantity일 때만 사용하는 최대 선택 개수.
@@ -5652,6 +5770,8 @@ export interface components {
             images?: components["schemas"]["DesignImagePublic"][];
             /** Owner Tags */
             owner_tags?: string[];
+            /** Ai Tags */
+            ai_tags?: string[];
             /** Color Palette */
             color_palette: string[];
             /** Style Category */
@@ -5889,7 +6009,7 @@ export interface components {
              * @default ios
              * @enum {string}
              */
-            platform?: "ios" | "android";
+            platform: "ios" | "android";
         };
         /**
          * EventBatchIn
@@ -6042,7 +6162,7 @@ export interface components {
              * Token Type
              * @default bearer
              */
-            token_type?: string;
+            token_type: string;
             /**
              * Expires At
              * Format: date-time
@@ -6374,7 +6494,7 @@ export interface components {
              * Can Disable
              * @default true
              */
-            can_disable?: boolean;
+            can_disable: boolean;
             /** Always On Reason */
             always_on_reason?: string | null;
             /** Allowed Variables */
@@ -6394,7 +6514,7 @@ export interface components {
              * Is Enabled
              * @default true
              */
-            is_enabled?: boolean;
+            is_enabled: boolean;
         };
         /** OptionPreset */
         "OptionPreset-Input": {
@@ -6429,17 +6549,17 @@ export interface components {
              * Price Delta
              * @default 0
              */
-            price_delta?: number;
+            price_delta: number;
             /**
              * Duration Delta Min
              * @default 0
              */
-            duration_delta_min?: number;
+            duration_delta_min: number;
             /**
              * Sort Order
              * @default 0
              */
-            sort_order?: number;
+            sort_order: number;
         };
         /**
          * OptionSelectionMode
@@ -6518,7 +6638,7 @@ export interface components {
              * Must Change Password
              * @default false
              */
-            must_change_password?: boolean;
+            must_change_password: boolean;
             /** Password Changed At */
             password_changed_at?: string | null;
         };
@@ -6612,7 +6732,14 @@ export interface components {
              * Has Next
              * @default false
              */
-            has_next?: boolean;
+            has_next: boolean;
+        };
+        /** PasswordChange */
+        PasswordChange: {
+            /** Current Password */
+            current_password: string;
+            /** New Password */
+            new_password: string;
         };
         /** PasswordResetConfirmRequest */
         PasswordResetConfirmRequest: {
@@ -6721,7 +6848,8 @@ export interface components {
          * RefundTierIn
          * @description "시술일까지 N일 이상 남았으면 X% 환불" 한 칸.
          *
-         *     매장이 직접 정하며 회사는 하한을 두지 않는다(2026-09-03 확정). 계단의 순서·중복·
+         *     매장이 직접 정한다. 회사 하한은 저장값이 아니라 고지 시점에 씌운다
+         *     (`reservation_policy._with_refund_floor`, `REFUND_FLOOR_ENABLED`). 계단의 순서·중복·
          *     단조성 검증은 `reservation_policy.validate_refund_tiers` 한 곳에서만 한다 — 여기서
          *     다시 검사하면 규칙이 두 곳으로 갈린다.
          */
@@ -6920,6 +7048,11 @@ export interface components {
             completed_at?: string | null;
             /** No Show At */
             no_show_at?: string | null;
+            /**
+             * Can Review
+             * @default false
+             */
+            can_review: boolean;
             shop?: components["schemas"]["ReservationShopSummary"] | null;
             designer?: components["schemas"]["ReservationDesignerSummary"] | null;
             design?: components["schemas"]["ReservationDesignSummary"] | null;
@@ -7011,6 +7144,11 @@ export interface components {
             completed_at?: string | null;
             /** No Show At */
             no_show_at?: string | null;
+            /**
+             * Can Review
+             * @default false
+             */
+            can_review: boolean;
             shop?: components["schemas"]["ReservationShopSummary"] | null;
             designer?: components["schemas"]["ReservationDesignerSummary"] | null;
             design?: components["schemas"]["ReservationDesignSummary"] | null;
@@ -7147,7 +7285,7 @@ export interface components {
              * Customer Push Reachable
              * @default false
              */
-            customer_push_reachable?: boolean;
+            customer_push_reachable: boolean;
             /** Design Title */
             design_title: string;
             /** Option Names */
@@ -7184,7 +7322,7 @@ export interface components {
              * Deposit Prepaid
              * @default false
              */
-            deposit_prepaid?: boolean;
+            deposit_prepaid: boolean;
             /** Decline Reason */
             decline_reason?: string | null;
         };
@@ -7384,7 +7522,7 @@ export interface components {
              * Is Day Off
              * @default false
              */
-            is_day_off?: boolean;
+            is_day_off: boolean;
         };
         /** ScreenRow */
         ScreenRow: {
@@ -7622,7 +7760,7 @@ export interface components {
             /** Kakao Url */
             kakao_url?: string | null;
             /** @default on_site */
-            payment_method?: components["schemas"]["PaymentMethod"];
+            payment_method: components["schemas"]["PaymentMethod"];
             /** Deposit Amount */
             deposit_amount?: number | null;
             /** Bank Name */
@@ -7635,7 +7773,7 @@ export interface components {
              * Auto Accept
              * @default false
              */
-            auto_accept?: boolean;
+            auto_accept: boolean;
             /** Reservation Policy */
             reservation_policy?: string | null;
             /** Refund Tiers */
@@ -7659,12 +7797,12 @@ export interface components {
              * Sort Order
              * @default 0
              */
-            sort_order?: number;
+            sort_order: number;
             /**
              * Is Thumbnail
              * @default false
              */
-            is_thumbnail?: boolean;
+            is_thumbnail: boolean;
         };
         /** ShopImagePublic */
         ShopImagePublic: {
@@ -7690,7 +7828,7 @@ export interface components {
              * Is Public
              * @default true
              */
-            is_public?: boolean;
+            is_public: boolean;
         };
         /** ShopInquiryListResponse */
         ShopInquiryListResponse: {
@@ -7834,12 +7972,12 @@ export interface components {
             /** Name */
             name: string;
             /** @default multi */
-            selection_mode?: components["schemas"]["OptionSelectionMode"];
+            selection_mode: components["schemas"]["OptionSelectionMode"];
             /**
              * Sort Order
              * @default 0
              */
-            sort_order?: number;
+            sort_order: number;
         };
         /** ShopOptionCategoryPublic */
         ShopOptionCategoryPublic: {
@@ -7927,13 +8065,22 @@ export interface components {
             average_rating: string;
             /** Review Count */
             review_count: number;
+            /** Naver Review Count */
+            naver_review_count?: number | null;
+            /**
+             * Total Review Count
+             * @default 0
+             */
+            total_review_count: number;
+            /** Display Rating */
+            display_rating?: string | null;
             /** Favorite Count */
             favorite_count: number;
             /**
              * Favorited By Me
              * @default false
              */
-            favorited_by_me?: boolean;
+            favorited_by_me: boolean;
             /** Images */
             images?: components["schemas"]["ShopImagePublic"][];
             /** Business Hours */
@@ -8138,7 +8285,7 @@ export interface components {
              * Enabled
              * @default true
              */
-            enabled?: boolean;
+            enabled: boolean;
             /** Aliases */
             aliases?: string[];
         };
@@ -8158,7 +8305,7 @@ export interface components {
              * Clear Region
              * @default false
              */
-            clear_region?: boolean;
+            clear_region: boolean;
         };
         /** TaxonomyChipDeleteResult */
         TaxonomyChipDeleteResult: {
@@ -8309,7 +8456,7 @@ export interface components {
              * @constant
              * @enum {string}
              */
-            token_type?: "Bearer";
+            token_type: "Bearer";
             /**
              * Access Expires At
              * Format: date-time
@@ -8430,6 +8577,18 @@ export interface components {
              */
             image_view_mode: components["schemas"]["ImageViewMode"];
             /**
+             * Has Password
+             * @default false
+             */
+            has_password: boolean;
+            /**
+             * Ad Consent
+             * @default false
+             */
+            ad_consent: boolean;
+            /** Ad Consent Prompted At */
+            ad_consent_prompted_at?: string | null;
+            /**
              * Created At
              * Format: date-time
              */
@@ -8527,6 +8686,11 @@ export interface components {
             accepted_terms_version: string;
             /** Accepted Privacy Version */
             accepted_privacy_version: string;
+            /**
+             * Ad Consent
+             * @default false
+             */
+            ad_consent: boolean;
         };
         /** UserUpdate */
         UserUpdate: {
@@ -8543,6 +8707,11 @@ export interface components {
              * @example wear
              */
             image_view_mode?: components["schemas"]["ImageViewMode"] | null;
+            /**
+             * Ad Consent
+             * @description 광고 성과 측정 선택 동의. true=동의, false=철회, 생략=변경 없음.
+             */
+            ad_consent?: boolean | null;
         };
         /**
          * VerificationStatus
@@ -8579,7 +8748,7 @@ export interface components {
              * Field Errors
              * @default null
              */
-            field_errors?: {
+            field_errors: {
                 [key: string]: string;
             } | null;
         };
@@ -10684,6 +10853,91 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdminDashboardResponse"];
+                };
+            };
+            /** @description UNAUTHORIZED */
+            401: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description NOT_FOUND */
+            404: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description CONFLICT */
+            409: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description VALIDATION_ERROR */
+            422: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    admin_inject_design_ai_tags: {
+        parameters: {
+            query?: never;
+            header: {
+                authorization?: string | null;
+                /** @description Required for mutating requests. */
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AiTagInjectRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiTagInjectResult"];
                 };
             };
             /** @description UNAUTHORIZED */
@@ -16221,6 +16475,89 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["UserMe"];
                 };
+            };
+            /** @description UNAUTHORIZED */
+            401: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description FORBIDDEN */
+            403: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description NOT_FOUND */
+            404: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description CONFLICT */
+            409: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description VALIDATION_ERROR */
+            422: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    users_change_my_password: {
+        parameters: {
+            query?: never;
+            header: {
+                authorization?: string | null;
+                /** @description Required for mutating requests. */
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasswordChange"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    /** @description Request correlation id. */
+                    "X-Request-Id"?: string;
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description UNAUTHORIZED */
             401: {

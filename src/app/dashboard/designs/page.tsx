@@ -187,7 +187,7 @@ export default function DesignsPage() {
     void (async () => {
       for (const name of missing) {
         try {
-          await designsApi.createFolder({ name });
+          await designsApi.createFolder({ name, sort_order: 0 });
         } catch {
           /* 무시 */
         }
@@ -408,6 +408,29 @@ function EditableFolderCard({
     onError: (e) => setError(toUserMessage(e)),
   });
 
+  // 폴더 상세 사진 — 이 폴더에 속한 모든 디자인의 사진 맨 뒤에 추가 상세 사진으로
+  // 자동으로 붙는다(대표 사진 아님). 업로드/삭제 즉시 반영(저장 버튼 없음).
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const setPhoto = useMutation({
+    mutationFn: (detail_image_upload_key: string | null) =>
+      designsApi.updateFolder(folder.id, { detail_image_upload_key }),
+    onSuccess: () => {
+      setPhotoError(null);
+      qc.invalidateQueries({ queryKey: ['design-folders'] });
+    },
+    onError: (e) => setPhotoError(toUserMessage(e)),
+  });
+  const onPickPhoto = async (files: FileList | null) => {
+    const file = files?.[0];
+    if (!file) return;
+    try {
+      const uploaded = await uploadsApi.uploadFile(file, 'design');
+      setPhoto.mutate(uploaded.object_key);
+    } catch (e) {
+      setPhotoError(toUserMessage(e));
+    }
+  };
+
   const del = useMutation({
     mutationFn: () => designsApi.deleteFolder(folder.id),
     onSuccess: () => {
@@ -468,6 +491,15 @@ function EditableFolderCard({
               </button>
               <button
                 onClick={() => {
+                  setEditing(true);
+                  setMenuOpen(false);
+                }}
+                className="text-caption text-primary-50 hover:text-secondary block w-full rounded px-2 py-1 text-left whitespace-nowrap underline"
+              >
+                상세 사진
+              </button>
+              <button
+                onClick={() => {
                   setMenuOpen(false);
                   onDelete();
                 }}
@@ -482,6 +514,48 @@ function EditableFolderCard({
       </div>
       {editing && (
         <div className="flex flex-col gap-1.5">
+          <div>
+            <p className="text-caption text-primary-50 mb-1">
+              상세 사진 — 이 폴더의 모든 디자인 사진 뒤에 추가로 붙어요(대표 사진 아님)
+            </p>
+            <div className="flex items-center gap-2">
+              {folder.detail_image_url ? (
+                <div className="relative h-16 w-16 overflow-hidden rounded-md border border-neutral-200">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={folder.detail_image_url} alt="" className="h-full w-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => setPhoto.mutate(null)}
+                    disabled={setPhoto.isPending}
+                    className="bg-black/50 text-caption absolute right-0 top-0 px-1 text-white disabled:opacity-50"
+                    aria-label="상세 사진 삭제"
+                  >
+                    ×
+                  </button>
+                </div>
+              ) : (
+                <label
+                  className={`text-primary-50 flex h-16 w-16 flex-col items-center justify-center rounded-md border border-dashed border-neutral-300 ${
+                    setPhoto.isPending ? 'cursor-not-allowed opacity-50' : 'hover:border-secondary cursor-pointer'
+                  }`}
+                >
+                  <span className="text-heading-md leading-none">+</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    disabled={setPhoto.isPending}
+                    className="hidden"
+                    onChange={(e) => {
+                      void onPickPhoto(e.target.files);
+                      e.target.value = '';
+                    }}
+                  />
+                </label>
+              )}
+              {setPhoto.isPending && <span className="text-caption text-primary-50">처리 중…</span>}
+            </div>
+            {photoError && <p className="text-caption text-danger mt-1">{photoError}</p>}
+          </div>
           <input
             type="month"
             value={month}
@@ -524,7 +598,7 @@ function NewFolderCard() {
 
   const create = useMutation({
     mutationFn: (body: { name: string; featured_month: string | null }) =>
-      designsApi.createFolder(body),
+      designsApi.createFolder({ ...body, sort_order: 0 }),
     onSuccess: () => {
       setName('');
       setFeaturedMonth('');
@@ -1857,6 +1931,7 @@ function OptionManager({ onClose, onDone }: { onClose: () => void; onDone: () =>
       await shopOptionCategoriesApi.createCategory({
         name,
         selection_mode: newCategoryMulti ? 'multi' : 'single',
+        sort_order: 0,
       });
       await categoriesQuery.refetch();
       setNewCategoryName('');
